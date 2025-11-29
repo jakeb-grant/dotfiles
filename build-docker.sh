@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 # Docker-based ISO build script - works on any Linux system with Docker
