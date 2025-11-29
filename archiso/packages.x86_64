@@ -4,6 +4,10 @@ base-devel
 linux
 linux-firmware
 linux-headers
+archinstall
+mkinitcpio
+mkinitcpio-archiso
+mkinitcpio-nfs-utils
 
 # Filesystem
 btrfs-progs
@@ -18,6 +22,7 @@ xfsprogs
 efibootmgr
 grub
 os-prober
+syslinux
 
 # Network
 dhcpcd
@@ -48,6 +53,8 @@ pavucontrol
 # Core utilities
 git
 neovim
+nano
+vim
 htop
 wget
 curl
@@ -58,6 +65,9 @@ p7zip
 man-db
 man-pages
 texinfo
+which
+tree
+less
 
 # Terminal and shell
 bash
