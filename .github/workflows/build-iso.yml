@@ -39,6 +39,9 @@ jobs:
 
     - name: Validate package list
       run: |
+        echo "Ensuring package databases are synchronized..."
+        pacman -Sy
+        echo ""
         echo "Validating packages in archiso/packages.x86_64..."
         INVALID_PACKAGES=""
         while IFS= read -r package; do
