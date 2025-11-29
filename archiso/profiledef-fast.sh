@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
+# Fast build profile for testing - trades compression for speed
+
 iso_name="hyprland-minimal"
 iso_label="HYPR_$(date +%Y%m)"
-iso_publisher="Hyprland Minimal <https://github.com/yourusername/dotfiles>"
+iso_publisher="Hyprland Minimal <https://github.com/jakeb-grant/dotfiles>"
 iso_application="Hyprland Minimal Install ISO"
 iso_version="$(date +%Y.%m.%d)"
 install_dir="arch"
@@ -12,7 +14,8 @@ bootmodes=('uefi.grub')
 arch="x86_64"
 pacman_conf="pacman.conf"
 airootfs_image_type="squashfs"
-airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '1')
+# Using gzip for much faster compression (but larger ISO)
+airootfs_image_tool_options=('-comp' 'gzip' '-Xcompression-level' '1')
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"

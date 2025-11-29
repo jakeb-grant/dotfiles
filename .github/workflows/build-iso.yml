@@ -18,6 +18,11 @@ on:
         required: false
         type: boolean
         default: false
+      fast_build:
+        description: 'Use fast build (larger ISO, faster build)'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   build:
@@ -117,6 +122,15 @@ jobs:
         # Set correct permissions
         chmod +x archiso/airootfs/usr/local/bin/installer.sh
         chmod +x archiso/profiledef.sh
+
+    - name: Select build profile
+      run: |
+        if [[ "${{ github.event.inputs.fast_build }}" == "true" ]]; then
+          echo "Using fast build profile for quicker builds"
+          cp archiso/profiledef-fast.sh archiso/profiledef.sh
+        else
+          echo "Using standard build profile with better compression"
+        fi
 
     - name: Build ISO
       run: |
