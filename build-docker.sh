@@ -54,9 +54,18 @@ echo "==> Initializing Arch Linux container..."
 pacman-key --init
 pacman-key --populate archlinux
 
+echo "==> Updating mirrorlist for faster downloads..."
+# Use US mirrors for better speed
+cat > /etc/pacman.d/mirrorlist << EOF
+Server = https://mirrors.kernel.org/archlinux/\$repo/os/\$arch
+Server = https://mirror.rackspace.com/archlinux/\$repo/os/\$arch
+Server = https://mirrors.mit.edu/archlinux/\$repo/os/\$arch
+Server = https://mirror.math.princeton.edu/pub/archlinux/\$repo/os/\$arch
+EOF
+
 echo "==> Updating system and installing dependencies..."
-pacman -Syu --noconfirm
-pacman -S --noconfirm archiso git sudo grub
+pacman -Syu --noconfirm --disable-download-timeout
+pacman -S --noconfirm --disable-download-timeout archiso git sudo grub
 
 echo "==> Preparing build environment..."
 # Copy dotfiles to ISO
