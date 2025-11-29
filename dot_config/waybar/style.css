@@ -1,0 +1,165 @@
+/* Waybar Style - Catppuccin Mocha Theme */
+
+* {
+    font-family: "JetBrains Mono", "Font Awesome 6 Free";
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background-color: rgba(30, 30, 46, 0.9);
+    color: #cdd6f4;
+    transition-property: background-color;
+    transition-duration: .5s;
+    border-bottom: 2px solid #89b4fa;
+}
+
+window#waybar.hidden {
+    opacity: 0.2;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    color: #cdd6f4;
+    background-color: transparent;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+}
+
+#workspaces button:hover {
+    background: rgba(69, 71, 90, 0.5);
+    box-shadow: inherit;
+    border-bottom: 3px solid #f9e2af;
+}
+
+#workspaces button.active {
+    background-color: rgba(69, 71, 90, 0.7);
+    border-bottom: 3px solid #89b4fa;
+}
+
+#workspaces button.urgent {
+    background-color: #f38ba8;
+    color: #1e1e2e;
+}
+
+#window {
+    margin: 0 4px;
+    padding: 0 10px;
+    color: #cdd6f4;
+}
+
+#clock,
+#battery,
+#cpu,
+#memory,
+#temperature,
+#network,
+#pulseaudio,
+#tray {
+    padding: 0 10px;
+    margin: 0 4px;
+    background-color: rgba(49, 50, 68, 0.7);
+    border-radius: 5px;
+}
+
+#clock {
+    background-color: rgba(137, 180, 250, 0.2);
+    color: #89b4fa;
+}
+
+#battery {
+    background-color: rgba(166, 227, 161, 0.2);
+    color: #a6e3a1;
+}
+
+#battery.charging,
+#battery.plugged {
+    background-color: rgba(166, 227, 161, 0.2);
+    color: #a6e3a1;
+}
+
+#battery.warning:not(.charging) {
+    background-color: rgba(249, 226, 175, 0.2);
+    color: #f9e2af;
+}
+
+#battery.critical:not(.charging) {
+    background-color: rgba(243, 139, 168, 0.2);
+    color: #f38ba8;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#cpu {
+    background-color: rgba(245, 194, 231, 0.2);
+    color: #f5c2e7;
+}
+
+#memory {
+    background-color: rgba(180, 190, 254, 0.2);
+    color: #b4befe;
+}
+
+#network {
+    background-color: rgba(148, 226, 213, 0.2);
+    color: #94e2d5;
+}
+
+#network.disconnected {
+    background-color: rgba(243, 139, 168, 0.2);
+    color: #f38ba8;
+}
+
+#pulseaudio {
+    background-color: rgba(249, 226, 175, 0.2);
+    color: #f9e2af;
+}
+
+#pulseaudio.muted {
+    background-color: rgba(88, 91, 112, 0.2);
+    color: #585b70;
+}
+
+#temperature {
+    background-color: rgba(166, 227, 161, 0.2);
+    color: #a6e3a1;
+}
+
+#temperature.critical {
+    background-color: rgba(243, 139, 168, 0.2);
+    color: #f38ba8;
+}
+
+#tray {
+    background-color: rgba(49, 50, 68, 0.7);
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
+    background-color: #f38ba8;
+}
+
+@keyframes blink {
+    to {
+        background-color: rgba(243, 139, 168, 0.4);
+        color: #1e1e2e;
+    }
+}
+
+/* Tooltip */
+tooltip {
+    background-color: rgba(30, 30, 46, 0.95);
+    border: 2px solid #89b4fa;
+    border-radius: 5px;
+}
+
+tooltip label {
+    color: #cdd6f4;
+}

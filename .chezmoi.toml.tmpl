@@ -1,0 +1,8 @@
+[data]
+    email = {{ promptStringOnce . "email" "Your email address" | quote }}
+    name = {{ promptStringOnce . "name" "Your full name" | quote }}
+    hostname = {{ .chezmoi.hostname | quote }}
+
+[git]
+    autoCommit = true
+    autoPush = false

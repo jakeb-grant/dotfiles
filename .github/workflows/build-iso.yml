@@ -1,0 +1,188 @@
+name: Build Arch ISO
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'archiso/**'
+      - 'dot_config/**'
+      - 'dot_bashrc'
+      - '.chezmoi.toml.tmpl'
+      - '.github/workflows/build-iso.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Create a release'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: --privileged
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Update system and install dependencies
+      run: |
+        pacman-key --init
+        pacman-key --populate archlinux
+        pacman -Syu --noconfirm
+        pacman -S --noconfirm archiso git sudo
+
+    - name: Prepare build environment
+      run: |
+        # Copy dotfiles to ISO
+        mkdir -p archiso/airootfs/root/dotfiles
+        cp -r dot_config archiso/airootfs/root/dotfiles/
+        cp dot_bashrc archiso/airootfs/root/dotfiles/
+        cp .chezmoi.toml.tmpl archiso/airootfs/root/dotfiles/
+
+        # Create auto-login service
+        mkdir -p archiso/airootfs/etc/systemd/system/getty@tty1.service.d
+        cat > archiso/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
+        [Service]
+        ExecStart=
+        ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
+        EOF
+
+        # Create installer launch script
+        cat > archiso/airootfs/root/.bash_profile << 'EOF'
+        #!/bin/bash
+
+        # Auto-start installer on login
+        if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
+            clear
+            echo "Welcome to Hyprland Minimal Installer"
+            echo ""
+            echo "Type 'installer' to start the installation process"
+            echo "Type 'help' for more options"
+            echo ""
+        fi
+
+        alias installer='/usr/local/bin/installer.sh'
+        alias help='echo "Available commands:
+          installer - Start the installation process
+          iwctl - Configure WiFi manually
+          nmtui - Network configuration UI
+          fdisk -l - List available disks
+          lsblk - Show block devices
+          reboot - Restart the system
+          poweroff - Shutdown the system"'
+
+        source ~/.bashrc
+        EOF
+
+        # Set correct permissions
+        chmod +x archiso/airootfs/usr/local/bin/installer.sh
+        chmod +x archiso/profiledef.sh
+
+    - name: Build ISO
+      run: |
+        mkarchiso -v -w work -o out archiso
+
+    - name: Get ISO information
+      id: iso_info
+      run: |
+        ISO_FILE=$(ls out/*.iso | head -1)
+        ISO_NAME=$(basename "$ISO_FILE")
+        ISO_SIZE=$(du -h "$ISO_FILE" | cut -f1)
+        echo "iso_file=$ISO_FILE" >> $GITHUB_OUTPUT
+        echo "iso_name=$ISO_NAME" >> $GITHUB_OUTPUT
+        echo "iso_size=$ISO_SIZE" >> $GITHUB_OUTPUT
+        echo "ISO Name: $ISO_NAME"
+        echo "ISO Size: $ISO_SIZE"
+
+    - name: Calculate checksums
+      id: checksums
+      run: |
+        cd out
+        ISO_NAME="${{ steps.iso_info.outputs.iso_name }}"
+        sha256sum "$ISO_NAME" > "$ISO_NAME.sha256"
+        md5sum "$ISO_NAME" > "$ISO_NAME.md5"
+        echo "SHA256: $(cat $ISO_NAME.sha256)"
+        echo "MD5: $(cat $ISO_NAME.md5)"
+
+    - name: Upload ISO artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: hyprland-minimal-iso
+        path: |
+          out/*.iso
+          out/*.sha256
+          out/*.md5
+        retention-days: 7
+
+    - name: Create Release
+      if: github.event.inputs.release == 'true' && github.ref == 'refs/heads/main'
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: iso-${{ github.run_number }}
+        release_name: Hyprland Minimal ISO Build ${{ github.run_number }}
+        body: |
+          ## Hyprland Minimal ISO
+
+          **Size:** ${{ steps.iso_info.outputs.iso_size }}
+
+          ### Features
+          - Minimal Hyprland desktop environment
+          - Gum-based interactive installer
+          - UEFI-only support
+          - Optional LUKS encryption
+          - Automated network configuration
+          - Chezmoi dotfile management
+          - GRUB bootloader
+
+          ### Checksums
+          See attached `.sha256` and `.md5` files for verification.
+
+          ### Installation
+          1. Write ISO to USB using `dd` or Rufus
+          2. Boot from USB in UEFI mode
+          3. Run `installer` to start the installation process
+
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Assets
+      if: github.event.inputs.release == 'true' && github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.iso_info.outputs.iso_file }}
+        asset_name: ${{ steps.iso_info.outputs.iso_name }}
+        asset_content_type: application/x-iso9660-image
+
+    - name: Upload SHA256 Checksum
+      if: github.event.inputs.release == 'true' && github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: out/${{ steps.iso_info.outputs.iso_name }}.sha256
+        asset_name: ${{ steps.iso_info.outputs.iso_name }}.sha256
+        asset_content_type: text/plain
+
+    - name: Upload MD5 Checksum
+      if: github.event.inputs.release == 'true' && github.ref == 'refs/heads/main'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: out/${{ steps.iso_info.outputs.iso_name }}.md5
+        asset_name: ${{ steps.iso_info.outputs.iso_name }}.md5
+        asset_content_type: text/plain

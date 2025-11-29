@@ -1,0 +1,35 @@
+# Build directories
+work/
+out/
+
+# ISO files
+*.iso
+*.sha256
+*.md5
+
+# Backup files
+*.backup
+*.bak
+*~
+.*.swp
+.*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+tmp/
+temp/
+
+# Logs
+*.log
+
+# Personal configuration
+.chezmoi.toml
+.bashrc.local

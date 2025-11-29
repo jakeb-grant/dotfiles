@@ -1,0 +1,122 @@
+# Base system
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+
+# Filesystem
+btrfs-progs
+dosfstools
+e2fsprogs
+exfatutils
+f2fs-tools
+ntfs-3g
+xfsprogs
+
+# Boot
+efibootmgr
+grub
+os-prober
+
+# Network
+dhcpcd
+iwd
+networkmanager
+nm-connection-editor
+wireless_tools
+wpa_supplicant
+
+# Hardware
+amd-ucode
+intel-ucode
+mesa
+vulkan-radeon
+vulkan-intel
+xf86-video-amdgpu
+xf86-video-intel
+
+# Audio
+pipewire
+pipewire-alsa
+pipewire-jack
+pipewire-pulse
+wireplumber
+pamixer
+pavucontrol
+
+# Core utilities
+git
+neovim
+htop
+wget
+curl
+rsync
+unzip
+zip
+p7zip
+man-db
+man-pages
+texinfo
+
+# Terminal and shell
+bash
+bash-completion
+ghostty
+starship
+
+# Wayland/Hyprland
+hyprland
+xdg-desktop-portal-hyprland
+polkit-kde-agent
+qt5-wayland
+qt6-wayland
+glfw-wayland
+
+# Desktop components
+waybar
+rofi-wayland
+mako
+swww
+grim
+slurp
+wl-clipboard
+cliphist
+brightnessctl
+
+# Fonts
+noto-fonts
+noto-fonts-cjk
+noto-fonts-emoji
+ttf-jetbrains-mono
+ttf-font-awesome
+
+# Theme
+papirus-icon-theme
+breeze-gtk
+
+# Development tools
+python
+python-pip
+nodejs
+npm
+
+# System tools
+sudo
+cryptsetup
+lvm2
+
+# Installation tools
+arch-install-scripts
+gum
+chezmoi
+reflector
+pacman-contrib
+
+# Additional utilities
+firefox
+thunar
+thunar-volman
+gvfs
+tumbler
+ffmpegthumbnailer

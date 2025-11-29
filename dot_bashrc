@@ -1,0 +1,201 @@
+# ~/.bashrc - Bash Configuration
+
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+# History settings
+HISTCONTROL=ignoreboth
+HISTSIZE=10000
+HISTFILESIZE=20000
+shopt -s histappend
+
+# Shell options
+shopt -s checkwinsize
+shopt -s globstar
+shopt -s cdspell
+shopt -s dirspell
+shopt -s autocd
+shopt -s cmdhist
+
+# Enable vi mode
+set -o vi
+
+# Better tab completion
+bind "set completion-ignore-case on"
+bind "set completion-map-case on"
+bind "set show-all-if-ambiguous on"
+bind "set mark-symlinked-directories on"
+
+# Color definitions
+RED='\[\033[0;31m\]'
+GREEN='\[\033[0;32m\]'
+YELLOW='\[\033[0;33m\]'
+BLUE='\[\033[0;34m\]'
+PURPLE='\[\033[0;35m\]'
+CYAN='\[\033[0;36m\]'
+WHITE='\[\033[0;37m\]'
+RESET='\[\033[0m\]'
+
+# Git prompt function
+git_prompt() {
+    local branch=$(git branch 2>/dev/null | grep '^*' | colrm 1 2)
+    if [ -n "$branch" ]; then
+        echo " ($branch)"
+    fi
+}
+
+# Custom prompt
+PS1="${BLUE}\u${RESET}@${GREEN}\h${RESET}:${CYAN}\w${YELLOW}\$(git_prompt)${RESET}\$ "
+
+# Aliases - System
+alias ls='ls --color=auto'
+alias ll='ls -lah'
+alias la='ls -A'
+alias l='ls -CF'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+alias diff='diff --color=auto'
+alias ip='ip -color=auto'
+alias tree='tree -C'
+
+# Aliases - Safety
+alias cp='cp -iv'
+alias mv='mv -iv'
+alias rm='rm -Iv'
+alias mkdir='mkdir -pv'
+alias chmod='chmod -v'
+alias chown='chown -v'
+
+# Aliases - Navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias ~='cd ~'
+alias -- -='cd -'
+
+# Aliases - Shortcuts
+alias c='clear'
+alias h='history'
+alias j='jobs -l'
+alias df='df -h'
+alias du='du -h'
+alias free='free -h'
+alias top='htop'
+alias vim='nvim'
+alias vi='nvim'
+alias gc='git commit'
+alias ga='git add'
+alias gst='git status'
+alias gd='git diff'
+alias gp='git push'
+alias gl='git pull'
+alias glog='git log --oneline --graph --decorate'
+
+# Aliases - Arch specific
+alias pac='sudo pacman'
+alias pacs='pacman -Ss'
+alias paci='sudo pacman -S'
+alias pacr='sudo pacman -R'
+alias pacu='sudo pacman -Syu'
+alias yay='yay --color=auto'
+alias yays='yay -Ss'
+alias yayi='yay -S'
+alias yayr='yay -R'
+alias yayu='yay -Syu'
+
+# Aliases - System management
+alias systemctl='systemctl --no-pager'
+alias journalctl='journalctl --no-pager'
+alias ss='sudo systemctl'
+alias sstart='sudo systemctl start'
+alias sstop='sudo systemctl stop'
+alias srestart='sudo systemctl restart'
+alias sstatus='sudo systemctl status'
+alias senable='sudo systemctl enable'
+alias sdisable='sudo systemctl disable'
+
+# Functions
+
+# Extract archives
+extract() {
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2)   tar xjf "$1"     ;;
+            *.tar.gz)    tar xzf "$1"     ;;
+            *.tar.xz)    tar xJf "$1"     ;;
+            *.bz2)       bunzip2 "$1"     ;;
+            *.rar)       unrar x "$1"     ;;
+            *.gz)        gunzip "$1"      ;;
+            *.tar)       tar xf "$1"      ;;
+            *.tbz2)      tar xjf "$1"     ;;
+            *.tgz)       tar xzf "$1"     ;;
+            *.zip)       unzip "$1"       ;;
+            *.Z)         uncompress "$1"  ;;
+            *.7z)        7z x "$1"        ;;
+            *)           echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# Create directory and cd into it
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+# Quick backup
+backup() {
+    cp -r "$1" "$1.backup-$(date +%Y%m%d-%H%M%S)"
+}
+
+# System information
+sysinfo() {
+    echo "Hostname: $(hostname)"
+    echo "Kernel: $(uname -r)"
+    echo "Uptime: $(uptime -p)"
+    echo "Memory: $(free -h | awk '/^Mem:/ {print $3 "/" $2}')"
+    echo "Disk: $(df -h / | awk 'NR==2 {print $3 "/" $2}')"
+    echo "CPU: $(lscpu | grep 'Model name' | cut -d':' -f2 | xargs)"
+}
+
+# Environment variables
+export EDITOR=nvim
+export VISUAL=nvim
+export BROWSER=firefox
+export TERM=xterm-256color
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# Path additions
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/bin:$PATH"
+
+# Man page colors
+export LESS_TERMCAP_mb=$'\e[1;32m'
+export LESS_TERMCAP_md=$'\e[1;32m'
+export LESS_TERMCAP_me=$'\e[0m'
+export LESS_TERMCAP_se=$'\e[0m'
+export LESS_TERMCAP_so=$'\e[01;33m'
+export LESS_TERMCAP_ue=$'\e[0m'
+export LESS_TERMCAP_us=$'\e[1;4;31m'
+
+# FZF configuration (if installed)
+if command -v fzf &> /dev/null; then
+    export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+    source /usr/share/fzf/key-bindings.bash 2>/dev/null
+    source /usr/share/fzf/completion.bash 2>/dev/null
+fi
+
+# Node Version Manager (if installed)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+# Rust (if installed)
+[ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+
+# Load local config if it exists
+[ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"
