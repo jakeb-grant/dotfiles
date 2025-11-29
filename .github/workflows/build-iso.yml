@@ -37,6 +37,37 @@ jobs:
         pacman -Syu --noconfirm
         pacman -S --noconfirm archiso git sudo grub
 
+    - name: Validate package list
+      run: |
+        echo "Validating packages in archiso/packages.x86_64..."
+        INVALID_PACKAGES=""
+        while IFS= read -r package; do
+          # Skip empty lines and comments
+          if [[ -z "$package" ]] || [[ "$package" =~ ^# ]]; then
+            continue
+          fi
+
+          # Check if package exists in repositories
+          if ! pacman -Si "$package" &>/dev/null; then
+            echo "❌ Invalid package: $package"
+            INVALID_PACKAGES="$INVALID_PACKAGES $package"
+          else
+            echo "✓ Valid package: $package"
+          fi
+        done < archiso/packages.x86_64
+
+        if [[ -n "$INVALID_PACKAGES" ]]; then
+          echo ""
+          echo "ERROR: The following packages were not found in the repositories:"
+          echo "$INVALID_PACKAGES"
+          echo ""
+          echo "Please fix the package names in archiso/packages.x86_64"
+          exit 1
+        fi
+
+        echo ""
+        echo "All packages validated successfully!"
+
     - name: Prepare build environment
       run: |
         # Copy dotfiles to ISO
