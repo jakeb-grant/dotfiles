@@ -33,4 +33,10 @@ chmod 644 "$NVRAM_FILE"
   -cdrom "$ISO_FILE" \
   -boot d \
   -vga virtio \
-  -display gtk,gl=on
+  -display gtk,gl=on \
+  -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+  -device virtio-net-pci,netdev=net0
+
+echo ""
+echo "SSH into VM with: ssh -p 2222 root@localhost"
+echo "(No password required)"
