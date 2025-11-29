@@ -39,8 +39,8 @@ jobs:
       run: |
         pacman-key --init
         pacman-key --populate archlinux
-        pacman -Syu --noconfirm
-        pacman -S --noconfirm archiso git sudo grub
+        pacman -Syu --noconfirm --disable-download-timeout
+        pacman -S --noconfirm --disable-download-timeout archiso git sudo grub
 
     - name: Validate package list
       run: |
