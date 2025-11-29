@@ -108,41 +108,6 @@ jobs:
         # Copy target package list for installer
         cp archiso/target-packages.x86_64 archiso/airootfs/root/
 
-        # Create auto-login service
-        mkdir -p archiso/airootfs/etc/systemd/system/getty@tty1.service.d
-        cat > archiso/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
-        [Service]
-        ExecStart=
-        ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
-        EOF
-
-        # Create installer launch script
-        cat > archiso/airootfs/root/.bash_profile << 'EOF'
-        #!/bin/bash
-
-        # Auto-start installer on login
-        if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
-            clear
-            echo "Welcome to Hyprland Minimal Installer"
-            echo ""
-            echo "Type 'installer' to start the installation process"
-            echo "Type 'help' for more options"
-            echo ""
-        fi
-
-        alias installer='/usr/local/bin/installer.sh'
-        alias help='echo "Available commands:
-          installer - Start the installation process
-          iwctl - Configure WiFi manually
-          nmtui - Network configuration UI
-          fdisk -l - List available disks
-          lsblk - Show block devices
-          reboot - Restart the system
-          poweroff - Shutdown the system"'
-
-        source ~/.bashrc
-        EOF
-
         # Set correct permissions
         chmod +x archiso/airootfs/usr/local/bin/installer.sh
         chmod +x archiso/profiledef.sh

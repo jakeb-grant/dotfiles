@@ -77,30 +77,6 @@ cp .chezmoi.toml.tmpl archiso/airootfs/root/dotfiles/ 2>/dev/null || true
 # Copy target package list for installer
 cp archiso/target-packages.x86_64 archiso/airootfs/root/
 
-# Create auto-login service
-mkdir -p archiso/airootfs/etc/systemd/system/getty@tty1.service.d
-cat > archiso/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
-EOF
-
-# Create installer launch script
-cat > archiso/airootfs/root/.bash_profile << "EOF"
-#!/bin/bash
-
-if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
-    clear
-    echo "Welcome to Hyprland Minimal Installer"
-    echo ""
-    echo "Type '\''installer'\'' to start the installation process"
-    echo ""
-fi
-
-alias installer="/usr/local/bin/installer.sh"
-source ~/.bashrc 2>/dev/null || true
-EOF
-
 # Set permissions
 chmod +x archiso/airootfs/usr/local/bin/installer.sh 2>/dev/null || true
 chmod +x archiso/profiledef.sh 2>/dev/null || true
