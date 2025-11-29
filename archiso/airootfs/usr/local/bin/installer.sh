@@ -376,6 +376,11 @@ grub-mkconfig -o /boot/grub/grub.cfg
 systemctl enable NetworkManager
 systemctl enable fstrim.timer
 
+# Configure PAM for gnome-keyring auto-unlock on login
+# This allows the keyring to be unlocked automatically with user password
+echo "auth       optional     pam_gnome_keyring.so" >> /etc/pam.d/login
+echo "session    optional     pam_gnome_keyring.so auto_start" >> /etc/pam.d/login
+
 # Set root password (same as user for now, should be changed)
 echo "root:$USER_PASSWORD" | chpasswd
 
@@ -392,19 +397,15 @@ EOCHROOT
 install_hyprland() {
     print_step "Installing Hyprland environment"
 
-    arch-chroot "$MOUNT_POINT" pacman -S --noconfirm \
-        hyprland xdg-desktop-portal-hyprland polkit-kde-agent \
-        qt5-wayland qt6-wayland glfw \
-        waybar rofi mako swaybg \
-        grim slurp wl-clipboard cliphist brightnessctl \
-        pipewire pipewire-alsa pipewire-jack pipewire-pulse wireplumber \
-        pamixer \
-        ghostty firefox nautilus gvfs \
-        ttf-jetbrains-mono-nerd \
-        papirus-icon-theme \
-        chezmoi starship btop wget curl rsync unzip zip \
-        man-db which tree less cryptsetup lvm2 \
-        btrfs-progs dosfstools e2fsprogs exfat-utils ntfs-3g mesa
+    # Read packages from target-packages.x86_64, filtering comments and empty lines
+    local packages=""
+    while IFS= read -r line; do
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        packages="$packages $line"
+    done < /root/target-packages.x86_64
+
+    arch-chroot "$MOUNT_POINT" pacman -S --noconfirm $packages
 
     print_success "Hyprland environment installed"
 }

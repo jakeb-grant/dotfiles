@@ -42,13 +42,16 @@ jobs:
         pacman -Syu --noconfirm --disable-download-timeout
         pacman -S --noconfirm --disable-download-timeout archiso git sudo grub
 
-    - name: Validate package list
+    - name: Validate package lists
       run: |
         echo "Ensuring package databases are synchronized..."
         pacman -Sy
-        echo ""
-        echo "Validating packages in archiso/packages.x86_64..."
+
         INVALID_PACKAGES=""
+
+        # Validate live ISO packages
+        echo ""
+        echo "Validating packages in archiso/packages.x86_64 (live ISO)..."
         while IFS= read -r package; do
           # Skip empty lines and comments
           if [[ -z "$package" ]] || [[ "$package" =~ ^# ]]; then
@@ -64,12 +67,30 @@ jobs:
           fi
         done < archiso/packages.x86_64
 
+        # Validate target system packages
+        echo ""
+        echo "Validating packages in archiso/target-packages.x86_64 (installed system)..."
+        while IFS= read -r package; do
+          # Skip empty lines and comments
+          if [[ -z "$package" ]] || [[ "$package" =~ ^# ]]; then
+            continue
+          fi
+
+          # Check if package exists in repositories
+          if ! pacman -Si "$package" &>/dev/null; then
+            echo "❌ Invalid package: $package"
+            INVALID_PACKAGES="$INVALID_PACKAGES $package"
+          else
+            echo "✓ Valid package: $package"
+          fi
+        done < archiso/target-packages.x86_64
+
         if [[ -n "$INVALID_PACKAGES" ]]; then
           echo ""
           echo "ERROR: The following packages were not found in the repositories:"
           echo "$INVALID_PACKAGES"
           echo ""
-          echo "Please fix the package names in archiso/packages.x86_64"
+          echo "Please fix the package names in the package lists"
           exit 1
         fi
 
@@ -83,6 +104,9 @@ jobs:
         cp -r dot_config archiso/airootfs/root/dotfiles/
         cp dot_bashrc archiso/airootfs/root/dotfiles/
         cp .chezmoi.toml.tmpl archiso/airootfs/root/dotfiles/
+
+        # Copy target package list for installer
+        cp archiso/target-packages.x86_64 archiso/airootfs/root/
 
         # Create auto-login service
         mkdir -p archiso/airootfs/etc/systemd/system/getty@tty1.service.d
