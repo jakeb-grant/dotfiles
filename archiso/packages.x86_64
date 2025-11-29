@@ -25,6 +25,7 @@ os-prober
 syslinux
 memtest86+
 memtest86+-efi
+edk2-shell
 
 # Network
 dhcpcd

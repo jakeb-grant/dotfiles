@@ -35,7 +35,7 @@ jobs:
         pacman-key --init
         pacman-key --populate archlinux
         pacman -Syu --noconfirm
-        pacman -S --noconfirm archiso git sudo
+        pacman -S --noconfirm archiso git sudo grub
 
     - name: Prepare build environment
       run: |
