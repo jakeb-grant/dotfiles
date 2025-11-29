@@ -1,0 +1,70 @@
+# Packages to install on the target system
+# This file is read by the installer during installation
+# Lines starting with # are comments, empty lines are ignored
+
+# Wayland/Hyprland
+hyprland
+xdg-desktop-portal-hyprland
+polkit-kde-agent
+qt5-wayland
+qt6-wayland
+glfw
+
+# Desktop components
+waybar
+rofi
+mako
+swaybg
+grim
+slurp
+wl-clipboard
+cliphist
+brightnessctl
+
+# Audio
+pipewire
+pipewire-alsa
+pipewire-jack
+pipewire-pulse
+wireplumber
+pamixer
+
+# Terminal and shell
+ghostty
+starship
+
+# Fonts
+ttf-jetbrains-mono-nerd
+
+# Theme
+papirus-icon-theme
+
+# Applications
+firefox
+nautilus
+gvfs
+
+# System tools
+chezmoi
+btop
+wget
+curl
+rsync
+unzip
+zip
+man-db
+which
+tree
+less
+
+# Disk/encryption tools
+cryptsetup
+lvm2
+btrfs-progs
+dosfstools
+e2fsprogs
+exfatprogs
+ntfs-3g
+
+# Graphics
+mesa

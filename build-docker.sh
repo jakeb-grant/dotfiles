@@ -74,6 +74,9 @@ cp -r dot_config archiso/airootfs/root/dotfiles/ 2>/dev/null || true
 cp dot_bashrc archiso/airootfs/root/dotfiles/ 2>/dev/null || true
 cp .chezmoi.toml.tmpl archiso/airootfs/root/dotfiles/ 2>/dev/null || true
 
+# Copy target package list for installer
+cp archiso/target-packages.x86_64 archiso/airootfs/root/
+
 # Create auto-login service
 mkdir -p archiso/airootfs/etc/systemd/system/getty@tty1.service.d
 cat > archiso/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF

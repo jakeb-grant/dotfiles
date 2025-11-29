@@ -48,6 +48,9 @@ cp -r "$SCRIPT_DIR/dot_config" "$PROFILE_DIR/airootfs/root/dotfiles/"
 cp "$SCRIPT_DIR/dot_bashrc" "$PROFILE_DIR/airootfs/root/dotfiles/"
 cp "$SCRIPT_DIR/.chezmoi.toml.tmpl" "$PROFILE_DIR/airootfs/root/dotfiles/"
 
+# Copy target package list for installer
+cp "$PROFILE_DIR/target-packages.x86_64" "$PROFILE_DIR/airootfs/root/"
+
 # Create auto-login service
 print_step "Creating auto-login service"
 mkdir -p "$PROFILE_DIR/airootfs/etc/systemd/system/getty@tty1.service.d"
