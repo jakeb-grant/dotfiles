@@ -5,10 +5,14 @@
 # Wayland/Hyprland
 hyprland
 xdg-desktop-portal-hyprland
-polkit-kde-agent
+polkit-gnome
 qt5-wayland
 qt6-wayland
 glfw
+
+# Authentication/Keyring
+gnome-keyring
+libsecret
 
 # Desktop components
 waybar

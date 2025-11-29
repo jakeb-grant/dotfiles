@@ -376,6 +376,11 @@ grub-mkconfig -o /boot/grub/grub.cfg
 systemctl enable NetworkManager
 systemctl enable fstrim.timer
 
+# Configure PAM for gnome-keyring auto-unlock on login
+# This allows the keyring to be unlocked automatically with user password
+echo "auth       optional     pam_gnome_keyring.so" >> /etc/pam.d/login
+echo "session    optional     pam_gnome_keyring.so auto_start" >> /etc/pam.d/login
+
 # Set root password (same as user for now, should be changed)
 echo "root:$USER_PASSWORD" | chpasswd
 
