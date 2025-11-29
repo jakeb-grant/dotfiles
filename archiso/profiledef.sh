@@ -3,7 +3,7 @@
 
 iso_name="hyprland-minimal"
 iso_label="HYPR_$(date +%Y%m)"
-iso_publisher="Hyprland Minimal <https://github.com/yourusername/dotfiles>"
+iso_publisher="Hyprland Minimal <https://github.com/jakeb-grant/dotfiles>"
 iso_application="Hyprland Minimal Install ISO"
 iso_version="$(date +%Y.%m.%d)"
 install_dir="arch"
@@ -16,5 +16,6 @@ airootfs_image_tool_options=('-comp' 'zstd' '-Xcompression-level' '1')
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
+  ["/etc/passwd"]="0:0:644"
   ["/usr/local/bin/installer.sh"]="0:0:755"
 )

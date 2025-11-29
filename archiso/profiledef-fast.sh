@@ -19,5 +19,6 @@ airootfs_image_tool_options=('-comp' 'gzip' '-Xcompression-level' '1')
 file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
+  ["/etc/passwd"]="0:0:644"
   ["/usr/local/bin/installer.sh"]="0:0:755"
 )
