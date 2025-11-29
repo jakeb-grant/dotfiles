@@ -20,6 +20,8 @@ NVRAM_FILE="$SCRIPT_DIR/.nvram-test.fd"
 if [[ ! -f "$NVRAM_FILE" ]]; then
     cp /run/libvirt/nix-ovmf/edk2-i386-vars.fd "$NVRAM_FILE" 2>/dev/null || dd if=/dev/zero of="$NVRAM_FILE" bs=1M count=1 2>/dev/null
 fi
+# Ensure it's writable
+chmod 644 "$NVRAM_FILE"
 
 /run/libvirt/nix-emulators/qemu-system-x86_64 \
   -enable-kvm \
