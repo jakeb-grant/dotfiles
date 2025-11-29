@@ -51,42 +51,6 @@ cp "$SCRIPT_DIR/.chezmoi.toml.tmpl" "$PROFILE_DIR/airootfs/root/dotfiles/"
 # Copy target package list for installer
 cp "$PROFILE_DIR/target-packages.x86_64" "$PROFILE_DIR/airootfs/root/"
 
-# Create auto-login service
-print_step "Creating auto-login service"
-mkdir -p "$PROFILE_DIR/airootfs/etc/systemd/system/getty@tty1.service.d"
-cat > "$PROFILE_DIR/airootfs/etc/systemd/system/getty@tty1.service.d/autologin.conf" << EOF
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin root --noclear %I \$TERM
-EOF
-
-# Create installer launch script
-cat > "$PROFILE_DIR/airootfs/root/.bash_profile" << 'EOF'
-#!/bin/bash
-
-# Auto-start installer on login
-if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then
-    clear
-    echo "Welcome to Hyprland Minimal Installer"
-    echo ""
-    echo "Type 'installer' to start the installation process"
-    echo "Type 'help' for more options"
-    echo ""
-fi
-
-alias installer='/usr/local/bin/installer.sh'
-alias help='echo "Available commands:
-  installer - Start the installation process
-  iwctl - Configure WiFi manually
-  nmtui - Network configuration UI
-  fdisk -l - List available disks
-  lsblk - Show block devices
-  reboot - Restart the system
-  poweroff - Shutdown the system"'
-
-source ~/.bashrc
-EOF
-
 # Build the ISO
 print_step "Building ISO (this will take some time)..."
 mkarchiso -v -w "$WORK_DIR" -o "$OUT_DIR" "$PROFILE_DIR"
