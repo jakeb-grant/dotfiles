@@ -270,10 +270,20 @@ mount_partitions() {
 install_base() {
     print_step "Installing base system"
 
+    # Detect CPU manufacturer
+    local cpu_ucode=""
+    if grep -q "GenuineIntel" /proc/cpuinfo; then
+        print_step "Intel CPU detected"
+        cpu_ucode="intel-ucode"
+    elif grep -q "AuthenticAMD" /proc/cpuinfo; then
+        print_step "AMD CPU detected"
+        cpu_ucode="amd-ucode"
+    fi
+
     pacstrap "$MOUNT_POINT" base base-devel linux linux-firmware linux-headers \
-        networkmanager grub efibootmgr os-prober \
-        git neovim sudo bash-completion \
-        amd-ucode intel-ucode
+        networkmanager grub efibootmgr \
+        git zed sudo bash-completion \
+        $cpu_ucode
 
     print_success "Base system installed"
 }
@@ -384,15 +394,17 @@ install_hyprland() {
 
     arch-chroot "$MOUNT_POINT" pacman -S --noconfirm \
         hyprland xdg-desktop-portal-hyprland polkit-kde-agent \
-        qt5-wayland qt6-wayland glfw-wayland \
-        waybar rofi-wayland mako swww \
+        qt5-wayland qt6-wayland glfw \
+        waybar rofi mako swaybg \
         grim slurp wl-clipboard cliphist brightnessctl \
         pipewire pipewire-alsa pipewire-jack pipewire-pulse wireplumber \
-        pamixer pavucontrol \
-        ghostty firefox thunar thunar-volman gvfs \
-        ttf-jetbrains-mono ttf-font-awesome noto-fonts noto-fonts-emoji \
-        papirus-icon-theme breeze-gtk \
-        chezmoi
+        pamixer \
+        ghostty firefox nautilus gvfs \
+        ttf-jetbrains-mono-nerd \
+        papirus-icon-theme \
+        chezmoi starship btop wget curl rsync unzip zip \
+        man-db which tree less cryptsetup lvm2 \
+        btrfs-progs dosfstools e2fsprogs exfat-utils ntfs-3g mesa
 
     print_success "Hyprland environment installed"
 }

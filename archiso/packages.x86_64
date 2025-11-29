@@ -4,45 +4,33 @@ base-devel
 linux
 linux-firmware
 linux-headers
-archinstall
 mkinitcpio
+
+# Archiso-specific (for live environment only)
+archinstall
 mkinitcpio-archiso
 mkinitcpio-nfs-utils
+arch-install-scripts
 
 # Filesystem
 btrfs-progs
 dosfstools
 e2fsprogs
 exfat-utils
-f2fs-tools
 ntfs-3g
-xfsprogs
 
 # Boot
 efibootmgr
 grub
-os-prober
-syslinux
-memtest86+
-memtest86+-efi
-edk2-shell
 
 # Network
-dhcpcd
-iwd
 networkmanager
 nm-connection-editor
-wireless_tools
-wpa_supplicant
 
 # Hardware
 amd-ucode
 intel-ucode
 mesa
-vulkan-radeon
-vulkan-intel
-xf86-video-amdgpu
-xf86-video-intel
 
 # Audio
 pipewire
@@ -51,22 +39,17 @@ pipewire-jack
 pipewire-pulse
 wireplumber
 pamixer
-pavucontrol
 
 # Core utilities
 git
-neovim
-nano
-vim
-htop
+zed
+btop
 wget
 curl
 rsync
 unzip
 zip
 man-db
-man-pages
-texinfo
 which
 tree
 less
@@ -101,13 +84,6 @@ ttf-jetbrains-mono-nerd
 
 # Theme
 papirus-icon-theme
-breeze-gtk
-
-# Development tools
-python
-python-pip
-nodejs
-npm
 
 # System tools
 sudo
@@ -115,16 +91,12 @@ cryptsetup
 lvm2
 
 # Installation tools
-arch-install-scripts
 gum
 chezmoi
 reflector
 pacman-contrib
 
-# Additional utilities
+# Applications
 firefox
-thunar
-thunar-volman
+nautilus
 gvfs
-tumbler
-ffmpegthumbnailer
