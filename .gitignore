@@ -32,4 +32,4 @@ temp/
 
 # Personal configuration
 .chezmoi.toml
-.bashrc.local
+.bashrc.local.nvram-test.fd

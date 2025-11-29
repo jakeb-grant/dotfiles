@@ -16,9 +16,9 @@ echo "Press Ctrl+Alt+G to release mouse/keyboard"
 echo ""
 
 # Create NVRAM file if it doesn't exist
-NVRAM_FILE="/tmp/test-iso-nvram-$$.fd"
+NVRAM_FILE="$SCRIPT_DIR/.nvram-test.fd"
 if [[ ! -f "$NVRAM_FILE" ]]; then
-    cp /run/libvirt/nix-ovmf/edk2-i386-vars.fd "$NVRAM_FILE" 2>/dev/null || touch "$NVRAM_FILE"
+    cp /run/libvirt/nix-ovmf/edk2-i386-vars.fd "$NVRAM_FILE" 2>/dev/null || dd if=/dev/zero of="$NVRAM_FILE" bs=1M count=1 2>/dev/null
 fi
 
 /run/libvirt/nix-emulators/qemu-system-x86_64 \
@@ -32,6 +32,3 @@ fi
   -boot d \
   -vga virtio \
   -display gtk,gl=on
-
-# Cleanup
-rm -f "$NVRAM_FILE"
