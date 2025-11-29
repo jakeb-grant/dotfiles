@@ -16,7 +16,7 @@ arch-install-scripts
 btrfs-progs
 dosfstools
 e2fsprogs
-exfat-utils
+exfatprogs
 ntfs-3g
 
 # Boot
@@ -27,6 +27,8 @@ grub
 networkmanager
 nm-connection-editor
 openssh
+dhcpcd
+iwd
 
 # Hardware
 amd-ucode

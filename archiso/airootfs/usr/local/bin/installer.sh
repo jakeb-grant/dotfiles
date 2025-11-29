@@ -238,6 +238,8 @@ format_partitions() {
     # Setup encryption if enabled
     if [[ "$USE_ENCRYPTION" == true ]]; then
         print_step "Setting up LUKS encryption"
+        # Save original partition path for GRUB cryptdevice config
+        ROOT_PART_ORIG="$ROOT_PART"
         echo -n "$ENCRYPTION_PASSWORD" | cryptsetup -q luksFormat "$ROOT_PART" -
         echo -n "$ENCRYPTION_PASSWORD" | cryptsetup open "$ROOT_PART" cryptroot -
         ROOT_PART="/dev/mapper/cryptroot"
@@ -322,13 +324,17 @@ setup_user() {
 configure_system() {
     print_step "Configuring system"
 
+    # Select timezone interactively before creating chroot script
+    print_step "Select your timezone"
+    TIMEZONE=$(tzselect)
+
     # Create configuration script
     cat > "$MOUNT_POINT/configure.sh" << EOCHROOT
 #!/bin/bash
 set -e
 
 # Set timezone
-ln -sf /usr/share/zoneinfo/$(tzselect) /etc/localtime
+ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc
 
 # Localization
@@ -374,12 +380,6 @@ systemctl enable fstrim.timer
 echo "root:$USER_PASSWORD" | chpasswd
 
 EOCHROOT
-
-    # Save original root partition for GRUB config
-    if [[ "$USE_ENCRYPTION" == true ]]; then
-        ROOT_PART_ORIG="$ROOT_PART"
-        ROOT_PART="/dev/mapper/cryptroot"
-    fi
 
     chmod +x "$MOUNT_POINT/configure.sh"
     arch-chroot "$MOUNT_POINT" /configure.sh

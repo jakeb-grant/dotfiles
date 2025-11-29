@@ -20,5 +20,6 @@ file_permissions=(
   ["/etc/shadow"]="0:0:400"
   ["/etc/gshadow"]="0:0:400"
   ["/etc/passwd"]="0:0:644"
+  ["/etc/group"]="0:0:644"
   ["/usr/local/bin/installer.sh"]="0:0:755"
 )
