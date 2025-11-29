@@ -87,7 +87,7 @@ glfw
 
 # Desktop components
 waybar
-rofi-lbonn-wayland
+rofi
 mako
 swww
 grim
@@ -97,11 +97,7 @@ cliphist
 brightnessctl
 
 # Fonts
-noto-fonts
-noto-fonts-cjk
-noto-fonts-emoji
-ttf-jetbrains-mono
-ttf-font-awesome
+ttf-jetbrains-mono-nerd
 
 # Theme
 papirus-icon-theme

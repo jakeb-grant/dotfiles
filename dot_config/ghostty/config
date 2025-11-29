@@ -1,7 +1,7 @@
 # Ghostty Terminal Configuration
 
 # Font settings
-font-family = "JetBrains Mono"
+font-family = "JetBrainsMono Nerd Font"
 font-size = 12
 font-feature = ss01
 font-feature = ss02

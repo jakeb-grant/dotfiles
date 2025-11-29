@@ -22,7 +22,7 @@ default-timeout=5000
 ignore-timeout=0
 
 # Style
-font=JetBrains Mono 11
+font=JetBrainsMono Nerd Font 11
 background-color=#1e1e2e
 text-color=#cdd6f4
 border-color=#89b4fa

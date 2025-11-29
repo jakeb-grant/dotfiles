@@ -2,7 +2,7 @@
 
 configuration {
     modi: "drun,run,window,ssh";
-    font: "JetBrains Mono 12";
+    font: "JetBrainsMono Nerd Font 12";
     show-icons: true;
     icon-theme: "Papirus-Dark";
     display-drun: " Apps";
@@ -60,7 +60,7 @@ inputbar {
 
 prompt {
     text-color: @accent;
-    font: "JetBrains Mono Bold 12";
+    font: "JetBrainsMono Nerd Font Bold 12";
 }
 
 entry {
