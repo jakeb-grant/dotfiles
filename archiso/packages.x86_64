@@ -13,7 +13,7 @@ mkinitcpio-nfs-utils
 btrfs-progs
 dosfstools
 e2fsprogs
-exfatutils
+exfat-utils
 f2fs-tools
 ntfs-3g
 xfsprogs
