@@ -769,12 +769,9 @@ setup_dotfiles() {
     print_step "Setting up dotfiles with chezmoi"
 
     if [[ "$DEPLOY_DOTFILES" == true ]]; then
-        if arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "chezmoi init --apply $DOTFILES_REPO" 2>/dev/null; then
-            print_success "Dotfiles deployed from repository"
-        else
-            print_warning "Failed to deploy dotfiles from repository, falling back to ISO copy"
-            DEPLOY_DOTFILES=false
-        fi
+        print_warning "Network not available during installation - using ISO dotfiles"
+        print_step "After first boot, run: chezmoi init --apply $DOTFILES_REPO"
+        DEPLOY_DOTFILES=false
     fi
 
     if [[ "$DEPLOY_DOTFILES" == false ]]; then
