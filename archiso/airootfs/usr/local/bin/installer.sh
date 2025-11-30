@@ -393,6 +393,79 @@ EOCHROOT
     print_success "System configured"
 }
 
+# Detect and install GPU drivers
+install_gpu_drivers() {
+    print_step "Detecting GPU and installing drivers"
+
+    local gpu_packages=""
+
+    # Detect NVIDIA
+    if lspci | grep -i 'nvidia' &>/dev/null; then
+        print_step "NVIDIA GPU detected"
+
+        # Determine which NVIDIA driver to use
+        if lspci | grep -i 'nvidia' | grep -q -E "RTX [2-9][0-9]|GTX 16"; then
+            print_step "Modern NVIDIA GPU - using nvidia-open-dkms"
+            gpu_packages="nvidia-open-dkms nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver"
+        else
+            print_step "Older NVIDIA GPU - using nvidia-dkms"
+            gpu_packages="nvidia-dkms nvidia-utils lib32-nvidia-utils egl-wayland libva-nvidia-driver"
+        fi
+
+        # Install NVIDIA drivers
+        arch-chroot "$MOUNT_POINT" pacman -S --noconfirm $gpu_packages
+
+        # Configure NVIDIA for early KMS
+        echo "options nvidia_drm modeset=1" > "$MOUNT_POINT/etc/modprobe.d/nvidia.conf"
+
+        # Add NVIDIA modules to mkinitcpio
+        arch-chroot "$MOUNT_POINT" bash -c "
+            sed -i -E 's/ nvidia_drm//g; s/ nvidia_uvm//g; s/ nvidia_modeset//g; s/ nvidia//g;' /etc/mkinitcpio.conf
+            sed -i -E 's/^(MODULES=\\()/\\1nvidia nvidia_modeset nvidia_uvm nvidia_drm /' /etc/mkinitcpio.conf
+            sed -i -E 's/  +/ /g' /etc/mkinitcpio.conf
+            mkinitcpio -P
+        "
+
+        print_success "NVIDIA drivers installed and configured"
+
+    # Detect AMD
+    elif lspci | grep -E 'VGA|3D' | grep -i 'amd\|radeon' &>/dev/null; then
+        print_step "AMD GPU detected"
+        gpu_packages="mesa vulkan-radeon libva-mesa-driver mesa-vdpau"
+        arch-chroot "$MOUNT_POINT" pacman -S --noconfirm $gpu_packages
+        print_success "AMD drivers installed"
+
+    # Detect Intel
+    elif lspci | grep -iE 'VGA|3D|Display' | grep -i 'intel' &>/dev/null; then
+        print_step "Intel GPU detected"
+
+        # Get Intel GPU model
+        local intel_gpu=$(lspci | grep -iE 'VGA|3D|Display' | grep -i 'intel')
+        local intel_gpu_lower="${intel_gpu,,}"
+
+        # Determine which VA-API driver to use
+        local va_driver=""
+        if [[ "$intel_gpu_lower" =~ "hd graphics"|"xe"|"iris" ]]; then
+            print_step "Modern Intel GPU detected (HD Graphics/Xe/Iris) - using intel-media-driver"
+            va_driver="intel-media-driver"
+        elif [[ "$intel_gpu_lower" =~ "gma" ]]; then
+            print_step "Older Intel GPU detected (GMA) - using libva-intel-driver"
+            va_driver="libva-intel-driver"
+        else
+            print_step "Intel GPU detected - using intel-media-driver (default)"
+            va_driver="intel-media-driver"
+        fi
+
+        gpu_packages="mesa vulkan-intel $va_driver"
+        arch-chroot "$MOUNT_POINT" pacman -S --noconfirm $gpu_packages
+        print_success "Intel drivers installed"
+
+    else
+        print_warning "No discrete GPU detected, using mesa (software rendering)"
+        arch-chroot "$MOUNT_POINT" pacman -S --noconfirm mesa
+    fi
+}
+
 # Install Hyprland environment
 install_hyprland() {
     print_step "Installing Hyprland environment"
@@ -406,6 +479,9 @@ install_hyprland() {
     done < /root/target-packages.x86_64
 
     arch-chroot "$MOUNT_POINT" pacman -S --noconfirm $packages
+
+    # Install GPU drivers after base Hyprland packages
+    install_gpu_drivers
 
     print_success "Hyprland environment installed"
 }

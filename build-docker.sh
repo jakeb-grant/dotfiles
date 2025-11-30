@@ -67,19 +67,35 @@ echo "==> Updating system and installing dependencies..."
 pacman -Syu --noconfirm --disable-download-timeout
 pacman -S --noconfirm --disable-download-timeout archiso git sudo grub
 
-echo "==> Preparing build environment..."
+echo "==> Fetching official archiso releng profile..."
+# Copy archiso from the installed package
+cp -r /usr/share/archiso/configs/releng /tmp/archiso-profile
+
+echo "==> Applying customizations to releng profile..."
+# Copy our package list
+cp archiso/packages.x86_64 /tmp/archiso-profile/
+
+# Copy our profiledef.sh (with our branding and settings)
+cp archiso/profiledef.sh /tmp/archiso-profile/
+
+# Copy our boot configurations
+cp -r archiso/grub/* /tmp/archiso-profile/grub/ 2>/dev/null || true
+
+# Copy our airootfs customizations (merging with releng)
+cp -r archiso/airootfs/* /tmp/archiso-profile/airootfs/
+
 # Copy dotfiles to ISO
-mkdir -p archiso/airootfs/root/dotfiles
-cp -r dot_config archiso/airootfs/root/dotfiles/ 2>/dev/null || true
-cp dot_bashrc archiso/airootfs/root/dotfiles/ 2>/dev/null || true
-cp .chezmoi.toml.tmpl archiso/airootfs/root/dotfiles/ 2>/dev/null || true
+mkdir -p /tmp/archiso-profile/airootfs/root/dotfiles
+cp -r dot_config /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
+cp dot_bashrc /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
+cp .chezmoi.toml.tmpl /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
 
 # Copy target package list for installer
-cp archiso/target-packages.x86_64 archiso/airootfs/root/
+cp archiso/target-packages.x86_64 /tmp/archiso-profile/airootfs/root/
 
 # Set permissions
-chmod +x archiso/airootfs/usr/local/bin/installer.sh 2>/dev/null || true
-chmod +x archiso/profiledef.sh 2>/dev/null || true
+chmod +x /tmp/archiso-profile/airootfs/usr/local/bin/installer.sh 2>/dev/null || true
+chmod +x /tmp/archiso-profile/profiledef.sh 2>/dev/null || true
 
 echo "==> Building ISO (this will take a few minutes)..."
 START_TIME=$(date +%s)
@@ -87,12 +103,7 @@ START_TIME=$(date +%s)
 # Clean previous work
 rm -rf work/
 
-# Build with fast compression by default
-if [[ -f archiso/profiledef-fast.sh ]]; then
-    cp archiso/profiledef-fast.sh archiso/profiledef.sh
-fi
-
-mkarchiso -v -w work -o out archiso
+mkarchiso -v -w work -o out /tmp/archiso-profile
 
 END_TIME=$(date +%s)
 BUILD_TIME=$((END_TIME - START_TIME))

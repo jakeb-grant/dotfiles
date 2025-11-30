@@ -3,7 +3,7 @@
 # Start SSH daemon for remote access
 systemctl start sshd 2>/dev/null
 
-if [[ -z \$DISPLAY ]] && [[ \$(tty) = /dev/tty1 ]]; then
+if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]]; then
     clear
     echo "Welcome to Hyprland Minimal Installer"
     echo ""

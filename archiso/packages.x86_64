@@ -18,6 +18,7 @@ dosfstools
 e2fsprogs
 exfatprogs
 ntfs-3g
+gptfdisk
 
 # Boot
 efibootmgr
@@ -56,6 +57,7 @@ man-db
 which
 tree
 less
+pciutils
 
 # Terminal and shell
 bash
