@@ -11,6 +11,7 @@ $mod = ALT
 # ============================================================================
 env = GSK_RENDERER,gl
 env = GDK_BACKEND,wayland,x11
+env = ELECTRON_OZONE_PLATFORM_HINT,auto
 env = XCURSOR_THEME,Bibata-Modern-Classic
 env = XCURSOR_SIZE,24
 
