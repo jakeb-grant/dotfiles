@@ -14,6 +14,38 @@ NC='\033[0m' # No Color
 MOUNT_POINT="/mnt"
 DOTFILES_REPO="https://github.com/jakeb-grant/dotfiles.git"
 
+# User input variables (collected upfront)
+DISK=""
+SWAP_SIZE=""
+USE_ENCRYPTION=false
+ENCRYPTION_PASSWORD=""
+ROOT_PART_ORIG_UUID=""
+USERNAME=""
+USER_PASSWORD=""
+HOSTNAME=""
+TIMEZONE=""
+GIT_EMAIL=""
+GIT_NAME=""
+DEPLOY_DOTFILES=false
+AUTO_REBOOT=false
+
+# Cleanup on failure
+cleanup() {
+    if [[ $? -ne 0 ]]; then
+        print_error "Installation failed! Cleaning up..."
+        if mountpoint -q "$MOUNT_POINT/boot" 2>/dev/null; then
+            umount "$MOUNT_POINT/boot" 2>/dev/null || true
+        fi
+        if mountpoint -q "$MOUNT_POINT" 2>/dev/null; then
+            umount -R "$MOUNT_POINT" 2>/dev/null || true
+        fi
+        if [[ -e /dev/mapper/cryptroot ]]; then
+            cryptsetup close cryptroot 2>/dev/null || true
+        fi
+    fi
+}
+trap cleanup EXIT
+
 # Functions
 print_step() {
     echo -e "${BLUE}==>${NC} $1"
@@ -29,6 +61,62 @@ print_success() {
 
 print_warning() {
     echo -e "${YELLOW}Warning:${NC} $1"
+}
+
+# Validation functions
+validate_timezone() {
+    local tz="$1"
+    if [[ -f "/usr/share/zoneinfo/$tz" ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+validate_email() {
+    local email="$1"
+    if [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+validate_username() {
+    local username="$1"
+    local reserved_names="root daemon bin sys sync games man lp mail news uucp proxy www-data backup list irc gnats nobody systemd"
+
+    if [[ -z "$username" ]]; then
+        return 1
+    elif [[ ! "$username" =~ ^[a-z_][a-z0-9_-]*$ ]]; then
+        return 1
+    elif [[ ${#username} -gt 32 ]]; then
+        return 1
+    elif echo "$reserved_names" | grep -w "$username" &>/dev/null; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+validate_hostname() {
+    local hostname="$1"
+    if [[ -z "$hostname" ]]; then
+        return 1
+    elif [[ ! "$hostname" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+validate_swap_size() {
+    local size="$1"
+    if [[ "$size" =~ ^[0-9]+[GMgm]$ ]]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Check if running as root
@@ -48,29 +136,46 @@ check_uefi() {
     print_success "System booted in UEFI mode"
 }
 
-# Network setup
-setup_network() {
-    print_step "Setting up network connection"
+# Collect all user input upfront
+collect_all_user_input() {
+    print_step "Configuration - Please answer the following questions"
+    echo ""
 
+    # Network setup
+    print_step "Network Configuration"
     local connection_type=$(gum choose --header "Select connection type:" "Ethernet" "WiFi" "Skip (already connected)")
 
     case "$connection_type" in
         "Ethernet")
             print_step "Configuring ethernet..."
-            systemctl start dhcpcd
+            if ! systemctl start dhcpcd; then
+                print_error "Failed to start dhcpcd"
+                exit 1
+            fi
             sleep 3
             ;;
         "WiFi")
             print_step "Configuring WiFi..."
-            systemctl start iwd
+            if ! systemctl start iwd; then
+                print_error "Failed to start iwd"
+                exit 1
+            fi
             sleep 2
 
+            # Detect WiFi interface
+            local wifi_iface=$(iw dev | awk '$1=="Interface"{print $2; exit}')
+            if [[ -z "$wifi_iface" ]]; then
+                print_error "No wireless interface found"
+                exit 1
+            fi
+            print_step "Using WiFi interface: $wifi_iface"
+
             # Scan for networks
-            iwctl station wlan0 scan
+            iwctl station "$wifi_iface" scan
             sleep 3
 
             # Get available networks
-            local networks=$(iwctl station wlan0 get-networks | tail -n +5 | head -n -1 | awk '{print $1}')
+            local networks=$(iwctl station "$wifi_iface" get-networks | tail -n +5 | head -n -1 | awk '{print $1}')
 
             if [[ -z "$networks" ]]; then
                 print_error "No WiFi networks found"
@@ -80,7 +185,7 @@ setup_network() {
             local selected_network=$(echo "$networks" | gum choose --header "Select WiFi network:")
             local wifi_password=$(gum input --password --placeholder "Enter WiFi password")
 
-            iwctl --passphrase="$wifi_password" station wlan0 connect "$selected_network"
+            iwctl --passphrase="$wifi_password" station "$wifi_iface" connect "$selected_network"
             sleep 5
             ;;
         "Skip (already connected)")
@@ -99,15 +204,16 @@ setup_network() {
 
     # Update mirror list
     print_step "Updating mirror list..."
-    reflector --latest 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
-    print_success "Mirror list updated"
-}
+    if ! reflector --latest 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist; then
+        print_warning "Failed to update mirror list, using default mirrors"
+    else
+        print_success "Mirror list updated"
+    fi
 
-# Disk selection and partitioning
-select_disk() {
+    echo ""
+
+    # Disk selection
     print_step "Disk Selection"
-
-    # Get available disks
     local disks=$(lsblk -dno NAME,SIZE,MODEL | grep -E '^(sd|nvme|vd)' | awk '{print $1 " - " $2 " " $3}')
 
     if [[ -z "$disks" ]]; then
@@ -121,15 +227,14 @@ select_disk() {
     # Confirm disk selection
     gum confirm --affirmative "Yes, wipe $DISK" --negative "No, cancel" "Are you sure you want to use $DISK? This will ERASE ALL DATA!" || exit 1
 
-    print_success "Selected disk: $DISK"
-}
+    echo ""
 
-# Get swap size
-get_swap_size() {
+    # Swap configuration
     print_step "Swap Configuration"
-
-    local total_ram=$(free -g | awk '/^Mem:/{print $2}')
-    local default_swap=$((total_ram < 8 ? total_ram * 2 : total_ram))
+    local total_ram=$(free -m | awk '/^Mem:/{print int($2/1024)}')
+    if [[ $total_ram -eq 0 ]]; then
+        total_ram=1  # Minimum 1GB
+    fi
 
     local swap_choice=$(gum choose --header "Select swap size:" \
         "Same as RAM (${total_ram}G)" \
@@ -149,40 +254,200 @@ get_swap_size() {
             SWAP_SIZE="$((total_ram / 2))G"
             ;;
         "Custom")
-            SWAP_SIZE=$(gum input --placeholder "Enter swap size (e.g., 4G, 8G)")
+            while true; do
+                SWAP_SIZE=$(gum input --placeholder "Enter swap size (e.g., 4G, 512M)")
+                if validate_swap_size "$SWAP_SIZE"; then
+                    break
+                else
+                    print_error "Invalid format. Use number followed by G or M (e.g., 4G, 512M)"
+                fi
+            done
             ;;
         "No swap")
             SWAP_SIZE="0"
             ;;
     esac
 
-    print_success "Swap size: $SWAP_SIZE"
-}
+    echo ""
 
-# Encryption setup
-setup_encryption() {
+    # User configuration (collected first so we can offer to reuse password for encryption)
+    print_step "User Configuration"
+
+    while true; do
+        USERNAME=$(gum input --placeholder "Enter username")
+        if validate_username "$USERNAME"; then
+            break
+        else
+            print_error "Invalid username. Use lowercase letters, numbers, dash, underscore (max 32 chars)"
+            gum style --foreground 3 "Cannot use reserved names like: root, daemon, bin, sys, etc."
+        fi
+    done
+
+    USER_PASSWORD=$(gum input --password --placeholder "Enter password for $USERNAME")
+    local user_password_confirm=$(gum input --password --placeholder "Confirm password")
+
+    if [[ "$USER_PASSWORD" != "$user_password_confirm" ]]; then
+        print_error "Passwords do not match"
+        exit 1
+    fi
+
+    if [[ -z "$USER_PASSWORD" ]]; then
+        print_error "Password cannot be empty"
+        exit 1
+    fi
+
+    while true; do
+        HOSTNAME=$(gum input --placeholder "Enter hostname" --value "${USERNAME}-hypr")
+        if validate_hostname "$HOSTNAME"; then
+            break
+        else
+            print_error "Invalid hostname. Use lowercase letters, numbers, and dashes"
+        fi
+    done
+
+    echo ""
+
+    # Encryption
     print_step "Encryption Configuration"
-
     if gum confirm "Do you want to encrypt the root partition?"; then
         USE_ENCRYPTION=true
-        ENCRYPTION_PASSWORD=$(gum input --password --placeholder "Enter encryption password")
-        ENCRYPTION_PASSWORD_CONFIRM=$(gum input --password --placeholder "Confirm encryption password")
 
-        if [[ "$ENCRYPTION_PASSWORD" != "$ENCRYPTION_PASSWORD_CONFIRM" ]]; then
-            print_error "Passwords do not match"
-            exit 1
+        # Offer to use the same password as user password
+        if gum confirm "Use the same password as your user account for disk encryption?"; then
+            ENCRYPTION_PASSWORD="$USER_PASSWORD"
+            print_success "Using user password for disk encryption"
+        else
+            ENCRYPTION_PASSWORD=$(gum input --password --placeholder "Enter disk encryption password")
+            local encryption_confirm=$(gum input --password --placeholder "Confirm encryption password")
+
+            if [[ "$ENCRYPTION_PASSWORD" != "$encryption_confirm" ]]; then
+                print_error "Passwords do not match"
+                exit 1
+            fi
+
+            if [[ -z "$ENCRYPTION_PASSWORD" ]]; then
+                print_error "Password cannot be empty"
+                exit 1
+            fi
         fi
-
-        if [[ -z "$ENCRYPTION_PASSWORD" ]]; then
-            print_error "Password cannot be empty"
-            exit 1
-        fi
-
-        print_success "Encryption will be enabled"
     else
         USE_ENCRYPTION=false
-        print_success "Proceeding without encryption"
     fi
+
+    echo ""
+
+    # Timezone
+    print_step "Timezone Configuration"
+    while true; do
+        TIMEZONE=$(gum input --placeholder "Enter timezone (e.g., America/New_York, Europe/London, UTC)")
+
+        if validate_timezone "$TIMEZONE"; then
+            print_success "Timezone validated: $TIMEZONE"
+            break
+        else
+            print_error "Invalid timezone. Please enter a valid timezone path."
+            gum style --foreground 3 "Examples: America/New_York, Europe/London, Asia/Tokyo, UTC"
+        fi
+    done
+
+    echo ""
+
+    # Git configuration
+    print_step "Git Configuration"
+    while true; do
+        GIT_EMAIL=$(gum input --placeholder "Git email address (e.g., you@example.com)")
+
+        if validate_email "$GIT_EMAIL"; then
+            break
+        else
+            print_error "Invalid email format. Please enter a valid email address."
+        fi
+    done
+
+    while true; do
+        GIT_NAME=$(gum input --placeholder "Git full name (e.g., John Doe)")
+        if [[ -n "$GIT_NAME" ]]; then
+            break
+        else
+            print_error "Git name cannot be empty"
+        fi
+    done
+
+    echo ""
+
+    # Dotfiles
+    print_step "Dotfiles Configuration"
+    if gum confirm "Deploy dotfiles from repository ($DOTFILES_REPO)?"; then
+        DEPLOY_DOTFILES=true
+    else
+        DEPLOY_DOTFILES=false
+    fi
+
+    echo ""
+
+    # Auto-reboot
+    print_step "Installation Completion"
+    if gum confirm "Automatically reboot after installation completes?"; then
+        AUTO_REBOOT=true
+    else
+        AUTO_REBOOT=false
+    fi
+
+    echo ""
+    print_success "All configuration collected!"
+}
+
+# Show installation summary and confirm
+show_installation_summary() {
+    clear
+
+    gum style \
+        --foreground 212 --border-foreground 212 --border double \
+        --align center --width 60 --margin "1 2" --padding "2 4" \
+        "Installation Summary"
+
+    echo ""
+
+    local encryption_status="No"
+    if [[ "$USE_ENCRYPTION" == true ]]; then
+        encryption_status="Yes"
+    fi
+
+    local dotfiles_status="Copy from ISO"
+    if [[ "$DEPLOY_DOTFILES" == true ]]; then
+        dotfiles_status="Deploy from repository"
+    fi
+
+    local reboot_status="No (manual reboot)"
+    if [[ "$AUTO_REBOOT" == true ]]; then
+        reboot_status="Yes (automatic)"
+    fi
+
+    gum style --border normal --border-foreground 6 --padding "1 2" --width 60 "
+╔══════════════════════════════════════════════════════════╗
+║                 Configuration Overview                   ║
+╠══════════════════════════════════════════════════════════╣
+║ Disk:           $DISK
+║ Swap:           $SWAP_SIZE
+║ Encryption:     $encryption_status
+║ Username:       $USERNAME
+║ Hostname:       $HOSTNAME
+║ Timezone:       $TIMEZONE
+║ Git Email:      $GIT_EMAIL
+║ Git Name:       $GIT_NAME
+║ Dotfiles:       $dotfiles_status
+║ Auto-reboot:    $reboot_status
+╚══════════════════════════════════════════════════════════╝
+"
+
+    echo ""
+    gum confirm --affirmative "Begin Installation" --negative "Cancel" "Proceed with installation using the above configuration?" || {
+        print_warning "Installation cancelled by user"
+        exit 0
+    }
+
+    echo ""
+    print_success "Starting installation..."
 }
 
 # Partition disk
@@ -204,7 +469,6 @@ partition_disk() {
 
     # Inform kernel of changes
     partprobe "$DISK"
-    sleep 2
 
     # Set partition variables
     if [[ "$DISK" =~ nvme ]]; then
@@ -225,6 +489,26 @@ partition_disk() {
         fi
     fi
 
+    # Wait for partitions to appear (max 10 seconds)
+    print_step "Waiting for partitions to be recognized..."
+    for i in {1..10}; do
+        if [[ -e "$EFI_PART" && -e "$ROOT_PART" ]]; then
+            break
+        fi
+        sleep 1
+    done
+
+    # Verify partitions exist
+    if [[ ! -e "$EFI_PART" ]]; then
+        print_error "EFI partition not found: $EFI_PART"
+        exit 1
+    fi
+
+    if [[ ! -e "$ROOT_PART" ]]; then
+        print_error "Root partition not found: $ROOT_PART"
+        exit 1
+    fi
+
     print_success "Disk partitioned successfully"
 }
 
@@ -238,10 +522,12 @@ format_partitions() {
     # Setup encryption if enabled
     if [[ "$USE_ENCRYPTION" == true ]]; then
         print_step "Setting up LUKS encryption"
-        # Save original partition path for GRUB cryptdevice config
+        # Save original partition path and UUID for GRUB cryptdevice config
         ROOT_PART_ORIG="$ROOT_PART"
         echo -n "$ENCRYPTION_PASSWORD" | cryptsetup -q luksFormat "$ROOT_PART" -
         echo -n "$ENCRYPTION_PASSWORD" | cryptsetup open "$ROOT_PART" cryptroot -
+        # Capture UUID before changing ROOT_PART variable
+        ROOT_PART_ORIG_UUID=$(blkid -s UUID -o value "$ROOT_PART_ORIG")
         ROOT_PART="/dev/mapper/cryptroot"
     fi
 
@@ -297,36 +583,9 @@ generate_fstab() {
     print_success "fstab generated"
 }
 
-# User setup
-setup_user() {
-    print_step "User Configuration"
-
-    USERNAME=$(gum input --placeholder "Enter username")
-    USER_PASSWORD=$(gum input --password --placeholder "Enter password for $USERNAME")
-    USER_PASSWORD_CONFIRM=$(gum input --password --placeholder "Confirm password")
-
-    if [[ "$USER_PASSWORD" != "$USER_PASSWORD_CONFIRM" ]]; then
-        print_error "Passwords do not match"
-        exit 1
-    fi
-
-    if [[ -z "$USER_PASSWORD" ]]; then
-        print_error "Password cannot be empty"
-        exit 1
-    fi
-
-    HOSTNAME=$(gum input --placeholder "Enter hostname" --value "${USERNAME}-hypr")
-
-    print_success "User configuration set"
-}
-
 # Configure system
 configure_system() {
     print_step "Configuring system"
-
-    # Select timezone interactively before creating chroot script
-    print_step "Select your timezone"
-    TIMEZONE=$(tzselect)
 
     # Create configuration script
     cat > "$MOUNT_POINT/configure.sh" << EOCHROOT
@@ -357,13 +616,21 @@ echo "$USERNAME:$USER_PASSWORD" | chpasswd
 # Configure sudo
 echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
 
+# Configure git for user
+mkdir -p /home/$USERNAME
+cat > /home/$USERNAME/.gitconfig << GITEOF
+[user]
+	email = $GIT_EMAIL
+	name = $GIT_NAME
+GITEOF
+chown $USERNAME:$USERNAME /home/$USERNAME/.gitconfig
+
 # Install bootloader
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 
 # Configure GRUB for encryption if needed
 if [[ "$USE_ENCRYPTION" == true ]]; then
-    ROOTUUID=\$(blkid -s UUID -o value $ROOT_PART_ORIG)
-    sed -i "s|GRUB_CMDLINE_LINUX=\"\"|GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=\$ROOTUUID:cryptroot root=/dev/mapper/cryptroot\"|" /etc/default/grub
+    sed -i "s|GRUB_CMDLINE_LINUX=\"\"|GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=$ROOT_PART_ORIG_UUID:cryptroot root=/dev/mapper/cryptroot\"|" /etc/default/grub
 
     # Add encrypt hook to mkinitcpio
     sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf block encrypt filesystems keyboard fsck)/' /etc/mkinitcpio.conf
@@ -377,7 +644,6 @@ systemctl enable NetworkManager
 systemctl enable fstrim.timer
 
 # Configure PAM for gnome-keyring auto-unlock on login
-# This allows the keyring to be unlocked automatically with user password
 echo "auth       optional     pam_gnome_keyring.so" >> /etc/pam.d/login
 echo "session    optional     pam_gnome_keyring.so auto_start" >> /etc/pam.d/login
 
@@ -470,6 +736,12 @@ install_gpu_drivers() {
 install_hyprland() {
     print_step "Installing Hyprland environment"
 
+    # Check if package file exists
+    if [[ ! -f /root/target-packages.x86_64 ]]; then
+        print_error "Package list file not found: /root/target-packages.x86_64"
+        exit 1
+    fi
+
     # Read packages from target-packages.x86_64, filtering comments and empty lines
     local packages=""
     while IFS= read -r line; do
@@ -477,6 +749,12 @@ install_hyprland() {
         [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
         packages="$packages $line"
     done < /root/target-packages.x86_64
+
+    # Verify we have packages to install
+    if [[ -z "$packages" ]]; then
+        print_error "No packages found in target-packages.x86_64"
+        exit 1
+    fi
 
     arch-chroot "$MOUNT_POINT" pacman -S --noconfirm $packages
 
@@ -490,22 +768,37 @@ install_hyprland() {
 setup_dotfiles() {
     print_step "Setting up dotfiles with chezmoi"
 
-    if gum confirm "Do you want to deploy the dotfiles from the repository?"; then
-        arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "
-            chezmoi init --apply $DOTFILES_REPO
-        "
-        print_success "Dotfiles deployed"
-    else
-        print_step "Copying dotfiles to user home"
+    if [[ "$DEPLOY_DOTFILES" == true ]]; then
+        if arch-chroot "$MOUNT_POINT" su - "$USERNAME" -c "chezmoi init --apply $DOTFILES_REPO" 2>/dev/null; then
+            print_success "Dotfiles deployed from repository"
+        else
+            print_warning "Failed to deploy dotfiles from repository, falling back to ISO copy"
+            DEPLOY_DOTFILES=false
+        fi
+    fi
 
-        # Copy dotfiles from ISO
-        cp -r /root/dotfiles/dot_config "$MOUNT_POINT/home/$USERNAME/.config"
-        cp /root/dotfiles/dot_bashrc "$MOUNT_POINT/home/$USERNAME/.bashrc"
+    if [[ "$DEPLOY_DOTFILES" == false ]]; then
+        print_step "Copying dotfiles from ISO"
+
+        # Check if dotfiles directory exists
+        if [[ ! -d /root/dotfiles ]]; then
+            print_warning "Dotfiles directory not found at /root/dotfiles, skipping dotfiles setup"
+            return 0
+        fi
+
+        # Copy dotfiles from ISO if they exist
+        if [[ -d /root/dotfiles/dot_config ]]; then
+            cp -r /root/dotfiles/dot_config "$MOUNT_POINT/home/$USERNAME/.config"
+        fi
+
+        if [[ -f /root/dotfiles/dot_bashrc ]]; then
+            cp /root/dotfiles/dot_bashrc "$MOUNT_POINT/home/$USERNAME/.bashrc"
+        fi
 
         # Fix permissions
         arch-chroot "$MOUNT_POINT" chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
 
-        print_success "Dotfiles copied"
+        print_success "Dotfiles copied from ISO"
     fi
 }
 
@@ -523,31 +816,21 @@ main() {
 
     check_root
     check_uefi
-    setup_network
-    select_disk
-    get_swap_size
-    setup_encryption
-    setup_user
 
-    gum spin --spinner dot --title "Partitioning disk..." -- sleep 2
+    # Collect all user input upfront
+    collect_all_user_input
+
+    # Show summary and confirm
+    show_installation_summary
+
+    # From here on, no more user input required
     partition_disk
-
-    gum spin --spinner dot --title "Formatting partitions..." -- sleep 2
     format_partitions
-
     mount_partitions
-
-    gum spin --spinner dot --title "Installing base system (this may take a while)..." -- sleep 2
     install_base
-
     generate_fstab
-
-    gum spin --spinner dot --title "Configuring system..." -- sleep 2
     configure_system
-
-    gum spin --spinner dot --title "Installing Hyprland environment..." -- sleep 2
     install_hyprland
-
     setup_dotfiles
 
     # Unmount
@@ -556,6 +839,10 @@ main() {
     if [[ "$USE_ENCRYPTION" == true ]]; then
         cryptsetup close cryptroot
     fi
+
+    # Clear sensitive variables
+    unset ENCRYPTION_PASSWORD
+    unset USER_PASSWORD
 
     gum style \
         --foreground 10 --border-foreground 10 --border double \
@@ -571,8 +858,13 @@ main() {
     fi
     echo ""
 
-    if gum confirm "Do you want to reboot now?"; then
+    # Auto-reboot if requested
+    if [[ "$AUTO_REBOOT" == true ]]; then
+        print_step "Rebooting in 5 seconds..."
+        sleep 5
         reboot
+    else
+        gum style --foreground 3 "You can now reboot into your new system!"
     fi
 }
 

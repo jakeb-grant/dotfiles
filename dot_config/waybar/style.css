@@ -1,165 +1,223 @@
-/* Waybar Style - Catppuccin Mocha Theme */
+/* ============================================================================
+ * Waybar Style
+ * Generated from template with theme: see ~/.config/themes/active
+ * ============================================================================ */
 
 * {
-    font-family: "JetBrainsMono Nerd Font";
+    font-family: "JetBrainsMono Nerd Font Propo", monospace;
+    font-weight: bold;
     font-size: 13px;
-    min-height: 0;
-}
-
-window#waybar {
-    background-color: rgba(30, 30, 46, 0.9);
-    color: #cdd6f4;
-    transition-property: background-color;
-    transition-duration: .5s;
-    border-bottom: 2px solid #89b4fa;
-}
-
-window#waybar.hidden {
-    opacity: 0.2;
-}
-
-#workspaces button {
-    padding: 0 8px;
-    color: #cdd6f4;
-    background-color: transparent;
-    border-bottom: 3px solid transparent;
+    border: none;
     border-radius: 0;
 }
 
+window#waybar {
+    background-color: #161616fc;
+}
+
+tooltip {
+    background: #161616;
+    color: #f2f4f8;
+    border-radius: 5px;
+    border: 1px solid #3a3a3a;
+    padding: 5px 10px;
+    margin: 0;
+}
+
+/* ============================================================================
+ * Workspaces
+ * ============================================================================ */
+
+#workspaces label {
+    font-size: 30px;
+}
+
+#workspaces button {
+    padding: 0px 8px 0px 8px;
+    color: #b6b8bb;
+    background-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    text-shadow: none;
+    animation: none;
+}
+
 #workspaces button:hover {
-    background: rgba(69, 71, 90, 0.5);
-    box-shadow: inherit;
-    border-bottom: 3px solid #f9e2af;
+    background-color: rgba(246, 246, 246, 0.10);
+    background: rgba(246, 246, 246, 0.10);
+    color: #f2f4f8;
+    box-shadow: none;
+    text-shadow:
+        0 0 3px rgba(242, 244, 248, 0.50),
+        0 0 6px rgba(242, 244, 248, 0.30),
+        0 0 9px rgba(242, 244, 248, 0.20);
+    animation: none;
 }
 
 #workspaces button.active {
-    background-color: rgba(69, 71, 90, 0.7);
-    border-bottom: 3px solid #89b4fa;
+    padding: 0px 8px 0px 8px;
+    color: #3ddbd9;
+    background-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    text-shadow:
+        0 0 3px rgba(61, 219, 217, 0.50),
+        0 0 6px rgba(61, 219, 217, 0.30),
+        0 0 9px rgba(61, 219, 217, 0.20);
+    animation: none;
 }
 
-#workspaces button.urgent {
-    background-color: #f38ba8;
-    color: #1e1e2e;
+#workspaces button.active:hover {
+    background-color: rgba(246, 246, 246, 0.10);
+    background: rgba(246, 246, 246, 0.10);
+    color: #3ddbd9;
+    text-shadow:
+        0 0 3px rgba(61, 219, 217, 0.50),
+        0 0 6px rgba(61, 219, 217, 0.30),
+        0 0 9px rgba(61, 219, 217, 0.20);
 }
 
-#window {
-    margin: 0 4px;
-    padding: 0 10px;
-    color: #cdd6f4;
-}
-
-#clock,
-#battery,
-#cpu,
-#memory,
-#temperature,
-#network,
-#pulseaudio,
-#tray {
-    padding: 0 10px;
-    margin: 0 4px;
-    background-color: rgba(49, 50, 68, 0.7);
-    border-radius: 5px;
-}
+/* ============================================================================
+ * Clock
+ * ============================================================================ */
 
 #clock {
-    background-color: rgba(137, 180, 250, 0.2);
-    color: #89b4fa;
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #3ddbd9;
+    text-shadow:
+        0 0 3px rgba(61, 219, 217, 0.50),
+        0 0 6px rgba(61, 219, 217, 0.30),
+        0 0 9px rgba(61, 219, 217, 0.20);
 }
 
-#battery {
-    background-color: rgba(166, 227, 161, 0.2);
-    color: #a6e3a1;
-}
-
-#battery.charging,
-#battery.plugged {
-    background-color: rgba(166, 227, 161, 0.2);
-    color: #a6e3a1;
-}
-
-#battery.warning:not(.charging) {
-    background-color: rgba(249, 226, 175, 0.2);
-    color: #f9e2af;
-}
-
-#battery.critical:not(.charging) {
-    background-color: rgba(243, 139, 168, 0.2);
-    color: #f38ba8;
-    animation-name: blink;
-    animation-duration: 0.5s;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-    animation-direction: alternate;
-}
+/* ============================================================================
+ * System Monitors
+ * ============================================================================ */
 
 #cpu {
-    background-color: rgba(245, 194, 231, 0.2);
-    color: #f5c2e7;
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #ae81ff;
+    text-shadow:
+        0 0 3px rgba(174, 129, 255, 0.50),
+        0 0 6px rgba(174, 129, 255, 0.30),
+        0 0 9px rgba(174, 129, 255, 0.20);
 }
 
 #memory {
-    background-color: rgba(180, 190, 254, 0.2);
-    color: #b4befe;
-}
-
-#network {
-    background-color: rgba(148, 226, 213, 0.2);
-    color: #94e2d5;
-}
-
-#network.disconnected {
-    background-color: rgba(243, 139, 168, 0.2);
-    color: #f38ba8;
-}
-
-#pulseaudio {
-    background-color: rgba(249, 226, 175, 0.2);
-    color: #f9e2af;
-}
-
-#pulseaudio.muted {
-    background-color: rgba(88, 91, 112, 0.2);
-    color: #585b70;
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #ae81ff;
+    text-shadow:
+        0 0 3px rgba(174, 129, 255, 0.50),
+        0 0 6px rgba(174, 129, 255, 0.30),
+        0 0 9px rgba(174, 129, 255, 0.20);
 }
 
 #temperature {
-    background-color: rgba(166, 227, 161, 0.2);
-    color: #a6e3a1;
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #ae81ff;
+    text-shadow:
+        0 0 3px rgba(174, 129, 255, 0.50),
+        0 0 6px rgba(174, 129, 255, 0.30),
+        0 0 9px rgba(174, 129, 255, 0.20);
 }
 
 #temperature.critical {
-    background-color: rgba(243, 139, 168, 0.2);
-    color: #f38ba8;
+    color: #ee5396;
+    text-shadow:
+        0 0 3px rgba(238, 83, 150, 0.50),
+        0 0 6px rgba(238, 83, 150, 0.30),
+        0 0 9px rgba(238, 83, 150, 0.20);
 }
 
-#tray {
-    background-color: rgba(49, 50, 68, 0.7);
+#disk {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #ae81ff;
+    text-shadow:
+        0 0 3px rgba(174, 129, 255, 0.50),
+        0 0 6px rgba(174, 129, 255, 0.30),
+        0 0 9px rgba(174, 129, 255, 0.20);
 }
 
-#tray > .passive {
-    -gtk-icon-effect: dim;
+/* ============================================================================
+ * Battery
+ * ============================================================================ */
+
+#battery {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #8af2a1;
+    text-shadow:
+        0 0 3px rgba(138, 242, 161, 0.50),
+        0 0 6px rgba(138, 242, 161, 0.30),
+        0 0 9px rgba(138, 242, 161, 0.20);
 }
 
-#tray > .needs-attention {
-    -gtk-icon-effect: highlight;
-    background-color: #f38ba8;
+#battery.charging {
+    color: #8af2a1;
+}
+
+#battery.warning:not(.charging) {
+    color: #ffc591;
+}
+
+#battery.critical:not(.charging) {
+    color: #ee5396;
+    animation: blink 1s linear infinite;
 }
 
 @keyframes blink {
-    to {
-        background-color: rgba(243, 139, 168, 0.4);
-        color: #1e1e2e;
+    50% {
+        opacity: 0.5;
     }
 }
 
-/* Tooltip */
-tooltip {
-    background-color: rgba(30, 30, 46, 0.95);
-    border: 2px solid #89b4fa;
-    border-radius: 5px;
+/* ============================================================================
+ * Network
+ * ============================================================================ */
+
+#network {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #8af2a1;
+    text-shadow:
+        0 0 3px rgba(138, 242, 161, 0.50),
+        0 0 6px rgba(138, 242, 161, 0.30),
+        0 0 9px rgba(138, 242, 161, 0.20);
 }
 
-tooltip label {
-    color: #cdd6f4;
+#network.disconnected {
+    color: #ee5396;
+}
+
+/* ============================================================================
+ * Controls (Backlight & Audio)
+ * ============================================================================ */
+
+#backlight {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #ffc591;
+    text-shadow:
+        0 0 3px rgba(255, 197, 145, 0.50),
+        0 0 6px rgba(255, 197, 145, 0.30),
+        0 0 9px rgba(255, 197, 145, 0.20);
+}
+
+#pulseaudio {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: #ffc591;
+    text-shadow:
+        0 0 3px rgba(255, 197, 145, 0.50),
+        0 0 6px rgba(255, 197, 145, 0.30),
+        0 0 9px rgba(255, 197, 145, 0.20);
+}
+
+#pulseaudio.muted {
+    color: #b6b8bb;
 }

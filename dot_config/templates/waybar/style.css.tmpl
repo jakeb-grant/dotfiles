@@ -1,0 +1,223 @@
+/* ============================================================================
+ * Waybar Style
+ * Generated from template with theme: see ~/.config/themes/active
+ * ============================================================================ */
+
+* {
+    font-family: "JetBrainsMono Nerd Font Propo", monospace;
+    font-weight: bold;
+    font-size: 13px;
+    border: none;
+    border-radius: 0;
+}
+
+window#waybar {
+    background-color: {{BAR_BG_COLOR:hex_alpha:BAR_BG_OPACITY}};
+}
+
+tooltip {
+    background: {{BAR_BG_COLOR:hex}};
+    color: {{BAR_FG_COLOR:hex}};
+    border-radius: 5px;
+    border: 1px solid {{BAR_BORDER_COLOR:hex}};
+    padding: 5px 10px;
+    margin: 0;
+}
+
+/* ============================================================================
+ * Workspaces
+ * ============================================================================ */
+
+#workspaces label {
+    font-size: 30px;
+}
+
+#workspaces button {
+    padding: 0px 8px 0px 8px;
+    color: {{BAR_WORKSPACE_INACTIVE_COLOR:hex}};
+    background-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    text-shadow: none;
+    animation: none;
+}
+
+#workspaces button:hover {
+    background-color: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
+    background: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
+    color: {{BAR_WORKSPACE_HOVER_COLOR:hex}};
+    box-shadow: none;
+    text-shadow:
+        0 0 3px {{BAR_WORKSPACE_HOVER_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_WORKSPACE_HOVER_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_WORKSPACE_HOVER_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+    animation: none;
+}
+
+#workspaces button.active {
+    padding: 0px 8px 0px 8px;
+    color: {{BAR_WORKSPACE_ACTIVE_COLOR:hex}};
+    background-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    text-shadow:
+        0 0 3px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+    animation: none;
+}
+
+#workspaces button.active:hover {
+    background-color: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
+    background: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
+    color: {{BAR_WORKSPACE_ACTIVE_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+/* ============================================================================
+ * Clock
+ * ============================================================================ */
+
+#clock {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_CLOCK_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_CLOCK_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_CLOCK_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_CLOCK_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+/* ============================================================================
+ * System Monitors
+ * ============================================================================ */
+
+#cpu {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_CPU_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_CPU_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_CPU_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_CPU_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#memory {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_MEMORY_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_MEMORY_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_MEMORY_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_MEMORY_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#temperature {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_TEMP_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_TEMP_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_TEMP_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_TEMP_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#temperature.critical {
+    color: {{BAR_TEMP_CRITICAL_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_TEMP_CRITICAL_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_TEMP_CRITICAL_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_TEMP_CRITICAL_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#disk {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_DISK_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_DISK_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_DISK_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_DISK_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+/* ============================================================================
+ * Battery
+ * ============================================================================ */
+
+#battery {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_BATTERY_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_BATTERY_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_BATTERY_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_BATTERY_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#battery.charging {
+    color: {{BAR_BATTERY_COLOR:hex}};
+}
+
+#battery.warning:not(.charging) {
+    color: {{BAR_BATTERY_WARNING_COLOR:hex}};
+}
+
+#battery.critical:not(.charging) {
+    color: {{BAR_BATTERY_CRITICAL_COLOR:hex}};
+    animation: blink 1s linear infinite;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ============================================================================
+ * Network
+ * ============================================================================ */
+
+#network {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_NETWORK_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_NETWORK_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_NETWORK_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_NETWORK_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#network.disconnected {
+    color: {{BAR_NETWORK_DISCONNECTED_COLOR:hex}};
+}
+
+/* ============================================================================
+ * Controls (Backlight & Audio)
+ * ============================================================================ */
+
+#backlight {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_BACKLIGHT_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_BACKLIGHT_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_BACKLIGHT_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_BACKLIGHT_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#pulseaudio {
+    padding: 0 12px;
+    margin: 0 2px;
+    color: {{BAR_AUDIO_COLOR:hex}};
+    text-shadow:
+        0 0 3px {{BAR_AUDIO_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
+        0 0 6px {{BAR_AUDIO_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
+        0 0 9px {{BAR_AUDIO_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+}
+
+#pulseaudio.muted {
+    color: {{BAR_AUDIO_MUTED_COLOR:hex}};
+}
