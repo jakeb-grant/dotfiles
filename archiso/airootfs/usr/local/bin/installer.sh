@@ -274,7 +274,7 @@ collect_all_user_input() {
     print_step "User Configuration"
 
     while true; do
-        USERNAME=$(gum input --placeholder "Enter username")
+        USERNAME=$(gum input --placeholder "Enter username" --value "jacob")
         if validate_username "$USERNAME"; then
             break
         else
@@ -309,11 +309,11 @@ collect_all_user_input() {
 
     # Encryption
     print_step "Encryption Configuration"
-    if gum confirm "Do you want to encrypt the root partition?"; then
+    if gum confirm --default=true "Do you want to encrypt the root partition?"; then
         USE_ENCRYPTION=true
 
         # Offer to use the same password as user password
-        if gum confirm "Use the same password as your user account for disk encryption?"; then
+        if gum confirm --default=true "Use the same password as your user account for disk encryption?"; then
             ENCRYPTION_PASSWORD="$USER_PASSWORD"
             print_success "Using user password for disk encryption"
         else
@@ -339,7 +339,7 @@ collect_all_user_input() {
     # Timezone
     print_step "Timezone Configuration"
     while true; do
-        TIMEZONE=$(gum input --placeholder "Enter timezone (e.g., America/New_York, Europe/London, UTC)")
+        TIMEZONE=$(gum input --placeholder "Enter timezone (e.g., America/New_York, Europe/London, UTC)" --value "America/Denver")
 
         if validate_timezone "$TIMEZONE"; then
             print_success "Timezone validated: $TIMEZONE"
@@ -355,7 +355,7 @@ collect_all_user_input() {
     # Git configuration
     print_step "Git Configuration"
     while true; do
-        GIT_EMAIL=$(gum input --placeholder "Git email address (e.g., you@example.com)")
+        GIT_EMAIL=$(gum input --placeholder "Git email address (e.g., you@example.com)" --value "86214494+jakeb-grant@users.noreply.github.com")
 
         if validate_email "$GIT_EMAIL"; then
             break
@@ -365,7 +365,7 @@ collect_all_user_input() {
     done
 
     while true; do
-        GIT_NAME=$(gum input --placeholder "Git full name (e.g., John Doe)")
+        GIT_NAME=$(gum input --placeholder "Git full name (e.g., John Doe)" --value "jacob")
         if [[ -n "$GIT_NAME" ]]; then
             break
         else
@@ -377,7 +377,7 @@ collect_all_user_input() {
 
     # Dotfiles
     print_step "Dotfiles Configuration"
-    if gum confirm "Deploy dotfiles from repository ($DOTFILES_REPO)?"; then
+    if gum confirm --default=false "Deploy dotfiles from repository ($DOTFILES_REPO)?"; then
         DEPLOY_DOTFILES=true
     else
         DEPLOY_DOTFILES=false
@@ -387,7 +387,7 @@ collect_all_user_input() {
 
     # Auto-reboot
     print_step "Installation Completion"
-    if gum confirm "Automatically reboot after installation completes?"; then
+    if gum confirm --default=false "Automatically reboot after installation completes?"; then
         AUTO_REBOOT=true
     else
         AUTO_REBOOT=false
