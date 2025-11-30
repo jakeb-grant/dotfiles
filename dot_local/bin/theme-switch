@@ -10,7 +10,7 @@ set -e
 THEME=${1:-carbonfox}
 CONFIG_DIR="${2:-$HOME/.config}"
 THEME_FILE="$CONFIG_DIR/themes/${THEME}.conf"
-TEMPLATE_DIR="$CONFIG_DIR/templates"
+TEMPLATE_DIR="$CONFIG_DIR/theme-templates"
 
 # Detect if we're using chezmoi
 CHEZMOI_SOURCE_DIR="$HOME/.local/share/chezmoi/dot_config"
@@ -215,34 +215,41 @@ load_theme "$THEME_FILE"
 # Update active theme symlink
 ln -sf "${THEME}.conf" "$CONFIG_DIR/themes/active"
 
-# Process all templates
-echo "==> Processing templates..."
+# Process all theme templates
+echo "==> Processing theme templates..."
 
-find "$TEMPLATE_DIR" -name "*.tmpl" -type f | while read template; do
+find "$TEMPLATE_DIR" -name "*.theme" -type f | while read template; do
     # Calculate output path
-    # templates/waybar/style.css.tmpl -> waybar/style.css
+    # theme-templates/waybar/style.css.theme -> waybar/style.css OR waybar/style.css.tmpl
     relative=${template#$TEMPLATE_DIR/}
-    output="$CONFIG_DIR/${relative%.tmpl}"
+    base_path="${relative%.theme}"
+
+    if [[ "$USE_CHEZMOI" == true ]]; then
+        # Output as chezmoi template (.tmpl) in chezmoi source
+        output="$CHEZMOI_SOURCE_DIR/${base_path}.tmpl"
+        echo "    $relative -> ${base_path}.tmpl (chezmoi source)"
+    else
+        # Output as final config directly in ~/.config
+        output="$CONFIG_DIR/${base_path}"
+        echo "    $relative -> ${base_path}"
+    fi
 
     # Create output directory if needed
     mkdir -p "$(dirname "$output")"
 
-    # Expand template
-    echo "    $relative -> ${output#$CONFIG_DIR/}"
+    # Expand template (theme variables only, preserving chezmoi syntax)
     expand_template "$template" > "$output"
-
-    # Also update chezmoi source if detected
-    if [[ "$USE_CHEZMOI" == true ]]; then
-        chezmoi_output="$CHEZMOI_SOURCE_DIR/${relative%.tmpl}"
-        mkdir -p "$(dirname "$chezmoi_output")"
-        expand_template "$template" > "$chezmoi_output"
-    fi
 done
 
-# If using chezmoi, sync the theme changes
+# If using chezmoi, apply the changes
 if [[ "$USE_CHEZMOI" == true ]]; then
-    echo "==> Updating chezmoi source directory..."
-    echo "    Synced configs to chezmoi source"
+    echo "==> Applying chezmoi templates..."
+    if command -v chezmoi &>/dev/null; then
+        chezmoi apply
+        echo "    Applied machine-specific configs"
+    else
+        echo "    Warning: chezmoi not found, skipping apply"
+    fi
 fi
 
 # ============================================================================

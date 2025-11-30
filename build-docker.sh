@@ -87,6 +87,7 @@ cp -r archiso/airootfs/* /tmp/archiso-profile/airootfs/
 # Copy dotfiles to ISO
 mkdir -p /tmp/archiso-profile/airootfs/root/dotfiles
 cp -r dot_config /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
+cp -r dot_local /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
 cp dot_bashrc /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
 cp .chezmoi.toml.tmpl /tmp/archiso-profile/airootfs/root/dotfiles/ 2>/dev/null || true
 

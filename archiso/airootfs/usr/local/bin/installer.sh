@@ -788,6 +788,10 @@ setup_dotfiles() {
             cp -r /root/dotfiles/dot_config "$MOUNT_POINT/home/$USERNAME/.config"
         fi
 
+        if [[ -d /root/dotfiles/dot_local ]]; then
+            cp -r /root/dotfiles/dot_local "$MOUNT_POINT/home/$USERNAME/.local"
+        fi
+
         if [[ -f /root/dotfiles/dot_bashrc ]]; then
             cp /root/dotfiles/dot_bashrc "$MOUNT_POINT/home/$USERNAME/.bashrc"
         fi
