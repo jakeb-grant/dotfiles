@@ -11,10 +11,30 @@ Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 - **Shell**: Bash with custom aliases and functions
 - **Theme System**: Runtime theme switching with template support
 
-## Quick Start
+## Installation
+
+### Quick Start
 
 ```bash
 chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
+```
+
+### Safe Installation (Preserving Existing Configs)
+
+Chezmoi will overwrite managed files (`~/.bashrc`, `~/.config/hypr/`, etc.). To preview changes first:
+
+```bash
+# Clone without applying
+chezmoi init https://github.com/jakeb-grant/dotfiles.git
+
+# Preview what would change
+chezmoi diff
+
+# Back up existing configs if needed
+cp ~/.bashrc ~/.bashrc.backup
+
+# Apply when ready
+chezmoi apply
 ```
 
 ## What's Included
