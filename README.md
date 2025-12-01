@@ -4,11 +4,8 @@ Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 
 ## Features
 
-- **Window Manager**: Hyprland with vim-style keybindings
+- **Window Manager**: Hyprland
 - **Status Bar**: Waybar with system monitoring
-- **Launcher**: Rofi for application launching
-- **Notifications**: Mako notification daemon
-- **Shell**: Bash with custom aliases and functions
 - **Theme System**: Runtime theme switching with template support
 
 ## Installation
@@ -21,7 +18,7 @@ chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
 
 ### Safe Installation (Preserving Existing Configs)
 
-Chezmoi will overwrite managed files (`~/.bashrc`, `~/.config/hypr/`, etc.). To preview changes first:
+Chezmoi will overwrite managed files (`~/.config/hypr/`, `~/.config/waybar/`, etc.). To preview changes first:
 
 ```bash
 # Clone without applying
@@ -30,9 +27,6 @@ chezmoi init https://github.com/jakeb-grant/dotfiles.git
 # Preview what would change
 chezmoi diff
 
-# Back up existing configs if needed
-cp ~/.bashrc ~/.bashrc.backup
-
 # Apply when ready
 chezmoi apply
 ```
@@ -40,7 +34,6 @@ chezmoi apply
 ## What's Included
 
 ```
-dot_bashrc              # Shell configuration
 dot_config/
 ├── hypr/               # Hyprland window manager
 ├── waybar/             # Status bar
@@ -55,28 +48,89 @@ dot_local/
 | Key | Action |
 |-----|--------|
 | `Super + Return` | Terminal (Ghostty) |
-| `Super + Shift + Return` | Editor (Zed) |
-| `Super + D` | Application launcher |
-| `Super + E` | File manager |
+| `Super + Shift + Return` | Editor (Zeditor) |
+| `Super + D` | Application launcher (Walker) |
+| `Super + E` | File manager (Nautilus) |
 | `Super + Q` | Close window |
+| `Super + F` | Fullscreen |
 | `Super + V` | Toggle floating |
-| `Super + L` | Lock screen |
+| `Super + S` | Scratchpad |
 | `Super + 1-9` | Switch workspace |
 | `Super + Shift + 1-9` | Move to workspace |
-| `Print` | Screenshot (full) |
-| `Shift + Print` | Screenshot (selection) |
-| `Super + Shift + V` | Clipboard history |
-| `Super + Shift + C` | Color picker |
+| `Print` | Screenshot (selection) |
+| `Shift + Print` | Screenshot (full) |
 
 ## Theme System
 
-Switch themes at runtime:
+The theme system uses a two-stage template process that integrates with chezmoi:
 
-```bash
-theme-switch carbonfox
+```
+Theme File              Theme Template                  Chezmoi Template           Final Config
+(carbonfox.conf)  --->  (hyprland.conf.theme)  --->    (hyprland.conf.tmpl)  ---> (hyprland.conf)
+                        theme-switch                    chezmoi apply
 ```
 
-Themes are defined in `~/.config/themes/` and templates in `~/.config/theme-templates/`.
+### How It Works
+
+1. **Theme files** (`dot_config/themes/*.conf`) define color palettes and semantic mappings
+2. **Theme templates** (`dot_config/theme-templates/`) contain `{{UPPERCASE_VARS}}` for colors
+3. **`theme-switch`** processes theme variables, outputs `.tmpl` files to chezmoi source
+4. **`chezmoi apply`** processes machine-specific variables (e.g., `{{ .graphics }}`)
+
+### Template Syntax
+
+Theme variables (processed by `theme-switch`):
+```
+{{WM_BORDER_ACTIVE_COLOR}}                    # Simple replacement
+{{WM_BORDER_ACTIVE_COLOR:hypr_rgba}}          # With format conversion
+{{WM_BORDER_ACTIVE_COLOR:hypr_rgba:OPACITY}}  # With format and opacity
+```
+
+Chezmoi variables (processed by `chezmoi apply`):
+```
+{{ .graphics }}                               # Machine-specific data
+{{ if eq .graphics "nvidia" }}...{{ end }}    # Conditionals
+```
+
+**Convention**: Theme variables are `UPPERCASE`, chezmoi uses lowercase/dots.
+
+### Available Color Formats
+
+| Format | Output Example |
+|--------|----------------|
+| `hex` | `#3ddbd9` |
+| `hex_alpha` | `#3ddbd9ee` |
+| `hypr_rgb` | `rgb(3ddbd9)` |
+| `hypr_rgba` | `rgba(3ddbd9ee)` |
+| `css_rgb` | `rgb(61, 219, 217)` |
+| `css_rgba` | `rgba(61, 219, 217, 0.93)` |
+| `rgb_only` | `61, 219, 217` |
+
+### Usage
+
+```bash
+# Switch theme (regenerates .tmpl files in chezmoi source)
+theme-switch carbonfox
+
+# Apply to system (processes machine-specific templates)
+chezmoi apply
+```
+
+## Machine-Specific Configuration
+
+On first run, chezmoi prompts for machine-specific settings stored in `~/.config/chezmoi/chezmoi.toml`:
+
+| Variable | Options | Description |
+|----------|---------|-------------|
+| `graphics` | `amd`, `nvidia`, `nvidia-prime` | GPU driver configuration |
+
+These values are used in templates for conditional configuration (e.g., NVIDIA environment variables are only included when `graphics` is set to `nvidia` or `nvidia-prime`).
+
+To change settings:
+```bash
+chezmoi edit-config
+chezmoi apply
+```
 
 ## Customization
 

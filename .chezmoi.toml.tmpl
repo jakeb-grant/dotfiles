@@ -2,6 +2,7 @@
     email = {{ promptStringOnce . "email" "Your email address" | quote }}
     name = {{ promptStringOnce . "name" "Your full name" | quote }}
     hostname = {{ .chezmoi.hostname | quote }}
+    graphics = {{ promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "nvidia" "nvidia-prime") | quote }}
 
 [git]
     autoCommit = true

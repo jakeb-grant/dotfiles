@@ -4,25 +4,20 @@ set -e
 # ============================================================================
 # Theme Switching System
 # Converts theme files to application configs using templates
-# Usage: theme-switch [THEME] [CONFIG_DIR]
+# Outputs to chezmoi source directory (~/.local/share/chezmoi/dot_config)
+# Usage: theme-switch [THEME]
 # ============================================================================
 
 THEME=${1:-carbonfox}
-CONFIG_DIR="${2:-$HOME/.config}"
-THEME_FILE="$CONFIG_DIR/themes/${THEME}.conf"
-TEMPLATE_DIR="$CONFIG_DIR/theme-templates"
-
-# Detect if we're using chezmoi
 CHEZMOI_SOURCE_DIR="$HOME/.local/share/chezmoi/dot_config"
-USE_CHEZMOI=false
-if [[ -d "$CHEZMOI_SOURCE_DIR" && -z "$2" ]]; then
-    USE_CHEZMOI=true
-fi
+THEME_FILE="$CHEZMOI_SOURCE_DIR/themes/${THEME}.conf"
+TEMPLATE_DIR="$CHEZMOI_SOURCE_DIR/theme-templates"
+OUTPUT_DIR="$CHEZMOI_SOURCE_DIR"
 
 if [[ ! -f "$THEME_FILE" ]]; then
     echo "Error: Theme not found: $THEME"
     echo "Available themes:"
-    ls -1 "$CONFIG_DIR/themes" | grep -v "active" | sed 's/.conf$//'
+    ls -1 "$CHEZMOI_SOURCE_DIR/themes" | grep -v "active" | sed 's/.conf$//'
     exit 1
 fi
 
@@ -156,8 +151,16 @@ expand_template() {
     local template_file=$1
     local content=$(cat "$template_file")
 
-    # Find and replace all {{...}} patterns
-    while [[ $content =~ \{\{([^}]+)\}\} ]]; do
+    # Find and replace theme variable patterns: {{VAR}} or {{VAR:format:opacity}}
+    #
+    # Theme variables use UPPERCASE_WITH_UNDERSCORES (e.g., {{WM_BORDER_COLOR}})
+    # Chezmoi templates use lowercase/mixed case (e.g., {{ .graphics }}, {{ if eq ... }})
+    #
+    # The regex only matches patterns starting with an uppercase letter.
+    # Theme vars: {{VAR}}, {{VAR:format}}, {{VAR:format:OPACITY}}
+    # Format specifiers can be lowercase (e.g., hypr_rgba, css_rgb).
+    # This preserves chezmoi templates which start with spaces, dots, or keywords.
+    while [[ $content =~ \{\{([A-Z][A-Za-z0-9_:]*)\}\} ]]; do
         local full_match="${BASH_REMATCH[0]}"
         local var_spec="${BASH_REMATCH[1]}"
 
@@ -213,26 +216,19 @@ echo "==> Loading theme: $THEME"
 load_theme "$THEME_FILE"
 
 # Update active theme symlink
-ln -sf "${THEME}.conf" "$CONFIG_DIR/themes/active"
+ln -sf "${THEME}.conf" "$CHEZMOI_SOURCE_DIR/themes/active"
 
 # Process all theme templates
 echo "==> Processing theme templates..."
 
 find "$TEMPLATE_DIR" -name "*.theme" -type f | while read template; do
     # Calculate output path
-    # theme-templates/waybar/style.css.theme -> waybar/style.css OR waybar/style.css.tmpl
+    # theme-templates/waybar/style.css.theme -> waybar/style.css.tmpl
     relative=${template#$TEMPLATE_DIR/}
     base_path="${relative%.theme}"
+    output="$OUTPUT_DIR/${base_path}.tmpl"
 
-    if [[ "$USE_CHEZMOI" == true ]]; then
-        # Output as chezmoi template (.tmpl) in chezmoi source
-        output="$CHEZMOI_SOURCE_DIR/${base_path}.tmpl"
-        echo "    $relative -> ${base_path}.tmpl (chezmoi source)"
-    else
-        # Output as final config directly in ~/.config
-        output="$CONFIG_DIR/${base_path}"
-        echo "    $relative -> ${base_path}"
-    fi
+    echo "    $relative -> ${base_path}.tmpl"
 
     # Create output directory if needed
     mkdir -p "$(dirname "$output")"
@@ -241,16 +237,9 @@ find "$TEMPLATE_DIR" -name "*.theme" -type f | while read template; do
     expand_template "$template" > "$output"
 done
 
-# If using chezmoi, apply the changes
-if [[ "$USE_CHEZMOI" == true ]]; then
-    echo "==> Applying chezmoi templates..."
-    if command -v chezmoi &>/dev/null; then
-        chezmoi apply
-        echo "    Applied machine-specific configs"
-    else
-        echo "    Warning: chezmoi not found, skipping apply"
-    fi
-fi
+# Apply chezmoi and reload applications (uncomment when ready)
+# echo "==> Applying chezmoi..."
+# chezmoi apply
 
 # ============================================================================
 # Reload Applications
@@ -259,22 +248,22 @@ fi
 echo "==> Reloading applications..."
 
 # Reload Hyprland
-if pgrep -x hyprland >/dev/null; then
-    hyprctl reload
-    echo "    Hyprland reloaded"
-fi
+# if pgrep -x hyprland >/dev/null; then
+#     hyprctl reload
+#     echo "    Hyprland reloaded"
+# fi
 
 # Restart Waybar
-if pgrep -x waybar >/dev/null; then
-    killall waybar 2>/dev/null || true
-    waybar & disown
-    echo "    Waybar restarted"
-fi
+# if pgrep -x waybar >/dev/null; then
+#     killall waybar 2>/dev/null || true
+#     waybar & disown
+#     echo "    Waybar restarted"
+# fi
 
 # Reload Mako
-if pgrep -x mako >/dev/null; then
-    makoctl reload
-    echo "    Mako reloaded"
-fi
+# if pgrep -x mako >/dev/null; then
+#     makoctl reload
+#     echo "    Mako reloaded"
+# fi
 
 echo "✓ Theme switched to: $THEME"
