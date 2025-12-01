@@ -1,169 +1,92 @@
-# Hyprland Minimal Dotfiles & ISO Builder
+# Hyprland Dotfiles
 
-A minimal Arch Linux ISO with Hyprland window manager and automated installer, plus chezmoi-managed dotfiles.
+Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 
 ## Features
 
-### Dotfiles
-- **Window Manager**: Hyprland with custom keybindings
-- **Terminal**: Ghostty with Catppuccin Mocha theme
+- **Window Manager**: Hyprland with vim-style keybindings
 - **Status Bar**: Waybar with system monitoring
-- **Launcher**: Rofi-wayland for application launching
+- **Launcher**: Rofi for application launching
 - **Notifications**: Mako notification daemon
 - **Shell**: Bash with custom aliases and functions
-- **Managed by**: Chezmoi for easy deployment across machines
+- **Theme System**: Runtime theme switching with template support
 
-### ISO Installer
-- **Interactive**: Gum-based TUI installer
-- **Network Setup**: Automatic WiFi/Ethernet configuration
-- **Partitioning**: Automatic with customizable swap size
-- **Encryption**: Optional LUKS full disk encryption
-- **UEFI Only**: Modern systems only (no legacy BIOS)
-- **Bootloader**: GRUB with encrypted boot support
+## Installation
 
-## Quick Start
+### Quick Start
 
-### Using the ISO
-
-1. Download the latest ISO from [Releases](https://github.com/jakeb-grant/dotfiles/releases)
-2. Write to USB drive:
-   ```bash
-   sudo dd if=hyprland-minimal-*.iso of=/dev/sdX bs=4M status=progress
-   ```
-3. Boot from USB in UEFI mode
-4. Run `installer` to start the installation
-
-### Managing Dotfiles
-
-Install chezmoi and apply dotfiles:
 ```bash
 chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
 ```
 
-## Building the ISO
+### Safe Installation (Preserving Existing Configs)
 
-### Locally (Arch Linux)
+Chezmoi will overwrite managed files (`~/.bashrc`, `~/.config/hypr/`, etc.). To preview changes first:
 
 ```bash
-# Install dependencies
-sudo pacman -S archiso git
+# Clone without applying
+chezmoi init https://github.com/jakeb-grant/dotfiles.git
 
-# Clone repository
-git clone https://github.com/jakeb-grant/dotfiles.git
-cd dotfiles
+# Preview what would change
+chezmoi diff
 
-# Build ISO (requires root)
-sudo ./build-iso.sh
+# Back up existing configs if needed
+cp ~/.bashrc ~/.bashrc.backup
 
-# ISO will be in out/ directory
+# Apply when ready
+chezmoi apply
 ```
 
-### Using GitHub Actions
-
-The ISO is automatically built when:
-- Changes are pushed to `archiso/`, `dot_config/`, or workflow files
-- Manually triggered via GitHub Actions tab
-- Can create releases with the workflow dispatch option
-
-## Project Structure
+## What's Included
 
 ```
-.
-├── dot_config/           # Chezmoi-managed config files
-│   ├── hypr/            # Hyprland configuration
-│   ├── waybar/          # Status bar config
-│   ├── rofi/            # App launcher config
-│   ├── mako/            # Notification config
-│   └── ghostty/         # Terminal config
-├── dot_bashrc           # Bash configuration
-├── archiso/             # ISO build files
-│   ├── airootfs/        # Live system filesystem
-│   ├── packages.x86_64  # Package list
-│   └── profiledef.sh    # ISO profile
-└── .github/workflows/   # GitHub Actions
-
+dot_bashrc              # Shell configuration
+dot_config/
+├── hypr/               # Hyprland window manager
+├── waybar/             # Status bar
+├── themes/             # Theme definitions
+└── theme-templates/    # Theme template files
+dot_local/
+└── bin/theme-switch    # Theme switching utility
 ```
 
 ## Keybindings
 
-### Hyprland
-
 | Key | Action |
 |-----|--------|
-| `Super + Return` | Open terminal (Ghostty) |
-| `Super + D` | Open launcher (Rofi) |
+| `Super + Return` | Terminal (Ghostty) |
+| `Super + Shift + Return` | Editor (Zed) |
+| `Super + D` | Application launcher |
+| `Super + E` | File manager |
 | `Super + Q` | Close window |
-| `Super + Shift + E` | Exit Hyprland |
-| `Super + F` | Fullscreen |
 | `Super + V` | Toggle floating |
-| `Super + H/J/K/L` | Move focus |
-| `Super + Shift + H/J/K/L` | Move window |
-| `Super + Ctrl + H/J/K/L` | Resize window |
+| `Super + L` | Lock screen |
 | `Super + 1-9` | Switch workspace |
 | `Super + Shift + 1-9` | Move to workspace |
 | `Print` | Screenshot (full) |
 | `Shift + Print` | Screenshot (selection) |
+| `Super + Shift + V` | Clipboard history |
+| `Super + Shift + C` | Color picker |
 
-## System Requirements
+## Theme System
 
-- UEFI-capable system
-- 2GB+ RAM (4GB recommended)
-- 20GB+ disk space
-- Internet connection for installation
+Switch themes at runtime:
 
-## Package List
+```bash
+theme-switch carbonfox
+```
 
-The ISO includes a minimal set of packages for a functional Hyprland desktop:
-
-- **Core**: Base system, Linux kernel, NetworkManager, GRUB
-- **Hyprland**: Compositor and Wayland utilities
-- **Audio**: PipeWire audio stack
-- **Apps**: Firefox, Thunar file manager
-- **Terminal**: Ghostty terminal emulator
-- **Utilities**: Git, Neovim, system tools
+Themes are defined in `~/.config/themes/` and templates in `~/.config/theme-templates/`.
 
 ## Customization
 
-### Changing Dotfiles Repository
+After applying, edit configs with:
 
-Edit `archiso/airootfs/usr/local/bin/installer.sh`:
 ```bash
-DOTFILES_REPO="https://github.com/jakeb-grant/dotfiles.git"
+chezmoi edit ~/.config/hypr/hyprland.conf
+chezmoi apply
 ```
-
-### Adding Packages
-
-Edit `archiso/packages.x86_64` to add packages to the ISO.
-
-### Modifying Installer
-
-The installer script is at `archiso/airootfs/usr/local/bin/installer.sh`.
-
-## Troubleshooting
-
-### Network Issues During Installation
-- Try manual configuration with `iwctl` for WiFi
-- Use `nmtui` for NetworkManager TUI
-
-### GRUB Not Installing
-- Ensure system is booted in UEFI mode
-- Check `/sys/firmware/efi/efivars` exists
-
-### Dotfiles Not Applied
-- Manually run: `chezmoi init --apply <repo-url>`
-- Check GitHub repository accessibility
-
-## Contributing
-
-Pull requests welcome! Please test ISO builds before submitting.
 
 ## License
 
 MIT
-
-## Credits
-
-- [Hyprland](https://hyprland.org/) - Wayland compositor
-- [Gum](https://github.com/charmbracelet/gum) - TUI components
-- [Chezmoi](https://www.chezmoi.io/) - Dotfile manager
-- [Arch Linux](https://archlinux.org/) - Base distribution
