@@ -1,0 +1,25 @@
+{
+  "base_keymap": "VSCode",
+  "buffer_font_family": "JetBrainsMono Nerd Font",
+  "ui_font_family": "JetBrainsMono Nerd Font Propo",
+  "terminal": {
+    "font_family": "JetBrainsMono Nerd Font Mono"
+  },
+  "theme": {
+    "mode": "dark",
+    "dark": "{< _zed_theme_dark >}",
+    "light": "{< _zed_theme_light >}"
+  },
+  "icon_theme": {
+    "mode": "dark",
+    "light": "Material Icon Theme",
+    "dark": "Material Icon Theme"
+  },
+  "edit_predictions": {
+    "mode": "subtle"
+  },
+  "features": {
+    "edit_prediction_provider": "zed"
+  },
+  "load_direnv": "shell_hook"
+}

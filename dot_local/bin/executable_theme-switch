@@ -1,0 +1,275 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "jinja2",
+# ]
+# ///
+"""
+Theme Switching System
+
+Converts theme JSON files to application configs using Jinja2 templates.
+Outputs to chezmoi source directory (~/.local/share/chezmoi/dot_config)
+
+Usage: theme-switch [THEME]
+"""
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+from jinja2 import BaseLoader, Environment
+
+# =============================================================================
+# Configuration
+# =============================================================================
+
+CHEZMOI_SOURCE_DIR = Path.home() / ".local/share/chezmoi/dot_config"
+THEME_DIR = CHEZMOI_SOURCE_DIR / "themes"
+TEMPLATE_DIR = CHEZMOI_SOURCE_DIR / "theme-templates"
+WALLPAPER_DIR = Path.home() / ".config/wallpapers"
+
+DEFAULT_THEME = "everforest"
+
+
+# =============================================================================
+# Color Conversion Filters
+# =============================================================================
+
+
+def strip_hash(color: str) -> str:
+    """Remove # prefix from hex color."""
+    return color.lstrip("#")
+
+
+def hex_to_rgb(color: str) -> tuple[int, int, int]:
+    """Convert hex color to RGB tuple."""
+    h = strip_hash(color)
+    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
+
+
+def opacity_to_hex(opacity: float) -> str:
+    """Convert opacity (0.0-1.0) to hex alpha (00-ff)."""
+    return f"{int(opacity * 255):02x}"
+
+
+# Jinja2 Filters
+
+
+def filter_hex(color: str) -> str:
+    """Return color as #rrggbb."""
+    h = strip_hash(color)
+    return f"#{h[:6]}"
+
+
+def filter_hex_alpha(color: str, opacity: float = 1.0) -> str:
+    """Return color as #rrggbbaa."""
+    h = strip_hash(color)
+    alpha = opacity_to_hex(opacity)
+    return f"#{h[:6]}{alpha}"
+
+
+def filter_rgb(color: str) -> str:
+    """Return color as rgb(r, g, b)."""
+    r, g, b = hex_to_rgb(color)
+    return f"rgb({r}, {g}, {b})"
+
+
+def filter_rgba(color: str, opacity: float = 1.0) -> str:
+    """Return color as rgba(r, g, b, a)."""
+    r, g, b = hex_to_rgb(color)
+    return f"rgba({r}, {g}, {b}, {opacity:.2f})"
+
+
+def filter_rgb_values(color: str) -> str:
+    """Return just the RGB values: r, g, b."""
+    r, g, b = hex_to_rgb(color)
+    return f"{r}, {g}, {b}"
+
+
+def filter_hypr_rgb(color: str) -> str:
+    """Return color as rgb(rrggbb) for Hyprland."""
+    h = strip_hash(color)
+    return f"rgb({h[:6]})"
+
+
+def filter_hypr_rgba(color: str, opacity: float = 1.0) -> str:
+    """Return color as rgba(rrggbbaa) for Hyprland."""
+    h = strip_hash(color)
+    alpha = opacity_to_hex(opacity)
+    return f"rgba({h[:6]}{alpha})"
+
+
+def filter_strip(color: str) -> str:
+    """Return raw hex without #."""
+    return strip_hash(color)
+
+
+# =============================================================================
+# Template Processing
+# =============================================================================
+
+
+def create_jinja_env() -> Environment:
+    """Create Jinja2 environment with custom delimiters and filters."""
+    env = Environment(
+        loader=BaseLoader(),
+        variable_start_string="{<",
+        variable_end_string=">}",
+        block_start_string="{%<",
+        block_end_string=">%}",
+        comment_start_string="{#<",
+        comment_end_string=">#}",
+        keep_trailing_newline=True,
+    )
+
+    # Register filters
+    env.filters["hex"] = filter_hex
+    env.filters["hex_alpha"] = filter_hex_alpha
+    env.filters["rgb"] = filter_rgb
+    env.filters["rgba"] = filter_rgba
+    env.filters["rgb_values"] = filter_rgb_values
+    env.filters["hypr_rgb"] = filter_hypr_rgb
+    env.filters["hypr_rgba"] = filter_hypr_rgba
+    env.filters["strip"] = filter_strip
+
+    return env
+
+
+def load_theme(theme_name: str) -> dict:
+    """Load theme JSON file."""
+    theme_file = THEME_DIR / f"{theme_name}.json"
+
+    if not theme_file.exists():
+        print(f"Error: Theme not found: {theme_name}")
+        print("Available themes:")
+        for f in THEME_DIR.glob("*.json"):
+            print(f"  {f.stem}")
+        sys.exit(1)
+
+    with open(theme_file) as f:
+        return json.load(f)
+
+
+def process_templates(env: Environment, theme_data: dict) -> None:
+    """Process all .theme template files."""
+    for template_file in TEMPLATE_DIR.rglob("*.theme"):
+        # Calculate output path
+        # theme-templates/waybar/style.css.theme -> waybar/style.css.tmpl
+        relative = template_file.relative_to(TEMPLATE_DIR)
+        output_name = relative.with_suffix(".tmpl")
+        output_path = CHEZMOI_SOURCE_DIR / output_name
+
+        print(f"    {relative} -> {output_name}")
+
+        # Create output directory if needed
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # Read and process template
+        template_content = template_file.read_text()
+        template = env.from_string(template_content)
+        result = template.render(**theme_data)
+
+        # Write output
+        output_path.write_text(result)
+
+
+# =============================================================================
+# Application Reloading
+# =============================================================================
+
+
+def run_silent(cmd: list[str]) -> bool:
+    """Run command silently, return True if successful."""
+    try:
+        subprocess.run(cmd, check=True, capture_output=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def is_running(process: str) -> bool:
+    """Check if a process is running."""
+    result = subprocess.run(["pgrep", "-x", process], capture_output=True)
+    return result.returncode == 0
+
+
+def reload_applications() -> None:
+    """Reload running applications to apply theme."""
+    print("==> Reloading applications...")
+
+    # Reload Hyprland
+    if is_running("Hyprland"):
+        run_silent(["hyprctl", "reload"])
+        print("    Hyprland reloaded")
+
+    # Restart Waybar
+    if is_running("waybar"):
+        subprocess.run(["killall", "waybar"], capture_output=True)
+        subprocess.Popen(
+            ["waybar"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        print("    Waybar restarted")
+
+    # Reload Mako
+    if is_running("mako"):
+        run_silent(["makoctl", "reload"])
+        print("    Mako reloaded")
+
+
+def set_wallpaper(theme_data: dict) -> None:
+    """Set wallpaper if specified in theme."""
+    wallpaper = theme_data.get("_wallpaper")
+    if not wallpaper:
+        return
+
+    wallpaper_path = WALLPAPER_DIR / wallpaper
+    if not wallpaper_path.exists():
+        print(f"    Warning: Wallpaper not found: {wallpaper}")
+        return
+
+    if is_running("awww-daemon"):
+        run_silent(["awww", "img", str(wallpaper_path)])
+        print(f"    Wallpaper set: {wallpaper}")
+    else:
+        print("    Warning: awww-daemon not running, skipping wallpaper")
+
+
+# =============================================================================
+# Main
+# =============================================================================
+
+
+def main() -> None:
+    theme_name = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_THEME
+
+    print(f"==> Loading theme: {theme_name}")
+    theme_data = load_theme(theme_name)
+
+    # Add theme name to data for templates
+    theme_data["_theme_name"] = theme_name
+
+    print("==> Processing theme templates...")
+    env = create_jinja_env()
+    process_templates(env, theme_data)
+
+    # Update active theme symlink
+    active_link = THEME_DIR / "active.json"
+    active_link.unlink(missing_ok=True)
+    active_link.symlink_to(f"{theme_name}.json")
+
+    print("==> Applying chezmoi...")
+    subprocess.run(["chezmoi", "apply"], check=True)
+
+    reload_applications()
+    set_wallpaper(theme_data)
+
+    print(f"✓ Theme switched to: {theme_name}")
+
+
+if __name__ == "__main__":
+    main()

@@ -12,14 +12,14 @@
 }
 
 window#waybar {
-    background-color: rgba(22, 22, 22, 0.99);
+    background-color: rgba(32, 39, 44, 0.90);
 }
 
 tooltip {
-    background: #161616;
-    color: #f2f4f8;
+    background: #20272c;
+    color: #b2b2b2;
     border-radius: 5px;
-    border: 1px solid #3a3a3a;
+    border: 1px solid #354149;
     padding: 5px 10px;
     margin: 0;
 }
@@ -34,7 +34,7 @@ tooltip {
 
 #workspaces button {
     padding: 0px 8px 0px 8px;
-    color: #b6b8bb;
+    color: #9a9a9a;
     background-color: transparent;
     background: transparent;
     box-shadow: none;
@@ -43,38 +43,38 @@ tooltip {
 }
 
 #workspaces button:hover {
-    background-color: rgba(246, 246, 246, 0.10);
-    background: rgba(246, 246, 246, 0.10);
-    color: #f2f4f8;
+    background-color: rgba(178, 178, 178, 0.10);
+    background: rgba(178, 178, 178, 0.10);
+    color: #b2b2b2;
     box-shadow: none;
     text-shadow:
-        0 0 3px rgba(242, 244, 248, 0.50),
-        0 0 6px rgba(242, 244, 248, 0.30),
-        0 0 9px rgba(242, 244, 248, 0.20);
+        0 0 3px rgba(178, 178, 178, 0.50),
+        0 0 6px rgba(178, 178, 178, 0.30),
+        0 0 9px rgba(178, 178, 178, 0.20);
     animation: none;
 }
 
 #workspaces button.active {
     padding: 0px 8px 0px 8px;
-    color: #3ddbd9;
+    color: #3fbfbf;
     background-color: transparent;
     background: transparent;
     box-shadow: none;
     text-shadow:
-        0 0 3px rgba(61, 219, 217, 0.50),
-        0 0 6px rgba(61, 219, 217, 0.30),
-        0 0 9px rgba(61, 219, 217, 0.20);
+        0 0 3px rgba(63, 191, 191, 0.50),
+        0 0 6px rgba(63, 191, 191, 0.30),
+        0 0 9px rgba(63, 191, 191, 0.20);
     animation: none;
 }
 
 #workspaces button.active:hover {
-    background-color: rgba(246, 246, 246, 0.10);
-    background: rgba(246, 246, 246, 0.10);
-    color: #3ddbd9;
+    background-color: rgba(178, 178, 178, 0.10);
+    background: rgba(178, 178, 178, 0.10);
+    color: #3fbfbf;
     text-shadow:
-        0 0 3px rgba(61, 219, 217, 0.50),
-        0 0 6px rgba(61, 219, 217, 0.30),
-        0 0 9px rgba(61, 219, 217, 0.20);
+        0 0 3px rgba(63, 191, 191, 0.50),
+        0 0 6px rgba(63, 191, 191, 0.30),
+        0 0 9px rgba(63, 191, 191, 0.20);
 }
 
 /* ============================================================================
@@ -84,11 +84,11 @@ tooltip {
 #clock {
     padding: 0 12px;
     margin: 0 2px;
-    color: #3ddbd9;
+    color: #3fbfbf;
     text-shadow:
-        0 0 3px rgba(61, 219, 217, 0.50),
-        0 0 6px rgba(61, 219, 217, 0.30),
-        0 0 9px rgba(61, 219, 217, 0.20);
+        0 0 3px rgba(63, 191, 191, 0.50),
+        0 0 6px rgba(63, 191, 191, 0.30),
+        0 0 9px rgba(63, 191, 191, 0.20);
 }
 
 /* ============================================================================
@@ -98,49 +98,49 @@ tooltip {
 #cpu {
     padding: 0 12px;
     margin: 0 2px;
-    color: #ae81ff;
+    color: #61b0d8;
     text-shadow:
-        0 0 3px rgba(174, 129, 255, 0.50),
-        0 0 6px rgba(174, 129, 255, 0.30),
-        0 0 9px rgba(174, 129, 255, 0.20);
+        0 0 3px rgba(97, 176, 216, 0.50),
+        0 0 6px rgba(97, 176, 216, 0.30),
+        0 0 9px rgba(97, 176, 216, 0.20);
 }
 
 #memory {
     padding: 0 12px;
     margin: 0 2px;
-    color: #ae81ff;
+    color: #61b0d8;
     text-shadow:
-        0 0 3px rgba(174, 129, 255, 0.50),
-        0 0 6px rgba(174, 129, 255, 0.30),
-        0 0 9px rgba(174, 129, 255, 0.20);
+        0 0 3px rgba(97, 176, 216, 0.50),
+        0 0 6px rgba(97, 176, 216, 0.30),
+        0 0 9px rgba(97, 176, 216, 0.20);
 }
 
 #temperature {
     padding: 0 12px;
     margin: 0 2px;
-    color: #ae81ff;
+    color: #61b0d8;
     text-shadow:
-        0 0 3px rgba(174, 129, 255, 0.50),
-        0 0 6px rgba(174, 129, 255, 0.30),
-        0 0 9px rgba(174, 129, 255, 0.20);
+        0 0 3px rgba(97, 176, 216, 0.50),
+        0 0 6px rgba(97, 176, 216, 0.30),
+        0 0 9px rgba(97, 176, 216, 0.20);
 }
 
 #temperature.critical {
-    color: #ee5396;
+    color: #e59191;
     text-shadow:
-        0 0 3px rgba(238, 83, 150, 0.50),
-        0 0 6px rgba(238, 83, 150, 0.30),
-        0 0 9px rgba(238, 83, 150, 0.20);
+        0 0 3px rgba(229, 145, 145, 0.50),
+        0 0 6px rgba(229, 145, 145, 0.30),
+        0 0 9px rgba(229, 145, 145, 0.20);
 }
 
 #disk {
     padding: 0 12px;
     margin: 0 2px;
-    color: #ae81ff;
+    color: #61b0d8;
     text-shadow:
-        0 0 3px rgba(174, 129, 255, 0.50),
-        0 0 6px rgba(174, 129, 255, 0.30),
-        0 0 9px rgba(174, 129, 255, 0.20);
+        0 0 3px rgba(97, 176, 216, 0.50),
+        0 0 6px rgba(97, 176, 216, 0.30),
+        0 0 9px rgba(97, 176, 216, 0.20);
 }
 
 /* ============================================================================
@@ -150,23 +150,23 @@ tooltip {
 #battery {
     padding: 0 12px;
     margin: 0 2px;
-    color: #8af2a1;
+    color: #3ebb3e;
     text-shadow:
-        0 0 3px rgba(138, 242, 161, 0.50),
-        0 0 6px rgba(138, 242, 161, 0.30),
-        0 0 9px rgba(138, 242, 161, 0.20);
+        0 0 3px rgba(62, 187, 62, 0.50),
+        0 0 6px rgba(62, 187, 62, 0.30),
+        0 0 9px rgba(62, 187, 62, 0.20);
 }
 
 #battery.charging {
-    color: #8af2a1;
+    color: #3ebb3e;
 }
 
 #battery.warning:not(.charging) {
-    color: #ffc591;
+    color: #dca13b;
 }
 
 #battery.critical:not(.charging) {
-    color: #ee5396;
+    color: #e59191;
     animation: blink 1s linear infinite;
 }
 
@@ -183,15 +183,15 @@ tooltip {
 #network {
     padding: 0 12px;
     margin: 0 2px;
-    color: #8af2a1;
+    color: #3ebb3e;
     text-shadow:
-        0 0 3px rgba(138, 242, 161, 0.50),
-        0 0 6px rgba(138, 242, 161, 0.30),
-        0 0 9px rgba(138, 242, 161, 0.20);
+        0 0 3px rgba(62, 187, 62, 0.50),
+        0 0 6px rgba(62, 187, 62, 0.30),
+        0 0 9px rgba(62, 187, 62, 0.20);
 }
 
 #network.disconnected {
-    color: #ee5396;
+    color: #e59191;
 }
 
 /* ============================================================================
@@ -201,23 +201,23 @@ tooltip {
 #backlight {
     padding: 0 12px;
     margin: 0 2px;
-    color: #ffc591;
+    color: #dca13b;
     text-shadow:
-        0 0 3px rgba(255, 197, 145, 0.50),
-        0 0 6px rgba(255, 197, 145, 0.30),
-        0 0 9px rgba(255, 197, 145, 0.20);
+        0 0 3px rgba(220, 161, 59, 0.50),
+        0 0 6px rgba(220, 161, 59, 0.30),
+        0 0 9px rgba(220, 161, 59, 0.20);
 }
 
 #pulseaudio {
     padding: 0 12px;
     margin: 0 2px;
-    color: #ffc591;
+    color: #dca13b;
     text-shadow:
-        0 0 3px rgba(255, 197, 145, 0.50),
-        0 0 6px rgba(255, 197, 145, 0.30),
-        0 0 9px rgba(255, 197, 145, 0.20);
+        0 0 3px rgba(220, 161, 59, 0.50),
+        0 0 6px rgba(220, 161, 59, 0.30),
+        0 0 9px rgba(220, 161, 59, 0.20);
 }
 
 #pulseaudio.muted {
-    color: #b6b8bb;
+    color: #9a9a9a;
 }

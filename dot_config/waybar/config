@@ -1,58 +1,75 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 35,
-    "spacing": 4,
+    "height": 34,
 
-    "modules-left": ["hyprland/workspaces", "hyprland/window"],
-    "modules-center": ["clock"],
-    "modules-right": ["pulseaudio", "network", "cpu", "memory", "temperature", "battery", "tray"],
+    "modules-left": ["clock", "hyprland/workspaces"],
+    "modules-center": [],
+    "modules-right": ["cpu", "memory", "temperature", "disk", "backlight", "pulseaudio", "network", "battery"],
 
     "hyprland/workspaces": {
-        "disable-scroll": true,
-        "all-outputs": true,
         "format": "{icon}",
         "format-icons": {
-            "1": "",
-            "2": "",
-            "3": "",
-            "4": "",
-            "5": "",
+            "1": "󰹟",
+            "2": "󰹟",
+            "3": "󰹟",
+            "4": "󰹟",
+            "5": "󰹟",
+            "6": "󰹟",
+            "7": "󰹟",
+            "8": "󰹟",
+            "9": "󰹟",
             "urgent": "",
-            "focused": "",
             "default": ""
         }
     },
 
-    "hyprland/window": {
-        "format": "{}",
-        "max-length": 50,
-        "separate-outputs": true
-    },
-
     "clock": {
-        "timezone": "America/New_York",
-        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
-        "format": " {:%a %b %d  %I:%M %p}",
-        "format-alt": " {:%Y-%m-%d}"
+        "format": "{:%A, %b %d %I:%M %p}",
+        "tooltip-format": "{calendar}",
+        "calendar": {
+            "mode": "month",
+            "weeks-pos": "left",
+            "format": {
+                "months": "<span color='#f2f4f8'><b>{}</b></span>",
+                "weekdays": "<span color='#3ddbd9'><b>{}</b></span>",
+                "today": "<span color='#ee5396'><b>{}</b></span>"
+            }
+        }
     },
 
     "cpu": {
-        "format": " {usage}%",
-        "tooltip": true,
-        "interval": 2
+        "format": " {usage}%",
+        "tooltip-format": "Load: {load}",
+        "interval": 2,
+        "on-click": "ghostty -e btop"
     },
 
     "memory": {
-        "format": " {}%",
-        "tooltip": true,
-        "interval": 2
+        "format": " {used:0.1f}GB ({percentage}%)",
+        "tooltip-format": "RAM: {used:0.1f}GB / {total:0.1f}GB",
+        "interval": 5
     },
 
     "temperature": {
         "critical-threshold": 80,
-        "format": " {temperatureC}°C",
-        "format-critical": " {temperatureC}°C"
+        "format": " {temperatureC}°C",
+        "format-critical": " {temperatureC}°C",
+        "interval": 2
+    },
+
+    "disk": {
+        "path": "/",
+        "format": " {percentage_used}%",
+        "tooltip-format": "Disk: {used} / {total}",
+        "interval": 30
+    },
+
+    "backlight": {
+        "format": "{icon} {percent}%",
+        "format-icons": ["󱩏", "󱩑", "󱩓", "󱩕", "󰛨"],
+        "on-scroll-up": "brightnessctl set +5%",
+        "on-scroll-down": "brightnessctl set 5%-"
     },
 
     "battery": {
@@ -61,39 +78,28 @@
             "critical": 15
         },
         "format": "{icon} {capacity}%",
-        "format-charging": " {capacity}%",
-        "format-plugged": " {capacity}%",
-        "format-alt": "{icon} {time}",
-        "format-icons": ["", "", "", "", ""]
+        "format-charging": "󰂄 {capacity}%",
+        "format-plugged": "󰚥 {capacity}%",
+        "format-full": "󰁹 {capacity}%",
+        "format-icons": ["󰁺", "󰁼", "󰁾", "󰂀", "󰂂"]
     },
 
     "network": {
-        "format-wifi": " {signalStrength}%",
-        "format-ethernet": " {ipaddr}/{cidr}",
-        "tooltip-format": "{ifname} via {gwaddr}",
-        "format-linked": " {ifname} (No IP)",
-        "format-disconnected": "⚠ Disconnected",
-        "format-alt": "{ifname}: {ipaddr}/{cidr}"
+        "format-wifi": "{icon} {essid}",
+        "format-ethernet": "󰈀 {ifname}",
+        "format-disconnected": "󰖪 Disconnected",
+        "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ifname}: {ipaddr}",
+        "tooltip-format-ethernet": "{ifname}: {ipaddr}",
+        "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
     },
 
     "pulseaudio": {
         "format": "{icon} {volume}%",
-        "format-bluetooth": "{icon} {volume}% ",
-        "format-bluetooth-muted": " {icon}",
-        "format-muted": "",
+        "format-muted": "󰖁 {volume}%",
+        "max-volume": 100,
         "format-icons": {
-            "headphone": "",
-            "hands-free": "",
-            "headset": "",
-            "phone": "",
-            "portable": "",
-            "car": "",
-            "default": ["", "", ""]
+            "default": ["󰕿", "󰖀", "󰕾"]
         },
         "on-click": "pavucontrol"
-    },
-
-    "tray": {
-        "spacing": 10
     }
 }

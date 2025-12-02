@@ -12,14 +12,14 @@
 }
 
 window#waybar {
-    background-color: {{BAR_BG_COLOR:css_rgba:BAR_BG_OPACITY}};
+    background-color: {< background | rgba(0.9) >};
 }
 
 tooltip {
-    background: {{BAR_BG_COLOR:hex}};
-    color: {{BAR_FG_COLOR:hex}};
+    background: {< background >};
+    color: {< foreground >};
     border-radius: 5px;
-    border: 1px solid {{BAR_BORDER_COLOR:hex}};
+    border: 1px solid {< border >};
     padding: 5px 10px;
     margin: 0;
 }
@@ -34,7 +34,7 @@ tooltip {
 
 #workspaces button {
     padding: 0px 8px 0px 8px;
-    color: {{BAR_WORKSPACE_INACTIVE_COLOR:hex}};
+    color: {< foreground_dim >};
     background-color: transparent;
     background: transparent;
     box-shadow: none;
@@ -43,38 +43,38 @@ tooltip {
 }
 
 #workspaces button:hover {
-    background-color: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
-    background: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
-    color: {{BAR_WORKSPACE_HOVER_COLOR:hex}};
+    background-color: {< foreground | rgba(0.1) >};
+    background: {< foreground | rgba(0.1) >};
+    color: {< foreground >};
     box-shadow: none;
     text-shadow:
-        0 0 3px {{BAR_WORKSPACE_HOVER_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_WORKSPACE_HOVER_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_WORKSPACE_HOVER_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< foreground | rgba(0.5) >},
+        0 0 6px {< foreground | rgba(0.3) >},
+        0 0 9px {< foreground | rgba(0.2) >};
     animation: none;
 }
 
 #workspaces button.active {
     padding: 0px 8px 0px 8px;
-    color: {{BAR_WORKSPACE_ACTIVE_COLOR:hex}};
+    color: {< cyan >};
     background-color: transparent;
     background: transparent;
     box-shadow: none;
     text-shadow:
-        0 0 3px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< cyan | rgba(0.5) >},
+        0 0 6px {< cyan | rgba(0.3) >},
+        0 0 9px {< cyan | rgba(0.2) >};
     animation: none;
 }
 
 #workspaces button.active:hover {
-    background-color: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
-    background: {{BAR_WORKSPACE_HOVER_BG_COLOR:css_rgba:BAR_WORKSPACE_HOVER_OPACITY}};
-    color: {{BAR_WORKSPACE_ACTIVE_COLOR:hex}};
+    background-color: {< foreground | rgba(0.1) >};
+    background: {< foreground | rgba(0.1) >};
+    color: {< cyan >};
     text-shadow:
-        0 0 3px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_WORKSPACE_ACTIVE_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< cyan | rgba(0.5) >},
+        0 0 6px {< cyan | rgba(0.3) >},
+        0 0 9px {< cyan | rgba(0.2) >};
 }
 
 /* ============================================================================
@@ -84,11 +84,11 @@ tooltip {
 #clock {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_CLOCK_COLOR:hex}};
+    color: {< cyan >};
     text-shadow:
-        0 0 3px {{BAR_CLOCK_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_CLOCK_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_CLOCK_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< cyan | rgba(0.5) >},
+        0 0 6px {< cyan | rgba(0.3) >},
+        0 0 9px {< cyan | rgba(0.2) >};
 }
 
 /* ============================================================================
@@ -98,49 +98,49 @@ tooltip {
 #cpu {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_CPU_COLOR:hex}};
+    color: {< blue >};
     text-shadow:
-        0 0 3px {{BAR_CPU_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_CPU_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_CPU_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< blue | rgba(0.5) >},
+        0 0 6px {< blue | rgba(0.3) >},
+        0 0 9px {< blue | rgba(0.2) >};
 }
 
 #memory {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_MEMORY_COLOR:hex}};
+    color: {< blue >};
     text-shadow:
-        0 0 3px {{BAR_MEMORY_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_MEMORY_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_MEMORY_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< blue | rgba(0.5) >},
+        0 0 6px {< blue | rgba(0.3) >},
+        0 0 9px {< blue | rgba(0.2) >};
 }
 
 #temperature {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_TEMP_COLOR:hex}};
+    color: {< blue >};
     text-shadow:
-        0 0 3px {{BAR_TEMP_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_TEMP_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_TEMP_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< blue | rgba(0.5) >},
+        0 0 6px {< blue | rgba(0.3) >},
+        0 0 9px {< blue | rgba(0.2) >};
 }
 
 #temperature.critical {
-    color: {{BAR_TEMP_CRITICAL_COLOR:hex}};
+    color: {< red >};
     text-shadow:
-        0 0 3px {{BAR_TEMP_CRITICAL_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_TEMP_CRITICAL_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_TEMP_CRITICAL_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< red | rgba(0.5) >},
+        0 0 6px {< red | rgba(0.3) >},
+        0 0 9px {< red | rgba(0.2) >};
 }
 
 #disk {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_DISK_COLOR:hex}};
+    color: {< blue >};
     text-shadow:
-        0 0 3px {{BAR_DISK_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_DISK_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_DISK_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< blue | rgba(0.5) >},
+        0 0 6px {< blue | rgba(0.3) >},
+        0 0 9px {< blue | rgba(0.2) >};
 }
 
 /* ============================================================================
@@ -150,23 +150,23 @@ tooltip {
 #battery {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_BATTERY_COLOR:hex}};
+    color: {< green >};
     text-shadow:
-        0 0 3px {{BAR_BATTERY_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_BATTERY_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_BATTERY_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< green | rgba(0.5) >},
+        0 0 6px {< green | rgba(0.3) >},
+        0 0 9px {< green | rgba(0.2) >};
 }
 
 #battery.charging {
-    color: {{BAR_BATTERY_COLOR:hex}};
+    color: {< green >};
 }
 
 #battery.warning:not(.charging) {
-    color: {{BAR_BATTERY_WARNING_COLOR:hex}};
+    color: {< yellow >};
 }
 
 #battery.critical:not(.charging) {
-    color: {{BAR_BATTERY_CRITICAL_COLOR:hex}};
+    color: {< red >};
     animation: blink 1s linear infinite;
 }
 
@@ -183,15 +183,15 @@ tooltip {
 #network {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_NETWORK_COLOR:hex}};
+    color: {< green >};
     text-shadow:
-        0 0 3px {{BAR_NETWORK_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_NETWORK_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_NETWORK_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< green | rgba(0.5) >},
+        0 0 6px {< green | rgba(0.3) >},
+        0 0 9px {< green | rgba(0.2) >};
 }
 
 #network.disconnected {
-    color: {{BAR_NETWORK_DISCONNECTED_COLOR:hex}};
+    color: {< red >};
 }
 
 /* ============================================================================
@@ -201,23 +201,23 @@ tooltip {
 #backlight {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_BACKLIGHT_COLOR:hex}};
+    color: {< yellow >};
     text-shadow:
-        0 0 3px {{BAR_BACKLIGHT_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_BACKLIGHT_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_BACKLIGHT_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< yellow | rgba(0.5) >},
+        0 0 6px {< yellow | rgba(0.3) >},
+        0 0 9px {< yellow | rgba(0.2) >};
 }
 
 #pulseaudio {
     padding: 0 12px;
     margin: 0 2px;
-    color: {{BAR_AUDIO_COLOR:hex}};
+    color: {< yellow >};
     text-shadow:
-        0 0 3px {{BAR_AUDIO_COLOR:css_rgba:BAR_GLOW_CLOSE_OPACITY}},
-        0 0 6px {{BAR_AUDIO_COLOR:css_rgba:BAR_GLOW_MID_OPACITY}},
-        0 0 9px {{BAR_AUDIO_COLOR:css_rgba:BAR_GLOW_FAR_OPACITY}};
+        0 0 3px {< yellow | rgba(0.5) >},
+        0 0 6px {< yellow | rgba(0.3) >},
+        0 0 9px {< yellow | rgba(0.2) >};
 }
 
 #pulseaudio.muted {
-    color: {{BAR_AUDIO_MUTED_COLOR:hex}};
+    color: {< foreground_dim >};
 }
