@@ -214,6 +214,15 @@ def reload_applications() -> None:
             start_new_session=True,
         )
         print("    Waybar restarted")
+    else:
+        subprocess.Popen(
+            ["waybar"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        print("    Waybar started")
+
 
     # Reload Mako
     if is_running("mako"):
