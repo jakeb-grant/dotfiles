@@ -1,8 +1,3 @@
-/* ============================================================================
- * Waybar Style
- * Generated from template with theme: see ~/.config/themes/active
- * ============================================================================ */
-
 * {
     font-family: "JetBrainsMono Nerd Font Propo", monospace;
     font-weight: bold;
@@ -12,210 +7,127 @@
 }
 
 window#waybar {
-    background-color: rgba(32, 39, 44, 0.90);
+    background: transparent;
 }
 
 tooltip {
-    background: #20272c;
+    background: rgba(32, 39, 44, 0.95);
     color: #b2b2b2;
-    border-radius: 5px;
-    border: 1px solid #354149;
-    padding: 5px 10px;
-    margin: 0;
+    border-radius: 12px;
+    padding: 8px 14px;
 }
 
-/* ============================================================================
- * Workspaces
- * ============================================================================ */
-
-#workspaces label {
-    font-size: 30px;
-}
-
-#workspaces button {
-    padding: 0px 8px 0px 8px;
-    color: #9a9a9a;
-    background-color: transparent;
-    background: transparent;
-    box-shadow: none;
-    text-shadow: none;
-    animation: none;
-}
-
-#workspaces button:hover {
-    background-color: rgba(178, 178, 178, 0.10);
-    background: rgba(178, 178, 178, 0.10);
+tooltip label {
     color: #b2b2b2;
-    box-shadow: none;
-    text-shadow:
-        0 0 3px rgba(178, 178, 178, 0.50),
-        0 0 6px rgba(178, 178, 178, 0.30),
-        0 0 9px rgba(178, 178, 178, 0.20);
-    animation: none;
 }
 
-#workspaces button.active {
-    padding: 0px 8px 0px 8px;
-    color: #3fbfbf;
-    background-color: transparent;
-    background: transparent;
-    box-shadow: none;
-    text-shadow:
-        0 0 3px rgba(63, 191, 191, 0.50),
-        0 0 6px rgba(63, 191, 191, 0.30),
-        0 0 9px rgba(63, 191, 191, 0.20);
-    animation: none;
+/* Base pill styling */
+#clock,
+#workspaces,
+#custom-launcher,
+#custom-updates {
+    background: rgba(32, 39, 44, 0.95);
+    color: #b2b2b2;
+    border-radius: 12px;
+    padding: 4px 14px;
+    margin: 4px 3px;
 }
 
-#workspaces button.active:hover {
-    background-color: rgba(178, 178, 178, 0.10);
-    background: rgba(178, 178, 178, 0.10);
-    color: #3fbfbf;
-    text-shadow:
-        0 0 3px rgba(63, 191, 191, 0.50),
-        0 0 6px rgba(63, 191, 191, 0.30),
-        0 0 9px rgba(63, 191, 191, 0.20);
-}
-
-/* ============================================================================
- * Clock
- * ============================================================================ */
-
-#clock {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #3fbfbf;
-    text-shadow:
-        0 0 3px rgba(63, 191, 191, 0.50),
-        0 0 6px rgba(63, 191, 191, 0.30),
-        0 0 9px rgba(63, 191, 191, 0.20);
-}
-
-/* ============================================================================
- * System Monitors
- * ============================================================================ */
-
-#cpu {
-    padding: 0 12px;
-    margin: 0 2px;
+#custom-updates {
     color: #61b0d8;
-    text-shadow:
-        0 0 3px rgba(97, 176, 216, 0.50),
-        0 0 6px rgba(97, 176, 216, 0.30),
-        0 0 9px rgba(97, 176, 216, 0.20);
 }
 
-#memory {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #61b0d8;
-    text-shadow:
-        0 0 3px rgba(97, 176, 216, 0.50),
-        0 0 6px rgba(97, 176, 216, 0.30),
-        0 0 9px rgba(97, 176, 216, 0.20);
-}
-
-#temperature {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #61b0d8;
-    text-shadow:
-        0 0 3px rgba(97, 176, 216, 0.50),
-        0 0 6px rgba(97, 176, 216, 0.30),
-        0 0 9px rgba(97, 176, 216, 0.20);
-}
-
-#temperature.critical {
-    color: #e59191;
-    text-shadow:
-        0 0 3px rgba(229, 145, 145, 0.50),
-        0 0 6px rgba(229, 145, 145, 0.30),
-        0 0 9px rgba(229, 145, 145, 0.20);
-}
-
-#disk {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #61b0d8;
-    text-shadow:
-        0 0 3px rgba(97, 176, 216, 0.50),
-        0 0 6px rgba(97, 176, 216, 0.30),
-        0 0 9px rgba(97, 176, 216, 0.20);
-}
-
-/* ============================================================================
- * Battery
- * ============================================================================ */
-
-#battery {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #3ebb3e;
-    text-shadow:
-        0 0 3px rgba(62, 187, 62, 0.50),
-        0 0 6px rgba(62, 187, 62, 0.30),
-        0 0 9px rgba(62, 187, 62, 0.20);
-}
-
-#battery.charging {
-    color: #3ebb3e;
-}
-
-#battery.warning:not(.charging) {
+#custom-updates.api-warning {
     color: #dca13b;
 }
 
-#battery.critical:not(.charging) {
-    color: #e59191;
-    animation: blink 1s linear infinite;
+#custom-launcher {
+    font-size: 16px;
+    padding: 4px 12px;
+    transition: all 150ms ease-out;
 }
 
-@keyframes blink {
-    50% {
-        opacity: 0.5;
-    }
+#custom-launcher:hover {
+    background: rgba(42, 52, 58, 0.95);
 }
 
-/* ============================================================================
- * Network
- * ============================================================================ */
-
-#network {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #3ebb3e;
-    text-shadow:
-        0 0 3px rgba(62, 187, 62, 0.50),
-        0 0 6px rgba(62, 187, 62, 0.30),
-        0 0 9px rgba(62, 187, 62, 0.20);
+/* Group drawers */
+#hardware,
+#controls,
+#status {
+    background: rgba(32, 39, 44, 0.95);
+    border-radius: 12px;
+    margin: 4px 3px;
+    padding: 0 4px;
 }
 
+#custom-hardware,
+#backlight,
+#pulseaudio,
+#network,
+#battery,
+#cpu,
+#memory,
+#temperature,
+#disk {
+    background: transparent;
+    color: #b2b2b2;
+    padding: 4px 10px;
+    margin: 0;
+}
+
+/* Workspaces */
+#workspaces {
+    padding: 0 6px;
+}
+
+#workspaces button {
+    padding: 0 8px;
+    background: rgba(36, 44, 49, 0.50);
+    color: #9a9a9a;
+    border-radius: 8px;
+    margin: 6px 2px;
+    font-size: 15px;
+    transition: all 150ms ease-out;
+}
+
+#workspaces button:hover {
+    background: rgba(42, 52, 58, 0.60);
+    color: #b2b2b2;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+#workspaces button.active {
+    background: rgba(49, 59, 67, 0.80);
+    color: #c6c6c6;
+    padding: 0 28px;
+}
+
+/* Status indicators */
+#temperature.critical,
+#battery.critical:not(.charging):not(.plugged),
 #network.disconnected {
     color: #e59191;
 }
 
-/* ============================================================================
- * Controls (Backlight & Audio)
- * ============================================================================ */
-
-#backlight {
-    padding: 0 12px;
-    margin: 0 2px;
+#battery.warning:not(.charging):not(.plugged) {
     color: #dca13b;
-    text-shadow:
-        0 0 3px rgba(220, 161, 59, 0.50),
-        0 0 6px rgba(220, 161, 59, 0.30),
-        0 0 9px rgba(220, 161, 59, 0.20);
 }
 
-#pulseaudio {
-    padding: 0 12px;
-    margin: 0 2px;
-    color: #dca13b;
-    text-shadow:
-        0 0 3px rgba(220, 161, 59, 0.50),
-        0 0 6px rgba(220, 161, 59, 0.30),
-        0 0 9px rgba(220, 161, 59, 0.20);
+#battery.critical:not(.charging):not(.plugged) {
+    animation: blink 1s linear infinite;
+}
+
+#battery.charging,
+#battery.plugged,
+#battery.full {
+    color: #3ebb3e;
+    animation: none;
+}
+
+@keyframes blink {
+    50% { opacity: 0.5; }
 }
 
 #pulseaudio.muted {

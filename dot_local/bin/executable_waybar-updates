@@ -1,0 +1,249 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "requests",
+# ]
+# ///
+
+"""
+Waybar module for pacman/AUR updates.
+Outputs JSON for waybar custom module with return-type=json.
+"""
+
+import json
+import subprocess
+import time
+from pathlib import Path
+from typing import Optional
+import requests
+
+CACHE_DIR = Path.home() / ".cache" / "waybar-updates"
+CACHE_FILE = CACHE_DIR / "updates.json"
+CACHE_MAX_AGE = 300  # 5 minutes
+AUR_BATCH_SIZE = 100  # Max packages per AUR API request
+
+
+def get_cache() -> Optional[dict]:
+    """Load cached update data if fresh enough."""
+    if not CACHE_FILE.exists():
+        return None
+
+    try:
+        age = time.time() - CACHE_FILE.stat().st_mtime
+        if age > CACHE_MAX_AGE:
+            return None
+
+        with open(CACHE_FILE) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def save_cache(data: dict) -> None:
+    """Save update data to cache."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CACHE_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def get_pacman_updates() -> list[tuple[str, str, str]]:
+    """Get list of available pacman updates: (name, old_ver, new_ver)."""
+    try:
+        result = subprocess.run(
+            ["checkupdates", "--nocolor"],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        updates = []
+        stdout = result.stdout.strip()
+        if not stdout:
+            return []
+
+        for line in stdout.split("\n"):
+            if " -> " in line:
+                parts = line.split()
+                if len(parts) >= 4:
+                    name, old_ver, _, new_ver = parts[0], parts[1], parts[2], parts[3]
+                    updates.append((name, old_ver, new_ver))
+        return updates
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        return []
+
+
+def get_local_aur_packages() -> list[tuple[str, str]]:
+    """Get locally installed AUR packages: (name, version)."""
+    try:
+        result = subprocess.run(
+            ["pacman", "-Qm"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        packages = []
+        stdout = result.stdout.strip()
+        if not stdout:
+            return []
+
+        for line in stdout.split("\n"):
+            parts = line.split()
+            if len(parts) >= 2:
+                packages.append((parts[0], parts[1]))
+        return packages
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        return []
+
+
+def query_aur_api(package_names: list[str]) -> tuple[dict[str, str], bool]:
+    """Query AUR API for package versions. Returns ({name: version}, success)."""
+    if not package_names:
+        return {}, True
+
+    results = {}
+    api_failed = False
+
+    # Batch requests to avoid overly long URLs
+    for i in range(0, len(package_names), AUR_BATCH_SIZE):
+        batch = package_names[i:i + AUR_BATCH_SIZE]
+        try:
+            url = "https://aur.archlinux.org/rpc/v5/info"
+            params = [("arg[]", name) for name in batch]
+            response = requests.get(url, params=params, timeout=30)
+            response.raise_for_status()
+
+            data = response.json()
+            for pkg in data.get("results", []):
+                results[pkg["Name"]] = pkg["Version"]
+        except (requests.RequestException, KeyError, json.JSONDecodeError):
+            api_failed = True
+            continue
+
+    return results, not api_failed
+
+
+def get_aur_updates_fallback() -> list[tuple[str, str, str]]:
+    """Fallback: get AUR updates using yay -Qua."""
+    try:
+        result = subprocess.run(
+            ["yay", "-Qua"],
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+        updates = []
+        stdout = result.stdout.strip()
+        if not stdout:
+            return []
+
+        for line in stdout.split("\n"):
+            if " -> " in line:
+                parts = line.split()
+                if len(parts) >= 4:
+                    name, old_ver, _, new_ver = parts[0], parts[1], parts[2], parts[3]
+                    updates.append((name, old_ver, new_ver))
+        return updates
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        return []
+
+
+def compare_versions(new: str, old: str) -> bool:
+    """Check if new version is actually newer using vercmp."""
+    if new == old:
+        return False
+
+    try:
+        result = subprocess.run(
+            ["vercmp", new, old],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        # vercmp returns: 1 if new > old, 0 if equal, -1 if new < old
+        return result.stdout.strip() == "1"
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        # Fallback to simple string comparison
+        return new != old
+
+
+def get_aur_updates() -> tuple[list[tuple[str, str, str]], bool]:
+    """Get list of available AUR updates: (name, old_ver, new_ver).
+    Returns (updates, api_ok) where api_ok is False if we fell back to yay."""
+    local_packages = get_local_aur_packages()
+    if not local_packages:
+        return [], True
+
+    package_names = [name for name, _ in local_packages]
+    aur_versions, api_ok = query_aur_api(package_names)
+
+    # If API failed, fall back to yay
+    if not api_ok:
+        return get_aur_updates_fallback(), False
+
+    updates = []
+    for name, local_ver in local_packages:
+        if name in aur_versions:
+            aur_ver = aur_versions[name]
+            if compare_versions(aur_ver, local_ver):
+                updates.append((name, local_ver, aur_ver))
+
+    return updates, True
+
+
+def format_tooltip(
+    pacman_updates: list[tuple[str, str, str]],
+    aur_updates: list[tuple[str, str, str]]
+) -> str:
+    """Format update list for tooltip."""
+    lines = []
+
+    for name, old_ver, new_ver in pacman_updates:
+        lines.append(f"{name}: {old_ver} → {new_ver}")
+
+    for name, old_ver, new_ver in aur_updates:
+        lines.append(f"{name} (AUR): {old_ver} → {new_ver}")
+
+    return "\n".join(lines) if lines else "System up to date"
+
+
+def main():
+    # Check cache first
+    cached = get_cache()
+    if cached:
+        print(json.dumps(cached))
+        return
+
+    # Fetch fresh data
+    pacman_updates = get_pacman_updates()
+    aur_updates, aur_api_ok = get_aur_updates()
+
+    total = len(pacman_updates) + len(aur_updates)
+    tooltip = format_tooltip(pacman_updates, aur_updates)
+
+    # Add API warning to tooltip if using fallback
+    if not aur_api_ok:
+        tooltip = "⚠ AUR API unavailable (using yay fallback)\n" + tooltip
+
+    if total > 0:
+        # Add warning icon if API failed
+        icon = "󰏔" if aur_api_ok else "󰏔 ⚠"
+        output = {
+            "text": f"{icon} {total}",
+            "tooltip": tooltip,
+            "class": "has-updates" if aur_api_ok else "has-updates api-warning",
+            "alt": "has-updates"
+        }
+    else:
+        output = {
+            "text": "" if aur_api_ok else "⚠",
+            "tooltip": tooltip if not aur_api_ok else "System up to date",
+            "class": "updated" if aur_api_ok else "api-warning",
+            "alt": "updated"
+        }
+
+    save_cache(output)
+    print(json.dumps(output))
+
+
+if __name__ == "__main__":
+    main()

@@ -3,29 +3,53 @@
     "position": "top",
     "height": 34,
 
-    "modules-left": ["clock", "hyprland/workspaces"],
-    "modules-center": [],
-    "modules-right": ["cpu", "memory", "temperature", "disk", "backlight", "pulseaudio", "network", "battery"],
+    "modules-left": ["custom/launcher", "clock", "custom/updates"],
+    "modules-center": ["hyprland/workspaces"],
+    "modules-right": ["group/hardware", "group/controls", "group/status"],
+
+    "group/controls": {
+        "orientation": "horizontal",
+        "modules": ["backlight", "pulseaudio"]
+    },
+
+    "group/status": {
+        "orientation": "horizontal",
+        "modules": ["network", "battery"]
+    },
+
+    "group/hardware": {
+        "orientation": "horizontal",
+        "drawer": {
+            "transition-duration": 300,
+            "transition-left-to-right": true
+        },
+        "modules": ["custom/hardware", "disk", "cpu", "memory", "temperature"]
+    },
+
+    "custom/launcher": {
+        "format": "󰀻",
+        "tooltip": false,
+        "on-click": "walker"
+    },
+
+    "custom/hardware": {
+        "format": "󰍛",
+        "tooltip": false
+    },
+
+    "custom/updates": {
+        "exec": "waybar-updates",
+        "return-type": "json",
+        "interval": 300,
+        "on-click": "ghostty -e yay"
+    },
 
     "hyprland/workspaces": {
-        "format": "{icon}",
-        "format-icons": {
-            "1": "󰹟",
-            "2": "󰹟",
-            "3": "󰹟",
-            "4": "󰹟",
-            "5": "󰹟",
-            "6": "󰹟",
-            "7": "󰹟",
-            "8": "󰹟",
-            "9": "󰹟",
-            "urgent": "",
-            "default": ""
-        }
+        "format": "{id}"
     },
 
     "clock": {
-        "format": "{:%A, %b %d %I:%M %p}",
+        "format": "󰃭 {:%b %d  %I:%M %p}",
         "tooltip-format": "{calendar}",
         "calendar": {
             "mode": "month",
@@ -39,28 +63,28 @@
     },
 
     "cpu": {
-        "format": " {usage}%",
+        "format": "CPU {usage}%",
         "tooltip-format": "Load: {load}",
         "interval": 2,
         "on-click": "ghostty -e btop"
     },
 
     "memory": {
-        "format": " {used:0.1f}GB ({percentage}%)",
+        "format": "RAM {percentage}%",
         "tooltip-format": "RAM: {used:0.1f}GB / {total:0.1f}GB",
         "interval": 5
     },
 
     "temperature": {
-        "critical-threshold": 80,
-        "format": " {temperatureC}°C",
-        "format-critical": " {temperatureC}°C",
+        "critical-threshold": 176,
+        "format": "{temperatureF}°F",
+        "format-critical": "{temperatureF}°F",
         "interval": 2
     },
 
     "disk": {
         "path": "/",
-        "format": " {percentage_used}%",
+        "format": "SSD {percentage_used}%",
         "tooltip-format": "Disk: {used} / {total}",
         "interval": 30
     },
