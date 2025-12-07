@@ -1,0 +1,93 @@
+/* Zen Browser Theme - Generated from theme template */
+
+:root {
+  /* Main backgrounds */
+  --lwt-accent-color: {< background >} !important;
+  --toolbar-bgcolor: {< background >} !important;
+  --arrowpanel-background: {< background_medium >} !important;
+  --sidebar-background-color: {< background >} !important;
+  --zen-main-browser-background: {< background >} !important;
+
+  /* Text colors */
+  --lwt-text-color: {< foreground >} !important;
+  --toolbar-color: {< foreground >} !important;
+  --arrowpanel-color: {< foreground >} !important;
+  --sidebar-text-color: {< foreground >} !important;
+
+  /* URL bar / toolbar field */
+  --lwt-toolbar-field-background-color: {< element >} !important;
+  --lwt-toolbar-field-color: {< foreground >} !important;
+  --lwt-toolbar-field-border-color: {< border >} !important;
+  --lwt-toolbar-field-focus: {< element_active >} !important;
+  --lwt-toolbar-field-focus-color: {< foreground_bright >} !important;
+  --toolbar-field-focus-border-color: {< border_focused >} !important;
+
+  /* Buttons */
+  --toolbarbutton-hover-background: {< element_hover >} !important;
+  --toolbarbutton-active-background: {< element_active >} !important;
+  --lwt-toolbarbutton-icon-fill: {< foreground >} !important;
+
+  /* Tabs */
+  --tab-line-color: {< primary >} !important;
+  --tabs-border-color: {< border >} !important;
+
+  /* Panels/popups */
+  --arrowpanel-border-color: {< border >} !important;
+
+  /* Accent colors */
+  --focus-outline-color: {< blue >} !important;
+  --toolbarbutton-icon-fill-attention: {< blue >} !important;
+}
+
+/* Tab styling */
+.tabbrowser-tab {
+  background-color: {< background >} !important;
+}
+
+.tabbrowser-tab:hover {
+  background-color: {< element_hover >} !important;
+}
+
+.tabbrowser-tab[selected] {
+  background-color: {< element_active >} !important;
+}
+
+/* Navbar / toolbar */
+#nav-bar {
+  background-color: {< background >} !important;
+  border-color: {< border >} !important;
+}
+
+/* URL bar */
+#urlbar-background {
+  background-color: {< element >} !important;
+  border-color: {< border >} !important;
+}
+
+#urlbar[focused] #urlbar-background {
+  background-color: {< element_active >} !important;
+  border-color: {< border_focused >} !important;
+}
+
+/* Sidebar */
+#sidebar-box {
+  background-color: {< background >} !important;
+}
+
+/* Menus and panels */
+menupopup,
+panel {
+  background-color: {< background_medium >} !important;
+  color: {< foreground >} !important;
+  border-color: {< border >} !important;
+}
+
+menuitem:hover,
+.panel-subview-body > toolbarbutton:hover {
+  background-color: {< element_hover >} !important;
+}
+
+/* Scrollbars */
+* {
+  scrollbar-color: {< element_active >} {< background >} !important;
+}
