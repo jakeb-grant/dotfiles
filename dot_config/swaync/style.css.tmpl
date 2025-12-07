@@ -1,0 +1,425 @@
+/* SwayNC Theme */
+
+* {
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+/* Notification popup window */
+.notification-row {
+  outline: none;
+}
+
+.notification-row:focus,
+.notification-row:hover {
+  background: transparent;
+}
+
+.notification {
+  background: rgba(32, 39, 44, 0.95);
+  border: 1px solid #354149;
+  border-radius: 12px;
+  margin: 6px 12px;
+  padding: 0;
+}
+
+.notification:hover {
+  border-color: #404952;
+}
+
+.notification-content {
+  padding: 10px;
+}
+
+.notification-default-action {
+  border-radius: 12px;
+}
+
+.notification-default-action:hover {
+  background: #2a343a;
+}
+
+/* Close button */
+.close-button {
+  background: #242c31;
+  color: #9a9a9a;
+  border-radius: 6px;
+  margin: 8px;
+  padding: 2px 6px;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.close-button:hover {
+  background: #e59191;
+  color: #20272c;
+}
+
+/* Notification content */
+.image {
+  border-radius: 8px;
+  margin-right: 10px;
+}
+
+.app-icon {
+  margin-right: 8px;
+}
+
+.summary {
+  color: #c6c6c6;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.time {
+  color: #9a9a9a;
+  font-size: 11px;
+  margin-right: 24px;
+}
+
+.body {
+  color: #b2b2b2;
+  font-size: 12px;
+}
+
+.body-image {
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+/* Action buttons */
+.notification-action {
+  background: #242c31;
+  color: #b2b2b2;
+  border: 1px solid #354149;
+  border-radius: 8px;
+  margin: 4px;
+  padding: 6px 12px;
+}
+
+.notification-action:hover {
+  background: #2a343a;
+  border-color: #404952;
+}
+
+.notification-action:first-child {
+  margin-left: 0;
+}
+
+.notification-action:last-child {
+  margin-right: 0;
+}
+
+/* Inline reply */
+.inline-reply {
+  margin-top: 8px;
+}
+
+.inline-reply-entry {
+  background: #242c31;
+  color: #b2b2b2;
+  border: 1px solid #354149;
+  border-radius: 8px;
+  padding: 6px 10px;
+  caret-color: #c6c6c6;
+}
+
+.inline-reply-entry:focus {
+  border-color: #61b0d8;
+}
+
+.inline-reply-button {
+  background: #61b0d8;
+  color: #20272c;
+  border-radius: 8px;
+  margin-left: 6px;
+  padding: 6px 12px;
+}
+
+.inline-reply-button:hover {
+  background: #2a343a;
+}
+
+/* Grouped notifications */
+.notification-group {
+  background: rgba(32, 39, 44, 0.95);
+  border: 1px solid #354149;
+  border-radius: 12px;
+  margin: 6px 12px;
+}
+
+.notification-group-headers {
+  padding: 10px;
+  font-weight: 600;
+  color: #c6c6c6;
+}
+
+.notification-group-icon {
+  margin-right: 8px;
+}
+
+.notification-group-collapse-button {
+  background: #242c31;
+  color: #9a9a9a;
+  border-radius: 6px;
+  padding: 4px 8px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.notification-group-collapse-button:hover {
+  background: #2a343a;
+  color: #b2b2b2;
+}
+
+.notification-group-close-all-button {
+  background: #242c31;
+  color: #9a9a9a;
+  border-radius: 6px;
+  margin-left: 6px;
+  padding: 4px 8px;
+}
+
+.notification-group-close-all-button:hover {
+  background: #e59191;
+  color: #20272c;
+}
+
+/* Critical urgency */
+.critical {
+  border-color: #e59191;
+}
+
+.critical .summary {
+  color: #e59191;
+}
+
+/* Low urgency */
+.low {
+  border-color: #354149;
+}
+
+.low .summary {
+  color: #9a9a9a;
+}
+
+/* Control center */
+.control-center {
+  background: rgba(32, 39, 44, 0.95);
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.control-center-list {
+  background: transparent;
+}
+
+.control-center-list-placeholder {
+  opacity: 0.5;
+}
+
+/* Blank window behind control center */
+.blank-window {
+  background: transparent;
+}
+
+/* Widgets */
+.widget-title {
+  color: #c6c6c6;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 8px 0;
+}
+
+.widget-title > button {
+  background: #242c31;
+  color: #b2b2b2;
+  border: 1px solid #354149;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+}
+
+.widget-title > button:hover {
+  background: #e59191;
+  color: #20272c;
+  border-color: #e59191;
+}
+
+/* Do Not Disturb */
+.widget-dnd {
+  background: #242c31;
+  border: 1px solid #354149;
+  border-radius: 12px;
+  padding: 8px 14px;
+  margin: 8px 0;
+}
+
+.widget-dnd > switch {
+  border-radius: 8px;
+  background: #212325;
+}
+
+.widget-dnd > switch:checked {
+  background: #e59191;
+}
+
+.widget-dnd > switch slider {
+  background: #b2b2b2;
+  border-radius: 8px;
+  min-width: 16px;
+  min-height: 16px;
+}
+
+/* MPRIS media widget */
+.widget-mpris {
+  background: #242c31;
+  border: 1px solid #354149;
+  border-radius: 12px;
+  padding: 10px;
+  margin: 8px 0;
+}
+
+.widget-mpris-player {
+  padding: 10px;
+}
+
+.widget-mpris-title {
+  color: #c6c6c6;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.widget-mpris-subtitle {
+  color: #9a9a9a;
+  font-size: 12px;
+}
+
+.widget-mpris-album-art {
+  border-radius: 8px;
+}
+
+.widget-mpris > box > button {
+  background: transparent;
+  color: #b2b2b2;
+  border-radius: 50%;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.widget-mpris > box > button:hover {
+  background: #2a343a;
+  color: #c6c6c6;
+}
+
+/* Buttons grid widget */
+.widget-buttons-grid {
+  padding: 8px 0;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+  background: #242c31;
+  color: #b2b2b2;
+  border: 1px solid #354149;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+  background: #2a343a;
+  border-color: #404952;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
+  background: #61b0d8;
+  color: #20272c;
+  border-color: #61b0d8;
+}
+
+/* Volume / Backlight sliders */
+.widget-volume,
+.widget-backlight {
+  background: #242c31;
+  border: 1px solid #354149;
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 8px 0;
+}
+
+.widget-volume scale,
+.widget-backlight scale {
+  padding: 0;
+  margin: 8px 0;
+}
+
+.widget-volume scale trough,
+.widget-backlight scale trough {
+  background: #212325;
+  border-radius: 6px;
+  min-height: 8px;
+}
+
+.widget-volume scale trough highlight,
+.widget-backlight scale trough highlight {
+  background: #61b0d8;
+  border-radius: 6px;
+}
+
+.widget-volume scale slider,
+.widget-backlight scale slider {
+  background: #b2b2b2;
+  border-radius: 50%;
+  min-width: 16px;
+  min-height: 16px;
+}
+
+/* Per-app volume sliders */
+.widget-volume .per-app-volume {
+  background: transparent;
+  padding: 4px 0;
+}
+
+.widget-volume .per-app-volume scale {
+  margin: 4px 0;
+}
+
+.widget-volume .per-app-volume image {
+  margin-right: 8px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.widget-volume .per-app-volume button {
+  background: transparent;
+  border: none;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* Main volume slider label */
+.widget-volume > box > label {
+  margin-right: 8px;
+}
+
+/* Volume expand button */
+.widget-volume > box > button {
+  background: transparent;
+  color: #9a9a9a;
+  margin-left: 4px;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.widget-volume > box > button:hover {
+  background: #2a343a;
+  color: #b2b2b2;
+}
+
+/* Volume "no active sink" placeholder */
+.widget-volume label {
+  color: #9a9a9a;
+}

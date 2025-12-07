@@ -1,0 +1,27 @@
+# Ghostty Theme - Generated from active palette
+
+background = {< background | strip >}
+background-opacity = {< _blur_opacity.float >}
+foreground = {< foreground | strip >}
+cursor-color = {< foreground_bright | strip >}
+cursor-text = {< background | strip >}
+selection-background = {< element_active | strip >}
+selection-foreground = {< foreground_bright | strip >}
+
+# Terminal palette (0-15)
+palette = 0={< black | strip >}
+palette = 1={< red | strip >}
+palette = 2={< green | strip >}
+palette = 3={< yellow | strip >}
+palette = 4={< blue | strip >}
+palette = 5={< magenta | strip >}
+palette = 6={< cyan | strip >}
+palette = 7={< white | strip >}
+palette = 8={< black_bright | strip >}
+palette = 9={< red_bright | strip >}
+palette = 10={< green_bright | strip >}
+palette = 11={< yellow_bright | strip >}
+palette = 12={< blue_bright | strip >}
+palette = 13={< magenta_bright | strip >}
+palette = 14={< cyan_bright | strip >}
+palette = 15={< white_bright | strip >}

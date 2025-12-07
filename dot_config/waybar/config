@@ -3,9 +3,9 @@
     "position": "top",
     "height": 34,
 
-    "modules-left": ["custom/launcher", "clock", "custom/updates"],
+    "modules-left": ["custom/launcher", "clock", "custom/updates", "custom/rebuild"],
     "modules-center": ["hyprland/workspaces"],
-    "modules-right": ["group/hardware", "group/controls", "group/status"],
+    "modules-right": ["group/hardware", "group/controls", "group/status", "custom/notification"],
 
     "group/controls": {
         "orientation": "horizontal",
@@ -42,6 +42,13 @@
         "return-type": "json",
         "interval": 300,
         "on-click": "ghostty -e yay"
+    },
+
+    "custom/rebuild": {
+        "exec": "waybar-rebuild",
+        "return-type": "json",
+        "interval": 3600,
+        "on-click": "ghostty -e waybar-rebuild fix"
     },
 
     "hyprland/workspaces": {
@@ -125,5 +132,26 @@
             "default": ["󰕿", "󰖀", "󰕾"]
         },
         "on-click": "pavucontrol"
+    },
+
+    "custom/notification": {
+        "tooltip": false,
+        "format": "{icon}",
+        "format-icons": {
+            "notification": "󱅫",
+            "none": "󰂜",
+            "dnd-notification": "󰂠",
+            "dnd-none": "󰪓",
+            "inhibited-notification": "󰂛",
+            "inhibited-none": "󰪑",
+            "dnd-inhibited-notification": "󰂛",
+            "dnd-inhibited-none": "󰪑"
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "swaync-client -t -sw",
+        "on-click-right": "swaync-client -d -sw",
+        "escape": true
     }
 }

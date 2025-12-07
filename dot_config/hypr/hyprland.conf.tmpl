@@ -44,6 +44,7 @@ monitor = ,preferred,auto,1
 # Autostart
 # ------------------------------------------------------------------------------
 exec-once = waybar
+exec-once = swaync
 exec-once = nm-applet --indicator
 exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
@@ -60,11 +61,14 @@ bind = $mod, Return, exec, $terminal
 bind = $mod SHIFT, Return, exec, $editor
 bind = $mod, E, exec, $fileManager
 bind = $mod, D, exec, $menu
+bind = $mod, V, exec, walker -m clipboard
+bind = $mod, I, exec, walker -m archlinuxpkgs
+bind = $mod, N, exec, swaync-client -t -sw
 
 # Window management
 bind = $mod, Q, killactive,
 bind = $mod, M, exit,
-bind = $mod, V, togglefloating,
+bind = $mod SHIFT, V, togglefloating,
 bind = $mod, P, pseudo,
 bind = $mod, J, togglesplit,
 bind = $mod, F, fullscreen,
@@ -130,8 +134,8 @@ general {
     gaps_in = 5
     gaps_out = 10
     border_size = 2
-    col.active_border = rgba(404952ed)
-    col.inactive_border = rgba(354149aa)
+    col.active_border = rgba(303b41ed)
+    col.inactive_border = rgba(3541497f)
     resize_on_border = false
     allow_tearing = false
     layout = dwindle

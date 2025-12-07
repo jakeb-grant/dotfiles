@@ -12,10 +12,12 @@ Outputs JSON for waybar custom module with return-type=json.
 """
 
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
 from typing import Optional
+
 import requests
 
 CACHE_DIR = Path.home() / ".cache" / "waybar-updates"
@@ -206,6 +208,55 @@ def format_tooltip(
     return "\n".join(lines) if lines else "System up to date"
 
 
+LOCK_FILE = CACHE_DIR / "lock"
+LOCK_MAX_AGE = 120  # Consider lock stale after 2 minutes
+
+
+def fetch_updates_background():
+    """Fetch updates and save to cache (runs in background)."""
+    try:
+        pacman_updates = get_pacman_updates()
+        aur_updates, aur_api_ok = get_aur_updates()
+
+        total = len(pacman_updates) + len(aur_updates)
+        tooltip = format_tooltip(pacman_updates, aur_updates)
+
+        if not aur_api_ok:
+            tooltip = "⚠ AUR API unavailable (using yay fallback)\n" + tooltip
+
+        if total > 0:
+            icon = "󰏔" if aur_api_ok else "󰏔 ⚠"
+            output = {
+                "text": f"{icon} {total}",
+                "tooltip": tooltip,
+                "class": "has-updates" if aur_api_ok else "has-updates api-warning",
+                "alt": "has-updates"
+            }
+        else:
+            output = {
+                "text": "" if aur_api_ok else "⚠",
+                "tooltip": tooltip if not aur_api_ok else "System up to date",
+                "class": "updated" if aur_api_ok else "api-warning",
+                "alt": "updated"
+            }
+
+        save_cache(output)
+    finally:
+        LOCK_FILE.unlink(missing_ok=True)
+
+
+def is_lock_stale() -> bool:
+    """Check if lock file exists and is stale."""
+    # Defensive check - caller should verify existence first
+    if not LOCK_FILE.exists():
+        return False
+    try:
+        age = time.time() - LOCK_FILE.stat().st_mtime
+        return age > LOCK_MAX_AGE
+    except OSError:
+        return False
+
+
 def main():
     # Check cache first
     cached = get_cache()
@@ -213,36 +264,35 @@ def main():
         print(json.dumps(cached))
         return
 
-    # Fetch fresh data
-    pacman_updates = get_pacman_updates()
-    aur_updates, aur_api_ok = get_aur_updates()
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-    total = len(pacman_updates) + len(aur_updates)
-    tooltip = format_tooltip(pacman_updates, aur_updates)
+    # If lock exists and not stale, another process is fetching
+    if LOCK_FILE.exists():
+        if not is_lock_stale():
+            print(json.dumps({"text": "󰑓", "tooltip": "Checking for updates...", "class": "checking"}))
+            return
+        # Stale lock - remove it
+        LOCK_FILE.unlink(missing_ok=True)
 
-    # Add API warning to tooltip if using fallback
-    if not aur_api_ok:
-        tooltip = "⚠ AUR API unavailable (using yay fallback)\n" + tooltip
+    # Create lock atomically (O_EXCL fails if file exists)
+    try:
+        fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.close(fd)
+    except FileExistsError:
+        # Another process just created it, show checking state
+        print(json.dumps({"text": "󰑓", "tooltip": "Checking for updates...", "class": "checking"}))
+        return
 
-    if total > 0:
-        # Add warning icon if API failed
-        icon = "󰏔" if aur_api_ok else "󰏔 ⚠"
-        output = {
-            "text": f"{icon} {total}",
-            "tooltip": tooltip,
-            "class": "has-updates" if aur_api_ok else "has-updates api-warning",
-            "alt": "has-updates"
-        }
+    pid = os.fork()
+    if pid > 0:
+        # Parent: output checking state and exit immediately
+        print(json.dumps({"text": "󰑓", "tooltip": "Checking for updates...", "class": "checking"}))
+        return
     else:
-        output = {
-            "text": "" if aur_api_ok else "⚠",
-            "tooltip": tooltip if not aur_api_ok else "System up to date",
-            "class": "updated" if aur_api_ok else "api-warning",
-            "alt": "updated"
-        }
-
-    save_cache(output)
-    print(json.dumps(output))
+        # Child: detach and close stdout
+        os.setsid()
+        os.close(1)  # Close stdout
+        fetch_updates_background()
 
 
 if __name__ == "__main__":

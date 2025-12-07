@@ -224,10 +224,22 @@ def reload_applications() -> None:
         print("    Waybar started")
 
 
-    # Reload Mako
-    if is_running("mako"):
-        run_silent(["makoctl", "reload"])
-        print("    Mako reloaded")
+    # Restart SwayNC (reload doesn't apply all CSS changes)
+    if is_running("swaync"):
+        subprocess.run(["killall", "swaync"], capture_output=True)
+    subprocess.Popen(
+        ["swaync"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    print("    SwayNC restarted")
+
+    # Walker CSS reloads automatically without restart
+
+    # Note: Ghostty doesn't support signal-based reload
+    # Users need to press Ctrl+Shift+, in each terminal to reload
+    # TODO: Could use wtype to send keypress if installed
 
 
 def set_wallpaper(theme_data: dict) -> None:

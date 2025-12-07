@@ -1,0 +1,214 @@
+#!/usr/bin/env -S uv run --quiet --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = []
+# ///
+
+"""
+Waybar module for detecting packages that need rebuilding.
+Checks for runtime errors indicating version mismatches.
+Outputs JSON for waybar custom module with return-type=json.
+
+Usage:
+  waybar-rebuild        Check for issues (default, for waybar)
+  waybar-rebuild fix    Run rebuild commands to fix detected issues
+"""
+
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+CACHE_DIR = Path.home() / ".cache" / "waybar-rebuild"
+CACHE_FILE = CACHE_DIR / "status.json"
+CACHE_MAX_AGE = 3600  # 1 hour
+LOCK_FILE = CACHE_DIR / "running.lock"
+LOCK_MAX_AGE = 600  # 10 minutes - assume stale if older
+
+# Apps to check for rebuild issues
+# Format: (name, command, error_patterns, rebuild_command)
+CHECKS = [
+    (
+        "elephant",
+        ["timeout", "3", "elephant"],
+        ["plugin was built with a different version"],
+        # Rebuilds elephant and all elephant-* provider plugins
+        "yay -S --rebuild $(pacman -Qqm | grep elephant)",
+    ),
+]
+
+
+def get_cache() -> dict | None:
+    """Load cached status if fresh enough."""
+    if not CACHE_FILE.exists():
+        return None
+
+    try:
+        age = time.time() - CACHE_FILE.stat().st_mtime
+        if age > CACHE_MAX_AGE:
+            return None
+
+        with open(CACHE_FILE) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def save_cache(data: dict) -> None:
+    """Save status to cache."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(CACHE_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def clear_cache() -> None:
+    """Clear the cache file."""
+    CACHE_FILE.unlink(missing_ok=True)
+
+
+def is_fix_running() -> bool:
+    """Check if a fix operation is currently running."""
+    if not LOCK_FILE.exists():
+        return False
+
+    # Ignore stale lock files (e.g., terminal closed mid-fix)
+    try:
+        age = time.time() - LOCK_FILE.stat().st_mtime
+        if age > LOCK_MAX_AGE:
+            LOCK_FILE.unlink(missing_ok=True)
+            return False
+    except OSError:
+        return False
+
+    return True
+
+
+def set_fix_running(running: bool) -> None:
+    """Set or clear the fix-in-progress lock."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    if running:
+        LOCK_FILE.touch()
+    else:
+        LOCK_FILE.unlink(missing_ok=True)
+
+
+def check_app(name: str, command: list[str], error_patterns: list[str]) -> bool:
+    """Check if an app has rebuild-related errors. Returns True if issues found."""
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            start_new_session=True,
+        )
+
+        for pattern in error_patterns:
+            if pattern in result.stderr:
+                return True
+
+        return False
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+
+def run_checks() -> list[tuple[str, str]]:
+    """Run all checks and return list of (name, rebuild_command) for issues."""
+    issues = []
+
+    for name, command, patterns, rebuild_cmd in CHECKS:
+        if check_app(name, command, patterns):
+            issues.append((name, rebuild_cmd))
+
+    return issues
+
+
+def do_fix():
+    """Run rebuild commands for all detected issues."""
+    set_fix_running(True)
+    clear_cache()
+
+    try:
+        issues = run_checks()
+
+        if not issues:
+            print("No rebuild issues detected.")
+            return
+
+        print(f"Found {len(issues)} issue(s) to fix:\n")
+
+        failed = []
+        for name, rebuild_cmd in issues:
+            print(f"==> Rebuilding {name}...")
+            print(f"    Running: {rebuild_cmd}\n")
+            result = subprocess.run(rebuild_cmd, shell=True)
+            if result.returncode != 0:
+                failed.append(name)
+            print()
+
+        # Clear cache so next check is fresh
+        clear_cache()
+
+        if failed:
+            print(f"Warning: Failed to rebuild: {', '.join(failed)}")
+            print("Check the output above for errors.")
+        else:
+            print("Done. Run 'waybar-rebuild' to verify fixes.")
+    finally:
+        set_fix_running(False)
+
+
+def do_check():
+    """Check for issues and output JSON for waybar."""
+    # If fix is running, show in-progress status
+    if is_fix_running():
+        output = {
+            "text": "󱁤 ...",
+            "tooltip": "Rebuild in progress...",
+            "class": "fixing",
+            "alt": "fixing"
+        }
+        print(json.dumps(output))
+        return
+
+    # Check cache first
+    cached = get_cache()
+    if cached:
+        print(json.dumps(cached))
+        return
+
+    issues = run_checks()
+
+    if issues:
+        tooltip_lines = ["Packages need rebuild:", ""]
+        tooltip_lines.extend(f"  • {name}" for name, _ in issues)
+        tooltip_lines.append("")
+        tooltip_lines.append("Click to fix")
+
+        output = {
+            "text": f"󱁤 {len(issues)}",
+            "tooltip": "\n".join(tooltip_lines),
+            "class": "needs-rebuild",
+            "alt": "needs-rebuild"
+        }
+    else:
+        output = {
+            "text": "",
+            "tooltip": "No rebuild issues detected",
+            "class": "ok",
+            "alt": "ok"
+        }
+
+    save_cache(output)
+    print(json.dumps(output))
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "fix":
+        do_fix()
+    else:
+        do_check()
+
+
+if __name__ == "__main__":
+    main()

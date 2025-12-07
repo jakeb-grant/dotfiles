@@ -1,0 +1,7 @@
+# Ghostty Configuration
+
+# Theme (generated from active theme palette)
+theme = theme
+
+# Keybindings
+keybind = shift+enter=text:\x1b\r

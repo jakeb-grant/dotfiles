@@ -1,0 +1,17 @@
+theme = "theme"
+
+# Quick wins
+selection_wrap = true
+resume_last_query = true
+
+# Run in terminal with Shift+Return
+[providers.actions]
+runner = [
+  { action = "run", default = true, bind = "Return" },
+  { action = "runterminal", label = "run in terminal", bind = "shift Return" },
+]
+
+desktopapplications = [
+  { action = "run", default = true, bind = "Return" },
+  { action = "runterminal", label = "run in terminal", bind = "shift Return" },
+]

@@ -25,7 +25,9 @@ tooltip label {
 #clock,
 #workspaces,
 #custom-launcher,
-#custom-updates {
+#custom-updates,
+#custom-rebuild,
+#custom-notification {
     background: {< background | rgba(_blur_opacity.float) >};
     color: {< foreground >};
     border-radius: 12px;
@@ -38,6 +40,10 @@ tooltip label {
 }
 
 #custom-updates.api-warning {
+    color: {< warning >};
+}
+
+#custom-rebuild.needs-rebuild {
     color: {< warning >};
 }
 
@@ -132,4 +138,17 @@ tooltip label {
 
 #pulseaudio.muted {
     color: {< foreground_dim >};
+}
+
+/* Notification indicator */
+#custom-notification {
+    font-size: 16px;
+    padding: 4px 12px;
+}
+
+#custom-notification.dnd-notification,
+#custom-notification.dnd-none,
+#custom-notification.dnd-inhibited-notification,
+#custom-notification.dnd-inhibited-none {
+    color: {< warning >};
 }
