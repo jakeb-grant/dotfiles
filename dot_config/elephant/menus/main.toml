@@ -6,40 +6,40 @@ icon = "view-app-grid"
 text = "1. Applications"
 keywords = ["apps", "launch", "programs"]
 icon = "applications-other"
-actions = { "open" = "walker -m desktopapplications -H" }
+actions = { "open" = "walker -s apps -H" }
 
 [[entries]]
 text = "2. Packages"
 keywords = ["install", "aur", "pacman", "yay"]
 icon = "system-software-install"
-actions = { "open" = "walker -m archlinuxpkgs -H" }
+actions = { "open" = "walker -s packages -H" }
 
 [[entries]]
 text = "3. Files"
 keywords = ["search", "find", "documents"]
 icon = "folder"
-actions = { "open" = "walker -m files -H" }
+actions = { "open" = "walker -s files -H" }
 
 [[entries]]
 text = "4. Windows"
 keywords = ["switch", "focus"]
 icon = "preferences-system-windows"
-actions = { "open" = "walker -m windows -H" }
+actions = { "open" = "walker -s windows -H" }
 
 [[entries]]
 text = "5. Keybinds"
 keywords = ["shortcuts", "hotkeys", "keys"]
 icon = "input-keyboard"
-actions = { "open" = "walker -m menus:keybinds -H" }
+actions = { "open" = "walker -s keybinds -H" }
 
 [[entries]]
 text = "6. Clipboard"
 keywords = ["paste", "history", "copy"]
 icon = "edit-paste"
-actions = { "open" = "walker -m clipboard -H" }
+actions = { "open" = "walker -s clipboard -H" }
 
 [[entries]]
 text = "7. Calculator"
 keywords = ["math", "calc", "convert"]
 icon = "accessories-calculator"
-actions = { "open" = "walker -m calc -H" }
+actions = { "open" = "walker -s calc -H" }

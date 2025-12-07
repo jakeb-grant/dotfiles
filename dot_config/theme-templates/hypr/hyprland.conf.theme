@@ -57,7 +57,7 @@ exec-once = walker --gapplication-service
 # ------------------------------------------------------------------------------
 
 # Applications
-bind = $mod, Space, exec, walker -m menus:main -H
+bind = $mod, Space, exec, walker -s main -H
 bind = $mod, Return, exec, $terminal
 bind = $mod SHIFT, B, exec, xdg-open https://
 bind = $mod SHIFT, F, exec, $fileManager

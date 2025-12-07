@@ -2,7 +2,39 @@ theme = "theme"
 
 # Quick wins
 selection_wrap = true
-resume_last_query = true
+
+# Provider sets for different menus
+[providers.sets.main]
+default = ["menus:main"]
+empty = ["menus:main"]
+
+[providers.sets.apps]
+default = ["desktopapplications"]
+empty = ["desktopapplications"]
+
+[providers.sets.packages]
+default = ["archlinuxpkgs"]
+empty = ["archlinuxpkgs"]
+
+[providers.sets.files]
+default = ["files"]
+empty = ["files"]
+
+[providers.sets.windows]
+default = ["windows"]
+empty = ["windows"]
+
+[providers.sets.keybinds]
+default = ["menus:keybinds"]
+empty = ["menus:keybinds"]
+
+[providers.sets.clipboard]
+default = ["clipboard"]
+empty = ["clipboard"]
+
+[providers.sets.calc]
+default = ["calc"]
+empty = ["calc"]
 
 # Run in terminal with Shift+Return
 [providers.actions]
