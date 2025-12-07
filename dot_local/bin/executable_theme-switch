@@ -270,6 +270,20 @@ def set_wallpaper(theme_data: dict) -> None:
         print("    Warning: awww-daemon not running, skipping wallpaper")
 
 
+def set_gtk_theme(theme_data: dict) -> None:
+    """Set GTK color scheme (dark/light) for libadwaita apps."""
+    scheme = theme_data.get("_gtk_color_scheme")
+    if not scheme:
+        return
+
+    # gsettings for GNOME/GTK4/libadwaita apps
+    run_silent([
+        "gsettings", "set", "org.gnome.desktop.interface",
+        "color-scheme", scheme
+    ])
+    print(f"    GTK color scheme: {scheme}")
+
+
 # =============================================================================
 # Main
 # =============================================================================
@@ -298,6 +312,7 @@ def main() -> None:
 
     reload_applications()
     set_wallpaper(theme_data)
+    set_gtk_theme(theme_data)
 
     print(f"✓ Theme switched to: {theme_name}")
 

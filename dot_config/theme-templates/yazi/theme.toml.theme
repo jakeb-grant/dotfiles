@@ -1,0 +1,135 @@
+# Yazi Theme - Generated from theme template
+
+[mgr]
+cwd = { fg = "{< foreground_bright >}" }
+hovered = { bg = "{< element_active >}" }
+preview_hovered = { bg = "{< element_hover >}" }
+find_keyword = { fg = "{< yellow >}", bold = true }
+find_position = { fg = "{< magenta >}", italic = true }
+marker_copied = { fg = "{< green >}", bg = "{< green >}" }
+marker_cut = { fg = "{< red >}", bg = "{< red >}" }
+marker_marked = { fg = "{< cyan >}", bg = "{< cyan >}" }
+marker_selected = { fg = "{< yellow >}", bg = "{< yellow >}" }
+count_copied = { fg = "{< background >}", bg = "{< green >}" }
+count_cut = { fg = "{< background >}", bg = "{< red >}" }
+count_selected = { fg = "{< background >}", bg = "{< yellow >}" }
+border_style = { fg = "{< border >}" }
+
+[tabs]
+active = { fg = "{< foreground_bright >}", bg = "{< element_active >}" }
+inactive = { fg = "{< foreground_dim >}", bg = "{< element >}" }
+
+[mode]
+normal_main = { fg = "{< background >}", bg = "{< blue >}", bold = true }
+normal_alt = { fg = "{< blue >}", bg = "{< element >}" }
+select_main = { fg = "{< background >}", bg = "{< green >}", bold = true }
+select_alt = { fg = "{< green >}", bg = "{< element >}" }
+unset_main = { fg = "{< background >}", bg = "{< magenta >}", bold = true }
+unset_alt = { fg = "{< magenta >}", bg = "{< element >}" }
+
+[status]
+sep_left = { open = "", close = "" }
+sep_right = { open = "", close = "" }
+overall = { fg = "{< foreground >}", bg = "{< element >}" }
+perm_read = { fg = "{< green >}" }
+perm_write = { fg = "{< yellow >}" }
+perm_exec = { fg = "{< red >}" }
+perm_sep = { fg = "{< foreground_dim >}" }
+
+[pick]
+border = { fg = "{< border >}" }
+active = { fg = "{< foreground_bright >}" }
+inactive = { fg = "{< foreground_dim >}" }
+
+[input]
+border = { fg = "{< border >}" }
+title = { fg = "{< foreground_bright >}" }
+value = { fg = "{< foreground >}" }
+selected = { bg = "{< element_selected >}" }
+
+[confirm]
+border = { fg = "{< border >}" }
+title = { fg = "{< foreground_bright >}", bold = true }
+content = { fg = "{< foreground >}" }
+list = { fg = "{< foreground >}" }
+btn_yes = { bg = "{< green >}", fg = "{< background >}" }
+btn_no = { bg = "{< red >}", fg = "{< background >}" }
+btn_labels = ["Yes", "No"]
+
+[cmp]
+border = { fg = "{< border >}" }
+active = { fg = "{< foreground_bright >}", bg = "{< element_active >}" }
+inactive = { fg = "{< foreground_dim >}" }
+icon_file = ""
+icon_folder = ""
+icon_command = ""
+
+[tasks]
+border = { fg = "{< border >}" }
+title = { fg = "{< foreground_bright >}" }
+hovered = { bg = "{< element_active >}" }
+
+[which]
+cols = 3
+mask = { bg = "{< background >}" }
+cand = { fg = "{< cyan >}" }
+rest = { fg = "{< foreground_dim >}" }
+desc = { fg = "{< foreground >}" }
+separator = "  "
+separator_style = { fg = "{< border >}" }
+
+[help]
+on = { fg = "{< cyan >}" }
+run = { fg = "{< foreground >}" }
+desc = { fg = "{< foreground_dim >}" }
+hovered = { bg = "{< element_active >}" }
+footer = { fg = "{< foreground_dim >}", bg = "{< element >}" }
+
+[notify]
+title_info = { fg = "{< blue >}" }
+title_warn = { fg = "{< yellow >}" }
+title_error = { fg = "{< red >}" }
+
+[filetype]
+rules = [
+    # Directories
+    { name = "*/", fg = "{< blue >}", bold = true },
+
+    # Executables
+    { mime = "application/x-executable", fg = "{< green >}" },
+    { mime = "application/x-sharedlib", fg = "{< green >}" },
+
+    # Archives
+    { mime = "application/*zip*", fg = "{< magenta >}" },
+    { mime = "application/x-tar", fg = "{< magenta >}" },
+    { mime = "application/x-*compressed*", fg = "{< magenta >}" },
+    { mime = "application/x-rar", fg = "{< magenta >}" },
+    { mime = "application/x-7z*", fg = "{< magenta >}" },
+
+    # Documents
+    { mime = "application/pdf", fg = "{< red >}" },
+    { mime = "application/*doc*", fg = "{< blue >}" },
+    { mime = "application/*sheet*", fg = "{< green >}" },
+    { mime = "application/*presentation*", fg = "{< yellow >}" },
+
+    # Images
+    { mime = "image/*", fg = "{< cyan >}" },
+
+    # Video
+    { mime = "video/*", fg = "{< magenta >}" },
+
+    # Audio
+    { mime = "audio/*", fg = "{< yellow >}" },
+
+    # Text/Code
+    { mime = "text/*", fg = "{< foreground >}" },
+    { mime = "application/json", fg = "{< yellow >}" },
+    { mime = "application/javascript", fg = "{< yellow >}" },
+    { mime = "application/x-yaml", fg = "{< cyan >}" },
+
+    # Symlinks
+    { name = "*", is = "link", fg = "{< cyan >}", italic = true },
+
+    # Orphan links
+    { name = "*", is = "orphan", fg = "{< red >}", italic = true },
+]

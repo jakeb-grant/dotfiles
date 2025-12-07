@@ -41,7 +41,7 @@
         "exec": "waybar-updates",
         "return-type": "json",
         "interval": 300,
-        "on-click": "ghostty -e yay"
+        "on-click": "ghostty -e bash -c 'yay && notify-send \"Updates\" \"Package update complete\"'"
     },
 
     "custom/rebuild": {

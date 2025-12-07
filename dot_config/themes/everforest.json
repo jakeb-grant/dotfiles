@@ -63,5 +63,6 @@
   "_note": "24 terminal colors: black/red/green/yellow/blue/magenta/cyan/white with _bright and _dim variants",
   "_wallpaper": "everforest1.jpg",
   "_zed_theme_dark": "Everforest Dark Blur",
-  "_zed_theme_light": "Everforest Light Blur"
+  "_zed_theme_light": "Everforest Light Blur",
+  "_gtk_color_scheme": "prefer-dark"
 }
