@@ -5,8 +5,11 @@ Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 ## Features
 
 - **Window Manager**: Hyprland
-- **Status Bar**: Waybar with system monitoring
-- **Theme System**: Runtime theme switching with template support
+- **Status Bar**: Waybar with system monitoring, update checker, rebuild detector
+- **Notifications**: SwayNC notification center with quick actions
+- **Launcher**: Walker with custom menus (apps, packages, keybinds, clipboard, calculator)
+- **Terminal**: Ghostty with themed colors
+- **Theme System**: Runtime theme switching with Jinja2 templates
 
 ## Installation
 
@@ -18,7 +21,7 @@ chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
 
 ### Safe Installation (Preserving Existing Configs)
 
-Chezmoi will overwrite managed files (`~/.config/hypr/`, `~/.config/waybar/`, etc.). To preview changes first:
+Chezmoi will overwrite managed files. To preview changes first:
 
 ```bash
 # Clone without applying
@@ -31,89 +34,137 @@ chezmoi diff
 chezmoi apply
 ```
 
+### Dependencies
+
+- hyprland, waybar, swaync, walker, elephant, ghostty
+- grim, slurp, wl-copy, hyprpicker (screenshots)
+- hyprlock (lock screen)
+
 ## What's Included
 
 ```
 dot_config/
 ├── hypr/               # Hyprland window manager
 ├── waybar/             # Status bar
-├── themes/             # Theme definitions
-└── theme-templates/    # Theme template files
-dot_local/
-└── bin/theme-switch    # Theme switching utility
+├── swaync/             # Notification center
+├── walker/             # Application launcher
+├── ghostty/            # Terminal emulator
+├── elephant/           # Walker backend & custom menus
+│   └── menus/          # Main menu, keybinds menu
+├── themes/             # Theme definitions (JSON)
+└── theme-templates/    # Jinja2 theme templates
+dot_local/bin/
+├── theme-switch        # Theme switching utility
+├── waybar-updates      # Package update checker
+└── waybar-rebuild      # Go plugin rebuild detector
 ```
 
 ## Keybindings
 
+### Applications
 | Key | Action |
 |-----|--------|
+| `Super + Space` | Main menu (Walker) |
 | `Super + Return` | Terminal (Ghostty) |
-| `Super + Shift + Return` | Editor (Zeditor) |
-| `Super + D` | Application launcher (Walker) |
-| `Super + E` | File manager (Nautilus) |
-| `Super + Q` | Close window |
+| `Super + Shift + B` | Browser |
+| `Super + Shift + F` | File manager (Nautilus) |
+| `Super + Shift + Z` | Editor (Zed) |
+| `Super + Ctrl + V` | Clipboard history |
+| `Super + I` | Package search (AUR + repos) |
+
+### Window Management
+| Key | Action |
+|-----|--------|
+| `Super + W` | Close window |
+| `Super + T` | Toggle floating |
 | `Super + F` | Fullscreen |
-| `Super + V` | Toggle floating |
+| `Super + O` | Pin window (sticky) |
+| `Super + L` | Lock screen |
+| `Super + Shift + Arrow` | Swap window |
+| `Super + =/-` | Resize width |
+| `Super + Shift + =/-` | Resize height |
+
+### Workspaces
+| Key | Action |
+|-----|--------|
+| `Super + 1-0` | Switch workspace |
+| `Super + Shift + 1-0` | Move to workspace |
+| `Super + Tab` | Next workspace |
+| `Super + Shift + Tab` | Previous workspace |
+| `Super + Ctrl + Tab` | Last workspace |
 | `Super + S` | Scratchpad |
-| `Super + 1-9` | Switch workspace |
-| `Super + Shift + 1-9` | Move to workspace |
-| `Print` | Screenshot (selection) |
-| `Shift + Print` | Screenshot (full) |
+| `Super + Shift + S` | Move to scratchpad |
+
+### Notifications
+| Key | Action |
+|-----|--------|
+| `Super + ,` | Dismiss notification |
+| `Super + Shift + ,` | Dismiss all |
+| `Super + Ctrl + ,` | Toggle DND |
+| `Super + Alt + ,` | Toggle panel |
+
+### Screenshots
+| Key | Action |
+|-----|--------|
+| `Print` | Screenshot area to clipboard |
+| `Shift + Print` | Screenshot full screen |
+| `Super + Print` | Color picker |
+
+### Other
+| Key | Action |
+|-----|--------|
+| `Super + Shift + Space` | Toggle waybar |
 
 ## Theme System
 
-The theme system uses a two-stage template process that integrates with chezmoi:
+The theme system uses Jinja2 templates with custom delimiters to avoid conflicts with chezmoi:
 
 ```
-Theme File              Theme Template                  Chezmoi Template           Final Config
-(carbonfox.conf)  --->  (hyprland.conf.theme)  --->    (hyprland.conf.tmpl)  ---> (hyprland.conf)
+Theme JSON              Theme Template                  Chezmoi Template           Final Config
+(everforest.json) --->  (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
                         theme-switch                    chezmoi apply
 ```
 
 ### How It Works
 
-1. **Theme files** (`dot_config/themes/*.conf`) define color palettes and semantic mappings
-2. **Theme templates** (`dot_config/theme-templates/`) contain `{{UPPERCASE_VARS}}` for colors
-3. **`theme-switch`** processes theme variables, outputs `.tmpl` files to chezmoi source
-4. **`chezmoi apply`** processes machine-specific variables (e.g., `{{ .graphics }}`)
+1. **Theme files** (`dot_config/themes/*.json`) define color palettes
+2. **Theme templates** (`dot_config/theme-templates/`) use `{< variable >}` syntax
+3. **`theme-switch`** processes templates, outputs `.tmpl` files, reloads apps
+4. **`chezmoi apply`** processes machine-specific variables
 
 ### Template Syntax
 
 Theme variables (processed by `theme-switch`):
 ```
-{{WM_BORDER_ACTIVE_COLOR}}                    # Simple replacement
-{{WM_BORDER_ACTIVE_COLOR:hypr_rgba}}          # With format conversion
-{{WM_BORDER_ACTIVE_COLOR:hypr_rgba:OPACITY}}  # With format and opacity
+{< background >}                      # Direct color value
+{< background | rgba(0.95) >}         # With filter and opacity
+{< primary | hypr_rgba(0.93) >}       # Hyprland format
 ```
 
 Chezmoi variables (processed by `chezmoi apply`):
 ```
-{{ .graphics }}                               # Machine-specific data
-{{ if eq .graphics "nvidia" }}...{{ end }}    # Conditionals
+{{ .graphics }}                       # Machine-specific data
+{{ if eq .graphics "nvidia" }}...{{ end }}
 ```
 
-**Convention**: Theme variables are `UPPERCASE`, chezmoi uses lowercase/dots.
+### Available Filters
 
-### Available Color Formats
-
-| Format | Output Example |
+| Filter | Output Example |
 |--------|----------------|
 | `hex` | `#3ddbd9` |
-| `hex_alpha` | `#3ddbd9ee` |
+| `hex_alpha(0.9)` | `#3ddbd9e6` |
+| `rgb` | `rgb(61, 219, 217)` |
+| `rgba(0.9)` | `rgba(61, 219, 217, 0.90)` |
+| `rgb_values` | `61, 219, 217` |
 | `hypr_rgb` | `rgb(3ddbd9)` |
-| `hypr_rgba` | `rgba(3ddbd9ee)` |
-| `css_rgb` | `rgb(61, 219, 217)` |
-| `css_rgba` | `rgba(61, 219, 217, 0.93)` |
-| `rgb_only` | `61, 219, 217` |
+| `hypr_rgba(0.9)` | `rgba(3ddbd9e6)` |
+| `strip` | `3ddbd9` |
 
 ### Usage
 
 ```bash
-# Switch theme (regenerates .tmpl files in chezmoi source)
-theme-switch carbonfox
-
-# Apply to system (processes machine-specific templates)
-chezmoi apply
+# Switch theme (processes templates, applies chezmoi, reloads apps)
+theme-switch everforest
 ```
 
 ## Machine-Specific Configuration
@@ -123,8 +174,6 @@ On first run, chezmoi prompts for machine-specific settings stored in `~/.config
 | Variable | Options | Description |
 |----------|---------|-------------|
 | `graphics` | `amd`, `nvidia`, `nvidia-prime` | GPU driver configuration |
-
-These values are used in templates for conditional configuration (e.g., NVIDIA environment variables are only included when `graphics` is set to `nvidia` or `nvidia-prime`).
 
 To change settings:
 ```bash
