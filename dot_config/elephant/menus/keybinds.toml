@@ -1,0 +1,257 @@
+name = "keybinds"
+name_pretty = "Keybinds"
+icon = "input-keyboard"
+
+# Applications
+[[entries]]
+text = "Launcher"
+keywords = ["menu", "apps", "walker"]
+icon = "view-app-grid"
+subtext = "Super + Space"
+actions = { "exec" = "walker" }
+
+[[entries]]
+text = "Terminal"
+keywords = ["ghostty", "shell"]
+icon = "utilities-terminal"
+subtext = "Super + Return"
+actions = { "exec" = "ghostty" }
+
+[[entries]]
+text = "Browser"
+keywords = ["firefox", "web"]
+icon = "web-browser"
+subtext = "Super + Shift + B"
+actions = { "exec" = "xdg-open https://" }
+
+[[entries]]
+text = "File Manager"
+keywords = ["nautilus", "files"]
+icon = "system-file-manager"
+subtext = "Super + Shift + F"
+actions = { "exec" = "nautilus --new-window" }
+
+[[entries]]
+text = "Editor"
+keywords = ["zed", "code"]
+icon = "text-editor"
+subtext = "Super + Shift + Z"
+actions = { "exec" = "zeditor" }
+
+[[entries]]
+text = "Clipboard History"
+keywords = ["paste", "copy"]
+icon = "edit-paste"
+subtext = "Super + Ctrl + V"
+actions = { "exec" = "walker -m clipboard" }
+
+[[entries]]
+text = "Package Search"
+keywords = ["install", "aur"]
+icon = "system-software-install"
+subtext = "Super + I"
+actions = { "exec" = "walker -m archlinuxpkgs" }
+
+# Window Management
+[[entries]]
+text = "Close Window"
+keywords = ["kill", "quit"]
+icon = "window-close"
+subtext = "Super + W"
+actions = { "exec" = "hyprctl dispatch killactive" }
+
+[[entries]]
+text = "Toggle Floating"
+keywords = ["tile", "float"]
+icon = "window-duplicate"
+subtext = "Super + T"
+actions = { "exec" = "hyprctl dispatch togglefloating" }
+
+[[entries]]
+text = "Fullscreen"
+keywords = ["maximize"]
+icon = "view-fullscreen"
+subtext = "Super + F"
+actions = { "exec" = "hyprctl dispatch fullscreen" }
+
+[[entries]]
+text = "Pin Window"
+keywords = ["sticky"]
+icon = "window-pin"
+subtext = "Super + O"
+actions = { "exec" = "hyprctl dispatch pin" }
+
+[[entries]]
+text = "Swap Window Left"
+keywords = ["move", "swap"]
+icon = "go-previous"
+subtext = "Super + Shift + Left"
+actions = { "exec" = "hyprctl dispatch swapwindow l" }
+
+[[entries]]
+text = "Swap Window Right"
+keywords = ["move", "swap"]
+icon = "go-next"
+subtext = "Super + Shift + Right"
+actions = { "exec" = "hyprctl dispatch swapwindow r" }
+
+[[entries]]
+text = "Swap Window Up"
+keywords = ["move", "swap"]
+icon = "go-up"
+subtext = "Super + Shift + Up"
+actions = { "exec" = "hyprctl dispatch swapwindow u" }
+
+[[entries]]
+text = "Swap Window Down"
+keywords = ["move", "swap"]
+icon = "go-down"
+subtext = "Super + Shift + Down"
+actions = { "exec" = "hyprctl dispatch swapwindow d" }
+
+[[entries]]
+text = "Resize Wider"
+keywords = ["grow", "resize"]
+icon = "zoom-in"
+subtext = "Super + ="
+actions = { "exec" = "hyprctl dispatch resizeactive 50 0" }
+
+[[entries]]
+text = "Resize Narrower"
+keywords = ["shrink", "resize"]
+icon = "zoom-out"
+subtext = "Super + -"
+actions = { "exec" = "hyprctl dispatch resizeactive -50 0" }
+
+[[entries]]
+text = "Resize Taller"
+keywords = ["grow", "resize"]
+icon = "zoom-in"
+subtext = "Super + Shift + ="
+actions = { "exec" = "hyprctl dispatch resizeactive 0 50" }
+
+[[entries]]
+text = "Resize Shorter"
+keywords = ["shrink", "resize"]
+icon = "zoom-out"
+subtext = "Super + Shift + -"
+actions = { "exec" = "hyprctl dispatch resizeactive 0 -50" }
+
+# Workspaces
+[[entries]]
+text = "Next Workspace"
+keywords = ["switch"]
+icon = "go-next"
+subtext = "Super + Tab"
+actions = { "exec" = "hyprctl dispatch workspace e+1" }
+
+[[entries]]
+text = "Previous Workspace"
+keywords = ["switch"]
+icon = "go-previous"
+subtext = "Super + Shift + Tab"
+actions = { "exec" = "hyprctl dispatch workspace e-1" }
+
+[[entries]]
+text = "Last Workspace"
+keywords = ["switch", "previous", "back"]
+icon = "edit-undo"
+subtext = "Super + Ctrl + Tab"
+actions = { "exec" = "hyprctl dispatch workspace previous" }
+
+[[entries]]
+text = "Scratchpad"
+keywords = ["hidden", "stash"]
+icon = "view-restore"
+subtext = "Super + S"
+actions = { "exec" = "hyprctl dispatch togglespecialworkspace magic" }
+
+# Notifications
+[[entries]]
+text = "Dismiss Notification"
+keywords = ["close", "clear"]
+icon = "notification-symbolic"
+subtext = "Super + ,"
+actions = { "exec" = "swaync-client -C" }
+
+[[entries]]
+text = "Dismiss All"
+keywords = ["clear", "close"]
+icon = "edit-clear-all"
+subtext = "Super + Shift + ,"
+actions = { "exec" = "swaync-client --close-all" }
+
+[[entries]]
+text = "Toggle DND"
+keywords = ["mute", "silent"]
+icon = "notifications-disabled"
+subtext = "Super + Ctrl + ,"
+actions = { "exec" = "swaync-client -d -sw" }
+
+[[entries]]
+text = "Notification Panel"
+keywords = ["center"]
+icon = "preferences-system-notifications"
+subtext = "Super + Alt + ,"
+actions = { "exec" = "swaync-client -t -sw" }
+
+# Screenshots
+[[entries]]
+text = "Screenshot (Area)"
+keywords = ["capture", "snip"]
+icon = "applets-screenshooter"
+subtext = "Print"
+actions = { "exec" = "grim -g \"$(slurp)\" - | wl-copy" }
+
+[[entries]]
+text = "Screenshot (Full)"
+keywords = ["capture", "screen"]
+icon = "applets-screenshooter"
+subtext = "Shift + Print"
+actions = { "exec" = "grim - | wl-copy" }
+
+[[entries]]
+text = "Color Picker"
+keywords = ["pick", "eyedropper"]
+icon = "color-picker"
+subtext = "Super + Print"
+actions = { "exec" = "hyprpicker -a" }
+
+# System
+[[entries]]
+text = "Toggle Waybar"
+keywords = ["bar", "hide"]
+icon = "view-more-horizontal"
+subtext = "Super + Shift + Space"
+actions = { "exec" = "killall -SIGUSR1 waybar" }
+
+[[entries]]
+text = "Lock Screen"
+keywords = ["lock"]
+icon = "system-lock-screen"
+subtext = "Super + L"
+actions = { "exec" = "hyprlock" }
+
+[[entries]]
+text = "Logout"
+keywords = ["exit"]
+icon = "system-log-out"
+actions = { "exec" = "hyprctl dispatch exit" }
+
+[[entries]]
+text = "Suspend"
+keywords = ["sleep"]
+icon = "system-suspend"
+actions = { "exec" = "systemctl suspend" }
+
+[[entries]]
+text = "Reboot"
+keywords = ["restart"]
+icon = "system-reboot"
+actions = { "exec" = "systemctl reboot" }
+
+[[entries]]
+text = "Shutdown"
+keywords = ["poweroff"]
+icon = "system-shutdown"
+actions = { "exec" = "systemctl poweroff" }

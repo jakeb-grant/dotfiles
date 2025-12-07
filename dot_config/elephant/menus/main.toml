@@ -1,0 +1,45 @@
+name = "main"
+name_pretty = "Main Menu"
+icon = "view-app-grid"
+
+[[entries]]
+text = "1. Applications"
+keywords = ["apps", "launch", "programs"]
+icon = "applications-other"
+actions = { "open" = "walker -m desktopapplications -H" }
+
+[[entries]]
+text = "2. Packages"
+keywords = ["install", "aur", "pacman", "yay"]
+icon = "system-software-install"
+actions = { "open" = "walker -m archlinuxpkgs -H" }
+
+[[entries]]
+text = "3. Files"
+keywords = ["search", "find", "documents"]
+icon = "folder"
+actions = { "open" = "walker -m files -H" }
+
+[[entries]]
+text = "4. Windows"
+keywords = ["switch", "focus"]
+icon = "preferences-system-windows"
+actions = { "open" = "walker -m windows -H" }
+
+[[entries]]
+text = "5. Keybinds"
+keywords = ["shortcuts", "hotkeys", "keys"]
+icon = "input-keyboard"
+actions = { "open" = "walker -m menus:keybinds -H" }
+
+[[entries]]
+text = "6. Clipboard"
+keywords = ["paste", "history", "copy"]
+icon = "edit-paste"
+actions = { "open" = "walker -m clipboard -H" }
+
+[[entries]]
+text = "7. Calculator"
+keywords = ["math", "calc", "convert"]
+icon = "accessories-calculator"
+actions = { "open" = "walker -m calc -H" }

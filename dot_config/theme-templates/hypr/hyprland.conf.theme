@@ -57,27 +57,50 @@ exec-once = walker --gapplication-service
 # ------------------------------------------------------------------------------
 
 # Applications
+bind = $mod, Space, exec, walker -m menus:main -H
 bind = $mod, Return, exec, $terminal
-bind = $mod SHIFT, Return, exec, $editor
-bind = $mod, E, exec, $fileManager
-bind = $mod, D, exec, $menu
-bind = $mod, V, exec, walker -m clipboard
+bind = $mod SHIFT, B, exec, xdg-open https://
+bind = $mod SHIFT, F, exec, $fileManager
+bind = $mod SHIFT, Z, exec, $editor
+bind = $mod CTRL, V, exec, walker -m clipboard
 bind = $mod, I, exec, walker -m archlinuxpkgs
-bind = $mod, N, exec, swaync-client -t -sw
+# bind = $mod, Escape, exec, walker -m power  # TODO: create power menu
 
 # Window management
-bind = $mod, Q, killactive,
-bind = $mod, M, exit,
-bind = $mod SHIFT, V, togglefloating,
+bind = $mod, W, killactive,
+bind = $mod, T, togglefloating,
+bind = $mod, O, pin,
 bind = $mod, P, pseudo,
 bind = $mod, J, togglesplit,
 bind = $mod, F, fullscreen,
+bind = $mod, L, exec, hyprlock
+
+# Toggle waybar
+bind = $mod SHIFT, Space, exec, killall -SIGUSR1 waybar
+
+# Notifications
+bind = $mod, comma, exec, swaync-client -C
+bind = $mod SHIFT, comma, exec, swaync-client --close-all
+bind = $mod CTRL, comma, exec, swaync-client -d -sw
+bind = $mod ALT, comma, exec, swaync-client -t -sw
 
 # Move focus with arrow keys
 bind = $mod, left, movefocus, l
 bind = $mod, right, movefocus, r
 bind = $mod, up, movefocus, u
 bind = $mod, down, movefocus, d
+
+# Swap windows
+bind = $mod SHIFT, left, swapwindow, l
+bind = $mod SHIFT, right, swapwindow, r
+bind = $mod SHIFT, up, swapwindow, u
+bind = $mod SHIFT, down, swapwindow, d
+
+# Resize windows
+binde = $mod, equal, resizeactive, 50 0
+binde = $mod, minus, resizeactive, -50 0
+binde = $mod SHIFT, equal, resizeactive, 0 50
+binde = $mod SHIFT, minus, resizeactive, 0 -50
 
 # Switch workspaces
 bind = $mod, 1, workspace, 1
@@ -90,6 +113,9 @@ bind = $mod, 7, workspace, 7
 bind = $mod, 8, workspace, 8
 bind = $mod, 9, workspace, 9
 bind = $mod, 0, workspace, 10
+bind = $mod, Tab, workspace, e+1
+bind = $mod SHIFT, Tab, workspace, e-1
+bind = $mod CTRL, Tab, workspace, previous
 
 # Move window to workspace
 bind = $mod SHIFT, 1, movetoworkspace, 1
@@ -115,9 +141,10 @@ bind = $mod, mouse_up, workspace, e-1
 bindm = $mod, mouse:272, movewindow
 bindm = $mod, mouse:273, resizewindow
 
-# Screenshots (clipboard only)
+# Screenshots
 bind = , Print, exec, grim -g "$(slurp)" - | wl-copy
 bind = SHIFT, Print, exec, grim - | wl-copy
+bind = $mod, Print, exec, hyprpicker -a
 
 # Laptop function keys
 bindel = , XF86MonBrightnessUp, exec, brightnessctl set +5%
@@ -206,6 +233,7 @@ dwindle {
 master {
     new_status = master
 }
+
 
 # ------------------------------------------------------------------------------
 # Input

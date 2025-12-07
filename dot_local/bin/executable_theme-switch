@@ -237,6 +237,16 @@ def reload_applications() -> None:
 
     # Walker CSS reloads automatically without restart
 
+    # Restart Elephant (walker backend)
+    subprocess.run(["killall", "-w", "elephant"], capture_output=True)
+    subprocess.Popen(
+        ["elephant"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    print("    Elephant restarted")
+
     # Note: Ghostty doesn't support signal-based reload
     # Users need to press Ctrl+Shift+, in each terminal to reload
     # TODO: Could use wtype to send keypress if installed
