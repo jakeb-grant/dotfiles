@@ -52,8 +52,8 @@ border = { fg = "{< border >}" }
 title = { fg = "{< foreground_bright >}", bold = true }
 content = { fg = "{< foreground >}" }
 list = { fg = "{< foreground >}" }
-btn_yes = { bg = "{< green >}", fg = "{< background >}" }
-btn_no = { bg = "{< red >}", fg = "{< background >}" }
+btn_yes = { bg = "{< success >}", fg = "{< background >}" }
+btn_no = { bg = "{< error >}", fg = "{< background >}" }
 btn_labels = ["Yes", "No"]
 
 [cmp]
@@ -86,9 +86,9 @@ hovered = { bg = "{< element_active >}" }
 footer = { fg = "{< foreground_dim >}", bg = "{< element >}" }
 
 [notify]
-title_info = { fg = "{< blue >}" }
-title_warn = { fg = "{< yellow >}" }
-title_error = { fg = "{< red >}" }
+title_info = { fg = "{< info >}" }
+title_warn = { fg = "{< warning >}" }
+title_error = { fg = "{< error >}" }
 
 [filetype]
 rules = [
