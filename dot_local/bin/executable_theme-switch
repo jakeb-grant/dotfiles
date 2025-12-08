@@ -15,7 +15,6 @@ Usage: theme-switch [THEME]
 """
 
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -285,56 +284,6 @@ def set_gtk_theme(theme_data: dict) -> None:
     print(f"    GTK color scheme: {scheme}")
 
 
-def copy_zen_theme() -> None:
-    """Copy generated userChrome.css to Zen browser profile."""
-    zen_dir = Path.home() / ".zen"
-    if not zen_dir.exists():
-        return
-
-    # Find active Zen profile (ends with .Default (release) or similar)
-    profiles = list(zen_dir.glob("*.Default (release)"))
-    if not profiles:
-        profiles = list(zen_dir.glob("*.Default*"))
-    if not profiles:
-        return
-
-    # Source file from chezmoi output
-    source_css = Path.home() / ".config/zen/userChrome.css"
-    if not source_css.exists():
-        return
-
-    # Preferences needed for userChrome.css to work
-    required_prefs = {
-        "toolkit.legacyUserProfileCustomizations.stylesheets": "true",
-        "devtools.chrome.enabled": "true",
-        "devtools.debugger.remote-enabled": "true",
-    }
-
-    for profile in profiles:
-        # Copy CSS
-        chrome_dir = profile / "chrome"
-        chrome_dir.mkdir(exist_ok=True)
-        dest_css = chrome_dir / "userChrome.css"
-        shutil.copy(source_css, dest_css)
-
-        # Update user.js to enable userChrome.css (preserve existing prefs)
-        user_js = profile / "user.js"
-        existing_content = user_js.read_text() if user_js.exists() else ""
-
-        # Add missing prefs
-        new_prefs = []
-        for pref, value in required_prefs.items():
-            if pref not in existing_content:
-                new_prefs.append(f'user_pref("{pref}", {value});')
-
-        if new_prefs:
-            with open(user_js, "a") as f:
-                f.write("\n// Added by theme-switch for userChrome.css\n")
-                f.write("\n".join(new_prefs) + "\n")
-
-        print(f"    Zen theme copied to: {profile.name}")
-
-
 # =============================================================================
 # Main
 # =============================================================================
@@ -364,7 +313,6 @@ def main() -> None:
     reload_applications()
     set_wallpaper(theme_data)
     set_gtk_theme(theme_data)
-    copy_zen_theme()
 
     print(f"✓ Theme switched to: {theme_name}")
 
