@@ -92,7 +92,7 @@
         },
         {
           "label": "󰖩",
-          "command": "nm-connection-editor"
+          "command": "ghostty -e impala"
         },
         {
           "label": "󰂯",
