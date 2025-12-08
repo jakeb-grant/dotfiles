@@ -12,7 +12,7 @@ actions = { "open" = "walker -s apps -H" }
 text = "2. Packages"
 keywords = ["install", "aur", "pacman", "yay"]
 icon = "system-software-install"
-actions = { "open" = "walker -s packages -H" }
+actions = { "open" = "walker -m archlinuxpkgs -H" }
 
 [[entries]]
 text = "3. Files"

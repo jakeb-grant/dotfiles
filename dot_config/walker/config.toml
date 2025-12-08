@@ -12,10 +12,6 @@ empty = ["menus:main"]
 default = ["desktopapplications"]
 empty = ["desktopapplications"]
 
-[providers.sets.packages]
-default = ["archlinuxpkgs"]
-empty = ["archlinuxpkgs"]
-
 [providers.sets.files]
 default = ["files"]
 empty = ["files"]
