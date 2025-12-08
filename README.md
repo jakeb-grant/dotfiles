@@ -9,7 +9,10 @@ Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 - **Notifications**: SwayNC notification center with quick actions
 - **Launcher**: Walker with custom menus (apps, packages, keybinds, clipboard, calculator)
 - **Terminal**: Ghostty with themed colors
+- **Editor**: Zed with theme integration
+- **File Manager**: Nautilus (GTK themed), Yazi (terminal)
 - **Theme System**: Runtime theme switching with Jinja2 templates
+- **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
 
 ## Installation
 
@@ -37,6 +40,7 @@ chezmoi apply
 ### Dependencies
 
 - hyprland, waybar, swaync, walker, elephant, ghostty
+- zed, nautilus, yazi
 - grim, slurp, wl-copy, hyprpicker (screenshots)
 - hyprlock (lock screen)
 
@@ -49,6 +53,10 @@ dot_config/
 ├── swaync/             # Notification center
 ├── walker/             # Application launcher
 ├── ghostty/            # Terminal emulator
+├── zed/                # Zed editor settings
+├── yazi/               # Yazi file manager theme
+├── gtk-3.0/            # GTK3 color overrides
+├── gtk-4.0/            # GTK4/libadwaita color overrides
 ├── elephant/           # Walker backend & custom menus
 │   └── menus/          # Main menu, keybinds menu
 ├── themes/             # Theme definitions (JSON)
