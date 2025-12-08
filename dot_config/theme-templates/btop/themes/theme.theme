@@ -1,0 +1,81 @@
+# Btop Theme - Generated from active palette
+# Theme: {< _theme_name >}
+
+# Main background, empty for terminal default (transparency support)
+theme[main_bg]=""
+
+# Main text color
+theme[main_fg]="{< foreground >}"
+
+# Title color for boxes
+theme[title]="{< foreground_bright >}"
+
+# Highlight color for keyboard shortcuts
+theme[hi_fg]="{< cyan >}"
+
+# Background color of selected item in processes box
+theme[selected_bg]="{< element_active >}"
+
+# Foreground color of selected item in processes box
+theme[selected_fg]="{< foreground_bright >}"
+
+# Color of inactive/disabled text
+theme[inactive_fg]="{< foreground_dim >}"
+
+# Misc colors for processes box including mini cpu graphs, details memory graph and details status text
+theme[proc_misc]="{< info >}"
+
+# Cpu box outline color
+theme[cpu_box]="{< border >}"
+
+# Memory/disks box outline color
+theme[mem_box]="{< border >}"
+
+# Net up/down box outline color
+theme[net_box]="{< border >}"
+
+# Processes box outline color
+theme[proc_box]="{< border >}"
+
+# Box divider line and small boxes line color
+theme[div_line]="{< border_variant >}"
+
+# Temperature graph colors (cool to hot)
+theme[temp_start]="{< cyan >}"
+theme[temp_mid]="{< yellow >}"
+theme[temp_end]="{< red >}"
+
+# CPU graph colors (low to high usage)
+theme[cpu_start]="{< green >}"
+theme[cpu_mid]="{< yellow >}"
+theme[cpu_end]="{< red >}"
+
+# Mem/Disk free meter
+theme[free_start]="{< green >}"
+theme[free_mid]="{< green_dim >}"
+theme[free_end]="{< green_bright >}"
+
+# Mem/Disk cached meter
+theme[cached_start]="{< magenta >}"
+theme[cached_mid]="{< magenta_dim >}"
+theme[cached_end]="{< magenta_bright >}"
+
+# Mem/Disk available meter
+theme[available_start]="{< blue >}"
+theme[available_mid]="{< blue_dim >}"
+theme[available_end]="{< blue_bright >}"
+
+# Mem/Disk used meter
+theme[used_start]="{< red >}"
+theme[used_mid]="{< red_dim >}"
+theme[used_end]="{< red_bright >}"
+
+# Download graph colors
+theme[download_start]="{< cyan >}"
+theme[download_mid]="{< blue >}"
+theme[download_end]="{< magenta >}"
+
+# Upload graph colors
+theme[upload_start]="{< green >}"
+theme[upload_mid]="{< yellow >}"
+theme[upload_end]="{< red >}"

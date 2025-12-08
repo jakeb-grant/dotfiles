@@ -96,7 +96,7 @@
         },
         {
           "label": "󰂯",
-          "command": "blueman-manager"
+          "command": "ghostty -e bluetui"
         },
         {
           "label": "󰄀",
