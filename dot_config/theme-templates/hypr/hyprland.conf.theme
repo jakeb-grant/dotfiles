@@ -8,7 +8,7 @@
 # ------------------------------------------------------------------------------
 $terminal = ghostty +new-window
 $editor = zeditor --wait
-$fileManager = nautilus --new-window
+$fileManager = ghostty -e yazi
 $menu = walker
 
 # Modifier key
