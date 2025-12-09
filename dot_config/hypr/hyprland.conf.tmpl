@@ -23,13 +23,13 @@ env = XCURSOR_THEME,Bibata-Modern-Classic
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_SIZE,24
 
-{{ if or (eq .graphics "nvidia") (eq .graphics "nvidia-prime") -}}
+{{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
 # NVIDIA environment variables
 env = LIBVA_DRIVER_NAME,nvidia
 env = __GLX_VENDOR_LIBRARY_NAME,nvidia
 env = NVD_BACKEND,direct
 env = ELECTRON_OZONE_PLATFORM_HINT,auto
-{{ if eq .graphics "nvidia-prime" -}}
+{{ if eq .graphics "prime" -}}
 # Multi-monitor support for hybrid graphics
 env = AQ_DRM_DEVICES,/dev/dri/card1:/dev/dri/card0
 {{ end -}}
