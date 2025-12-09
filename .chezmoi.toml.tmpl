@@ -1,8 +1,8 @@
 [data]
-    email = {{ promptStringOnce . "email" "Your email address" | quote }}
-    name = {{ promptStringOnce . "name" "Your full name" | quote }}
+    email = {{ promptStringOnce . "email" "Your email address" "default@example.com" | quote }}
+    name = {{ promptStringOnce . "name" "Your full name" "John Doe" | quote }}
     hostname = {{ .chezmoi.hostname | quote }}
-    graphics = {{ promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "nvidia" "nvidia-prime") | quote }}
+    graphics = {{ promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "nvidia-prime" "nvidia") "" | quote }}
 
 [git]
     autoCommit = true
