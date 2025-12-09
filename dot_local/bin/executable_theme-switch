@@ -14,6 +14,7 @@ Outputs to chezmoi source directory (~/.local/share/chezmoi/dot_config)
 Usage: theme-switch [THEME]
 """
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -176,83 +177,86 @@ def process_templates(env: Environment, theme_data: dict) -> None:
 
 
 # =============================================================================
-# Application Reloading
+# Application Reloading (Async)
 # =============================================================================
 
 
-def run_silent(cmd: list[str]) -> bool:
-    """Run command silently, return True if successful."""
+async def run_async(cmd: list[str]) -> bool:
+    """Run command asynchronously, return True if successful."""
     try:
-        subprocess.run(cmd, check=True, capture_output=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.wait()
+        return proc.returncode == 0
+    except (OSError, FileNotFoundError):
         return False
 
 
-def is_running(process: str) -> bool:
+async def is_running(process: str) -> bool:
     """Check if a process is running."""
-    result = subprocess.run(["pgrep", "-x", process], capture_output=True)
-    return result.returncode == 0
+    proc = await asyncio.create_subprocess_exec(
+        "pgrep", "-x", process,
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+    await proc.wait()
+    return proc.returncode == 0
 
 
-def reload_applications() -> None:
-    """Reload running applications to apply theme."""
-    print("==> Reloading applications...")
+async def restart_app(
+    name: str,
+    process: str,
+    cmd: list[str],
+    start_if_not_running: bool = False,
+) -> None:
+    """Kill (if running) and restart an application."""
+    was_running = await is_running(process)
+    if was_running:
+        # -w waits for process to die before returning
+        await run_async(["killall", "-w", process])
+        subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        print(f"    {name} restarted")
+    elif start_if_not_running:
+        subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        print(f"    {name} started")
 
-    # Reload Hyprland
-    if is_running("Hyprland"):
-        run_silent(["hyprctl", "reload"])
+
+async def reload_hyprland() -> None:
+    """Reload Hyprland config."""
+    if await is_running("Hyprland"):
+        await run_async(["hyprctl", "reload"])
         print("    Hyprland reloaded")
 
-    # Restart Waybar
-    if is_running("waybar"):
-        subprocess.run(["killall", "waybar"], capture_output=True)
-        subprocess.Popen(
-            ["waybar"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        print("    Waybar restarted")
-    else:
-        subprocess.Popen(
-            ["waybar"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        print("    Waybar started")
+
+async def reload_waybar() -> None:
+    """Restart Waybar."""
+    await restart_app("Waybar", "waybar", ["waybar"], start_if_not_running=True)
 
 
-    # Restart SwayNC (reload doesn't apply all CSS changes)
-    if is_running("swaync"):
-        subprocess.run(["killall", "swaync"], capture_output=True)
-    subprocess.Popen(
-        ["swaync"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    print("    SwayNC restarted")
-
-    # Walker CSS reloads automatically without restart
-
-    # Restart Elephant (walker backend)
-    subprocess.run(["killall", "-w", "elephant"], capture_output=True)
-    subprocess.Popen(
-        ["elephant"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    print("    Elephant restarted")
-
-    # Note: Ghostty doesn't support signal-based reload
-    # Users need to press Ctrl+Shift+, in each terminal to reload
-    # TODO: Could use wtype to send keypress if installed
+async def reload_swaync() -> None:
+    """Restart SwayNC."""
+    await restart_app("SwayNC", "swaync", ["swaync"], start_if_not_running=True)
 
 
-def set_wallpaper(theme_data: dict) -> None:
+async def reload_elephant() -> None:
+    """Restart Elephant."""
+    await restart_app("Elephant", "elephant", ["elephant"], start_if_not_running=True)
+
+
+async def set_wallpaper(theme_data: dict) -> None:
     """Set wallpaper if specified in theme."""
     wallpaper = theme_data.get("_wallpaper")
     if not wallpaper:
@@ -263,25 +267,37 @@ def set_wallpaper(theme_data: dict) -> None:
         print(f"    Warning: Wallpaper not found: {wallpaper}")
         return
 
-    if is_running("awww-daemon"):
-        run_silent(["awww", "img", str(wallpaper_path)])
+    if await is_running("awww-daemon"):
+        await run_async(["awww", "img", str(wallpaper_path)])
         print(f"    Wallpaper set: {wallpaper}")
     else:
         print("    Warning: awww-daemon not running, skipping wallpaper")
 
 
-def set_gtk_theme(theme_data: dict) -> None:
+async def set_gtk_theme(theme_data: dict) -> None:
     """Set GTK color scheme (dark/light) for libadwaita apps."""
     scheme = theme_data.get("_gtk_color_scheme")
     if not scheme:
         return
 
-    # gsettings for GNOME/GTK4/libadwaita apps
-    run_silent([
+    await run_async([
         "gsettings", "set", "org.gnome.desktop.interface",
         "color-scheme", scheme
     ])
     print(f"    GTK color scheme: {scheme}")
+
+
+async def reload_all(theme_data: dict) -> None:
+    """Reload all applications in parallel."""
+    print("==> Reloading applications...")
+    await asyncio.gather(
+        reload_hyprland(),
+        reload_waybar(),
+        reload_swaync(),
+        reload_elephant(),
+        set_wallpaper(theme_data),
+        set_gtk_theme(theme_data),
+    )
 
 
 # =============================================================================
@@ -289,7 +305,7 @@ def set_gtk_theme(theme_data: dict) -> None:
 # =============================================================================
 
 
-def main() -> None:
+async def main() -> None:
     theme_name = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_THEME
 
     print(f"==> Loading theme: {theme_name}")
@@ -308,14 +324,13 @@ def main() -> None:
     active_link.symlink_to(f"{theme_name}.json")
 
     print("==> Applying chezmoi...")
-    subprocess.run(["chezmoi", "apply"], check=True)
+    proc = await asyncio.create_subprocess_exec("chezmoi", "apply")
+    await proc.wait()
 
-    reload_applications()
-    set_wallpaper(theme_data)
-    set_gtk_theme(theme_data)
+    await reload_all(theme_data)
 
     print(f"✓ Theme switched to: {theme_name}")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

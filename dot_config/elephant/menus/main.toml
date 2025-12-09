@@ -43,3 +43,9 @@ text = "7. Calculator"
 keywords = ["math", "calc", "convert"]
 icon = "accessories-calculator"
 actions = { "open" = "walker -s calc -H" }
+
+[[entries]]
+text = "8. Themes"
+keywords = ["theme", "switch", "wallpaper", "rice", "colors"]
+icon = "preferences-desktop-theme"
+actions = { "open" = "walker -s themes -H" }

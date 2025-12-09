@@ -32,6 +32,10 @@ empty = ["clipboard"]
 default = ["calc"]
 empty = ["calc"]
 
+[providers.sets.themes]
+default = ["menus:themes"]
+empty = ["menus:themes"]
+
 # Run in terminal with Shift+Return
 [providers.actions]
 runner = [
