@@ -2,7 +2,7 @@
     email = {{ promptStringOnce . "email" "Your email address" "86214494+jakeb-grant@users.noreply.github.com" | quote }}
     name = {{ promptStringOnce . "name" "Your name" "jacob" | quote }}
     hostname = {{ .chezmoi.hostname | quote }}
-    graphics = {{ promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "nvidia-prime" "nvidia") | quote }}
+    graphics = {{ promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "prime" "nvidia") | quote }}
 
 [git]
     autoCommit = true
