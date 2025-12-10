@@ -14,6 +14,19 @@ Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 - **Theme System**: Runtime theme switching with Jinja2 templates
 - **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
 
+## Getting Started
+
+```bash
+# 1. Initialize and apply dotfiles
+chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
+
+# 2. Restart your shell (or log out and back in)
+exec bash
+
+# 3. Apply a theme
+theme-switch everforest
+```
+
 ## Installation
 
 ### Quick Start

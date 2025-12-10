@@ -5,7 +5,7 @@ Name = "themes"
 NamePretty = "Theme Switcher"
 Icon = "preferences-desktop-theme"
 
-local THEME_DIR = os.getenv("HOME") .. "/.local/share/chezmoi/dot_config/themes"
+local THEME_DIR = os.getenv("HOME") .. "/.config/themes"
 local WALLPAPER_DIR = os.getenv("HOME") .. "/.config/wallpapers"
 
 -- Apps that should be closed before switching themes
@@ -84,7 +84,7 @@ function GetEntries()
                 Icon = "preferences-desktop-theme",
                 Keywords = { theme_name, "theme", "switch", "wallpaper" },
                 Actions = {
-                    ["switch"] = "theme-switch " .. theme_name,
+                    ["open"] = "theme-switch " .. theme_name,
                 },
             }
 

@@ -256,6 +256,13 @@ async def reload_elephant() -> None:
     await restart_app("Elephant", "elephant", ["elephant"], start_if_not_running=True)
 
 
+async def reload_ghostty() -> None:
+    """Reload Ghostty config via SIGUSR2."""
+    if await is_running("ghostty"):
+        await run_async(["pkill", "-USR2", "ghostty"])
+        print("    Ghostty reloaded")
+
+
 async def set_wallpaper(theme_data: dict) -> None:
     """Set wallpaper if specified in theme."""
     wallpaper = theme_data.get("_wallpaper")
@@ -287,6 +294,16 @@ async def set_gtk_theme(theme_data: dict) -> None:
     print(f"    GTK color scheme: {scheme}")
 
 
+async def send_notification(theme_name: str) -> None:
+    """Send notification about theme switch."""
+    await run_async([
+        "notify-send",
+        "-i", "preferences-desktop-theme",
+        f"Theme: {theme_name.replace('-', ' ').title()}",
+        "Some apps may need a restart to apply changes.",
+    ])
+
+
 async def reload_all(theme_data: dict) -> None:
     """Reload all applications in parallel."""
     print("==> Reloading applications...")
@@ -295,6 +312,7 @@ async def reload_all(theme_data: dict) -> None:
         reload_waybar(),
         reload_swaync(),
         reload_elephant(),
+        reload_ghostty(),
         set_wallpaper(theme_data),
         set_gtk_theme(theme_data),
     )
@@ -328,6 +346,7 @@ async def main() -> None:
     await proc.wait()
 
     await reload_all(theme_data)
+    await send_notification(theme_name)
 
     print(f"✓ Theme switched to: {theme_name}")
 

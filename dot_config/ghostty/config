@@ -3,5 +3,8 @@
 # Theme (generated from active theme palette)
 theme = theme
 
+# Disable close confirmation dialog
+confirm-close-surface = false
+
 # Keybindings
 keybind = shift+enter=text:\x1b\r

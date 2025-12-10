@@ -23,13 +23,13 @@ env = XCURSOR_THEME,Bibata-Modern-Classic
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_SIZE,24
 
-{{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
+{{ if or (eq .graphics "nvidia") (eq .graphics "nvidia-prime") -}}
 # NVIDIA environment variables
 env = LIBVA_DRIVER_NAME,nvidia
 env = __GLX_VENDOR_LIBRARY_NAME,nvidia
 env = NVD_BACKEND,direct
 env = ELECTRON_OZONE_PLATFORM_HINT,auto
-{{ if eq .graphics "prime" -}}
+{{ if eq .graphics "nvidia-prime" -}}
 # Multi-monitor support for hybrid graphics
 env = AQ_DRM_DEVICES,/dev/dri/card1:/dev/dri/card0
 {{ end -}}
@@ -45,6 +45,7 @@ monitor = ,preferred,auto,1
 # ------------------------------------------------------------------------------
 exec-once = waybar
 exec-once = swaync
+exec-once = nm-applet --indicator
 exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
 exec-once = elephant
@@ -160,8 +161,8 @@ general {
     gaps_in = 5
     gaps_out = 10
     border_size = 2
-    col.active_border = rgba(f3beabed)
-    col.inactive_border = rgba(6034607f)
+    col.active_border = rgba(303b41ed)
+    col.inactive_border = rgba(3541497f)
     resize_on_border = false
     allow_tearing = false
     layout = dwindle
@@ -187,7 +188,7 @@ decoration {
         enabled = true
         range = 4
         render_power = 3
-        color = rgba(101010ed)
+        color = rgba(111111ed)
     }
 }
 
