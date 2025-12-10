@@ -1,0 +1,25 @@
+#!/bin/bash
+# Install SDDM theme (runs once on new machines)
+
+set -e
+
+THEME_NAME="minimal"
+THEME_DIR="/usr/share/sddm/themes/$THEME_NAME"
+SOURCE_DIR="$HOME/.config/sddm-theme"
+
+echo "Installing SDDM theme: $THEME_NAME"
+echo "This requires sudo access."
+
+sudo mkdir -p "$THEME_DIR"
+sudo cp "$SOURCE_DIR/Main.qml" "$THEME_DIR/"
+sudo cp "$SOURCE_DIR/metadata.desktop" "$THEME_DIR/"
+sudo cp "$SOURCE_DIR/theme.conf" "$THEME_DIR/"
+sudo chmod 755 "$THEME_DIR"
+sudo chmod 644 "$THEME_DIR"/*
+
+# Configure SDDM to use the theme
+sudo mkdir -p /etc/sddm.conf.d
+echo '[Theme]
+Current=minimal' | sudo tee /etc/sddm.conf.d/theme.conf > /dev/null
+
+echo "SDDM theme installed successfully!"

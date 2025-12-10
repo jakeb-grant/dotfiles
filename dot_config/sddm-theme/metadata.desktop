@@ -1,0 +1,7 @@
+[SddmGreeterTheme]
+Name=Minimal
+Description=A minimal, dark SDDM theme
+Author=jacob
+Version=1.0
+License=MIT
+Type=sddm-theme

@@ -121,7 +121,8 @@
         "format-disconnected": "󰖪 Disconnected",
         "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ifname}: {ipaddr}",
         "tooltip-format-ethernet": "{ifname}: {ipaddr}",
-        "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
+        "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+        "on-click": "ghostty -e impala"
     },
 
     "pulseaudio": {

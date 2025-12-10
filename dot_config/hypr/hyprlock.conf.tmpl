@@ -1,0 +1,59 @@
+# Hyprlock Configuration
+
+general {
+    hide_cursor = true
+}
+
+background {
+    monitor =
+    path = ~/.config/wallpapers/everforest1.jpg
+    blur_passes = 3
+    blur_size = 6
+    noise = 0.02
+    contrast = 0.9
+    brightness = 0.7
+}
+
+input-field {
+    monitor =
+    size = 280, 50
+    outline_thickness = 2
+    dots_size = 0.25
+    dots_spacing = 0.3
+    dots_center = true
+    outer_color = rgba(404952cc)
+    inner_color = rgba(20272ce5)
+    font_color = rgb(bebebe)
+    fade_on_empty = false
+    placeholder_text = <i>Password...</i>
+    hide_input = false
+    check_color = rgba(303b41cc)
+    fail_color = rgba(e59191cc)
+    fail_text = <i>$FAIL</i>
+    capslock_color = rgba(dca13bcc)
+    position = 0, -80
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = $TIME
+    color = rgba(d7d7d7f2)
+    font_size = 72
+    font_family = sans-serif
+    position = 0, 120
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = cmd[update:3600000] date +"%A, %B %d"
+    color = rgba(a9a9a9cc)
+    font_size = 18
+    font_family = sans-serif
+    position = 0, 40
+    halign = center
+    valign = center
+}
