@@ -15,6 +15,14 @@
     "light": "Material Icon Theme",
     "dark": "Material Icon Theme"
   },
+  "auto_install_extensions": {
+    "toml": true,
+    "html": true,
+    "svelte": true,
+    "dockerfile": true,
+    "sql": true,
+    "material-icon-theme": true
+  },
   "edit_predictions": {
     "mode": "subtle"
   },
