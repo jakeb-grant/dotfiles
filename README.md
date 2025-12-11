@@ -2,6 +2,11 @@
 
 Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
 
+## Preview
+
+<!-- TODO: Add screenshot -->
+![Desktop screenshot](screenshots/desktop.png)
+
 ## Features
 
 - **Window Manager**: Hyprland
@@ -52,10 +57,7 @@ chezmoi apply
 
 ### Dependencies
 
-- hyprland, waybar, swaync, walker, elephant, ghostty
-- zed, nautilus, yazi
-- grim, slurp, wl-copy, hyprpicker (screenshots)
-- hyprlock (lock screen)
+These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), which provides a custom Arch ISO with all required packages pre-installed. After installation, run `dotfiles-setup` to clone and apply these configs.
 
 ## What's Included
 
