@@ -17,8 +17,6 @@ $mod = SUPER
 # ------------------------------------------------------------------------------
 # Environment Variables
 # ------------------------------------------------------------------------------
-env = EDITOR,zeditor --wait
-env = VISUAL,zeditor --wait
 env = GSK_RENDERER,gl
 env = GDK_BACKEND,wayland,x11
 env = XCURSOR_THEME,Bibata-Modern-Classic
@@ -47,7 +45,6 @@ monitor = ,preferred,auto,1
 # ------------------------------------------------------------------------------
 exec-once = waybar
 exec-once = swaync
-exec-once = hypridle
 exec-once = nm-applet --indicator
 exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
