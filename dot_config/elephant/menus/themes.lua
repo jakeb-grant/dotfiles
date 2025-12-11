@@ -4,6 +4,7 @@
 Name = "themes"
 NamePretty = "Theme Switcher"
 Icon = "preferences-desktop-theme"
+Action = "theme-switch %VALUE%"
 
 local THEME_DIR = os.getenv("HOME") .. "/.config/themes"
 local WALLPAPER_DIR = os.getenv("HOME") .. "/.config/wallpapers"
@@ -73,7 +74,8 @@ function GetEntries()
 
             local wallpaper_path = WALLPAPER_DIR .. "/" .. wallpaper
             local is_active = (theme_name == active_theme)
-            local display_name = theme_name:gsub("-", " "):gsub("(%l)(%w*)", function(a, b) return string.upper(a) .. b end)
+            local display_name = theme_name:gsub("-", " "):gsub("(%l)(%w*)",
+                function(a, b) return string.upper(a) .. b end)
 
             if is_active then
                 display_name = display_name .. " (active)"
@@ -81,11 +83,9 @@ function GetEntries()
 
             local entry = {
                 Text = display_name,
+                Value = theme_name,
                 Icon = "preferences-desktop-theme",
                 Keywords = { theme_name, "theme", "switch", "wallpaper" },
-                Actions = {
-                    ["open"] = "theme-switch " .. theme_name,
-                },
             }
 
             -- Add wallpaper preview if it exists
