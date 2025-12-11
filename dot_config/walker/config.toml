@@ -47,3 +47,7 @@ desktopapplications = [
   { action = "run", default = true, bind = "Return" },
   { action = "runterminal", label = "run in terminal", bind = "shift Return" },
 ]
+
+menus = [
+  { action = "open", default = true, bind = "Return" },
+]
