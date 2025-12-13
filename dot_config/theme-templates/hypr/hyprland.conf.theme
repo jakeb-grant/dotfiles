@@ -53,6 +53,7 @@ exec-once = hyprctl setcursor Bibata-Modern-Classic 24
 exec-once = elephant
 exec-once = awww-daemon
 exec-once = walker --gapplication-service
+exec-once = hypridle
 
 # ------------------------------------------------------------------------------
 # Keybindings
