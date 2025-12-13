@@ -86,6 +86,7 @@ function GetEntries()
                 Value = theme_name,
                 Icon = "preferences-desktop-theme",
                 Keywords = { theme_name, "theme", "switch", "wallpaper" },
+                Actions = { open = "theme-switch " .. theme_name },
             }
 
             -- Add wallpaper preview if it exists
