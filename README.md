@@ -1,6 +1,6 @@
 # Hyprland Dotfiles
 
-Chezmoi-managed dotfiles for a minimal Hyprland desktop environment.
+Chezmoi-managed dotfiles for my Hyprland desktop environment.
 
 ## Preview
 
@@ -57,7 +57,7 @@ chezmoi apply
 
 ### Dependencies
 
-These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), which provides a custom Arch ISO with all required packages pre-installed. After installation, run `dotfiles-setup` to clone and apply these configs.
+These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), which provides a custom Arch ISO with all required packages pre-installed.
 
 ## What's Included
 
@@ -81,62 +81,6 @@ dot_local/bin/
 ├── waybar-updates      # Package update checker
 └── waybar-rebuild      # Go plugin rebuild detector
 ```
-
-## Keybindings
-
-### Applications
-| Key | Action |
-|-----|--------|
-| `Super + Space` | Main menu (Walker) |
-| `Super + Return` | Terminal (Ghostty) |
-| `Super + Shift + B` | Browser |
-| `Super + Shift + F` | File manager (Nautilus) |
-| `Super + Shift + Z` | Editor (Zed) |
-| `Super + Ctrl + V` | Clipboard history |
-| `Super + I` | Package search (AUR + repos) |
-
-### Window Management
-| Key | Action |
-|-----|--------|
-| `Super + W` | Close window |
-| `Super + T` | Toggle floating |
-| `Super + F` | Fullscreen |
-| `Super + O` | Pin window (sticky) |
-| `Super + L` | Lock screen |
-| `Super + Shift + Arrow` | Swap window |
-| `Super + =/-` | Resize width |
-| `Super + Shift + =/-` | Resize height |
-
-### Workspaces
-| Key | Action |
-|-----|--------|
-| `Super + 1-0` | Switch workspace |
-| `Super + Shift + 1-0` | Move to workspace |
-| `Super + Tab` | Next workspace |
-| `Super + Shift + Tab` | Previous workspace |
-| `Super + Ctrl + Tab` | Last workspace |
-| `Super + S` | Scratchpad |
-| `Super + Shift + S` | Move to scratchpad |
-
-### Notifications
-| Key | Action |
-|-----|--------|
-| `Super + ,` | Dismiss notification |
-| `Super + Shift + ,` | Dismiss all |
-| `Super + Ctrl + ,` | Toggle DND |
-| `Super + Alt + ,` | Toggle panel |
-
-### Screenshots
-| Key | Action |
-|-----|--------|
-| `Print` | Screenshot area to clipboard |
-| `Shift + Print` | Screenshot full screen |
-| `Super + Print` | Color picker |
-
-### Other
-| Key | Action |
-|-----|--------|
-| `Super + Shift + Space` | Toggle waybar |
 
 ## Theme System
 
