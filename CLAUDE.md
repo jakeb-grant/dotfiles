@@ -66,7 +66,4 @@ For Lua menus, use global `Action` with `%VALUE%` substitution rather than per-e
 
 ## Machine-Specific Config
 
-Variables in `.chezmoi.toml.tmpl`:
-- `graphics`: GPU driver (amd, nvidia, nvidia-prime)
-- `hostname`: machine hostname
-- `name`, `email`: user identity
+Variables in `.chezmoi.toml.tmpl`
