@@ -4,7 +4,7 @@
 Name = "themes"
 NamePretty = "Theme Switcher"
 Icon = "preferences-desktop-theme"
-Action = "theme-switch %VALUE%"
+Action = os.getenv("HOME") .. "/.local/bin/theme-switch %VALUE%"
 
 local THEME_DIR = os.getenv("HOME") .. "/.config/themes"
 local WALLPAPER_DIR = os.getenv("HOME") .. "/.config/wallpapers"
@@ -86,7 +86,6 @@ function GetEntries()
                 Value = theme_name,
                 Icon = "preferences-desktop-theme",
                 Keywords = { theme_name, "theme", "switch", "wallpaper" },
-                Actions = { open = "theme-switch " .. theme_name },
             }
 
             -- Add wallpaper preview if it exists

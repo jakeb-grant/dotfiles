@@ -1,0 +1,5 @@
+# Repository files that should not be deployed to home directory
+CLAUDE.md
+README.md
+docs/
+screenshots/
