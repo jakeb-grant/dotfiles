@@ -1,0 +1,194 @@
+# Minimal Plymouth Theme
+# Matches SDDM theme style - dark background, centered time, clean password prompt
+
+# Colors (matching SDDM theme)
+bg_color.red = 0.10;
+bg_color.green = 0.10;
+bg_color.blue = 0.10;
+
+text_color.red = 1.0;
+text_color.green = 1.0;
+text_color.blue = 1.0;
+
+dim_color.red = 0.53;
+dim_color.green = 0.53;
+dim_color.blue = 0.53;
+
+# Set solid background
+Window.SetBackgroundTopColor(bg_color.red, bg_color.green, bg_color.blue);
+Window.SetBackgroundBottomColor(bg_color.red, bg_color.green, bg_color.blue);
+
+# Screen dimensions
+screen.width = Window.GetWidth();
+screen.height = Window.GetHeight();
+
+# Time display
+fun get_time_string() {
+    time = DateTime.GetLocalTime();
+    hours = time.tm_hour;
+    minutes = time.tm_min;
+
+    if (minutes < 10)
+        time_string = hours + ":0" + minutes;
+    else
+        time_string = hours + ":" + minutes;
+
+    return time_string;
+}
+
+# Date display
+fun get_date_string() {
+    time = DateTime.GetLocalTime();
+
+    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    months = ["January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"];
+
+    day_name = days[time.tm_wday];
+    month_name = months[time.tm_mon];
+    day_num = time.tm_mday;
+
+    return day_name + ", " + month_name + " " + day_num;
+}
+
+# Create time sprite
+time_sprite = Sprite();
+time_sprite.SetPosition(screen.width / 2, screen.height * 0.25, 1);
+
+# Create date sprite
+date_sprite = Sprite();
+date_sprite.SetPosition(screen.width / 2, screen.height * 0.25 + 80, 1);
+
+# Update time display
+fun update_time() {
+    time_image = Image.Text(get_time_string(), text_color.red, text_color.green, text_color.blue, 1, "Sans 64");
+    time_sprite.SetImage(time_image);
+    time_sprite.SetPosition(screen.width / 2 - time_image.GetWidth() / 2, screen.height * 0.25, 1);
+
+    date_image = Image.Text(get_date_string(), dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 16");
+    date_sprite.SetImage(date_image);
+    date_sprite.SetPosition(screen.width / 2 - date_image.GetWidth() / 2, screen.height * 0.25 + 80, 1);
+}
+
+update_time();
+
+# Simple spinner animation
+spinner.count = 32;
+spinner.current = 0;
+spinner.sprites = [];
+
+fun create_spinner() {
+    for (i = 0; i < spinner.count; i++) {
+        spinner.sprites[i] = Sprite();
+        spinner.sprites[i].SetPosition(screen.width / 2 - 16 + (i % 8) * 4, screen.height * 0.65, 2);
+        spinner.sprites[i].SetOpacity(0);
+    }
+}
+
+create_spinner();
+
+# Refresh callback - called ~50 times per second
+fun refresh_callback() {
+    update_time();
+
+    # Animate spinner dots
+    for (i = 0; i < spinner.count; i++) {
+        angle = (i / spinner.count) * 2 * 3.14159;
+        x = screen.width / 2 + Math.Cos(angle) * 24;
+        y = screen.height * 0.65 + Math.Sin(angle) * 24;
+
+        # Create a small dot
+        dot = Image.Text("●", dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 8");
+        spinner.sprites[i].SetImage(dot);
+        spinner.sprites[i].SetPosition(x - 4, y - 4, 2);
+
+        # Fade based on position relative to current
+        distance = (i - spinner.current + spinner.count) % spinner.count;
+        opacity = 1.0 - (distance / spinner.count);
+        spinner.sprites[i].SetOpacity(opacity * 0.6);
+    }
+
+    spinner.current = (spinner.current + 1) % spinner.count;
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
+
+# Password dialog
+fun password_dialogue_setup(prompt, num_bullets) {
+    # Clear spinner during password entry
+    for (i = 0; i < spinner.count; i++) {
+        spinner.sprites[i].SetOpacity(0);
+    }
+
+    # Prompt text
+    prompt_sprite = Sprite();
+    prompt_image = Image.Text(prompt, dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 14");
+    prompt_sprite.SetImage(prompt_image);
+    prompt_sprite.SetPosition(screen.width / 2 - prompt_image.GetWidth() / 2, screen.height / 2 - 60, 10);
+
+    # Password box background
+    box_width = 280;
+    box_height = 48;
+
+    # Draw bullets for entered characters
+    bullet_string = "";
+    for (i = 0; i < num_bullets; i++) {
+        bullet_string += "● ";
+    }
+
+    bullets_sprite = Sprite();
+    if (num_bullets > 0) {
+        bullets_image = Image.Text(bullet_string, text_color.red, text_color.green, text_color.blue, 1, "Sans 16");
+        bullets_sprite.SetImage(bullets_image);
+        bullets_sprite.SetPosition(screen.width / 2 - bullets_image.GetWidth() / 2, screen.height / 2, 10);
+    }
+
+    # Cursor
+    cursor_sprite = Sprite();
+    cursor_image = Image.Text("|", text_color.red, text_color.green, text_color.blue, 1, "Sans 20");
+    cursor_sprite.SetImage(cursor_image);
+
+    if (num_bullets > 0) {
+        cursor_sprite.SetPosition(screen.width / 2 + (num_bullets * 12), screen.height / 2 - 2, 10);
+    } else {
+        cursor_sprite.SetPosition(screen.width / 2, screen.height / 2 - 2, 10);
+    }
+
+    global.prompt_sprite = prompt_sprite;
+    global.bullets_sprite = bullets_sprite;
+    global.cursor_sprite = cursor_sprite;
+}
+
+Plymouth.SetDisplayPasswordFunction(password_dialogue_setup);
+
+fun password_dialogue_opacity(opacity) {
+    global.prompt_sprite.SetOpacity(opacity);
+    global.bullets_sprite.SetOpacity(opacity);
+    global.cursor_sprite.SetOpacity(opacity);
+}
+
+Plymouth.SetDisplayPasswordFunction(password_dialogue_setup);
+
+# Message display
+message_sprite = Sprite();
+
+fun message_callback(text) {
+    message_image = Image.Text(text, dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 12");
+    message_sprite.SetImage(message_image);
+    message_sprite.SetPosition(screen.width / 2 - message_image.GetWidth() / 2, screen.height * 0.85, 5);
+}
+
+Plymouth.SetMessageFunction(message_callback);
+
+# Boot progress (optional - just dims spinner)
+fun boot_progress_callback(time, progress) {
+    # Progress is 0.0 to 1.0
+}
+
+Plymouth.SetBootProgressFunction(boot_progress_callback);
+
+# Quit callback
+fun quit_callback() {
+}
+
+Plymouth.SetQuitFunction(quit_callback);

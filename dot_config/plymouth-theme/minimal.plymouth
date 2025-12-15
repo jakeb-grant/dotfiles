@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Minimal
+Description=Clean minimal theme matching SDDM
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/minimal
+ScriptFile=/usr/share/plymouth/themes/minimal/minimal.script

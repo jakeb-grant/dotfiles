@@ -13,17 +13,25 @@ fi
 echo "Configuring Plymouth boot splash..."
 echo "This requires sudo access."
 
-# Configure Plymouth theme
+# Install custom minimal theme
+THEME_DIR="/usr/share/plymouth/themes/minimal"
+SOURCE_DIR="$HOME/.config/plymouth-theme"
+
+echo "Installing minimal Plymouth theme..."
+sudo mkdir -p "$THEME_DIR"
+sudo cp "$SOURCE_DIR/minimal.plymouth" "$THEME_DIR/"
+sudo cp "$SOURCE_DIR/minimal.script" "$THEME_DIR/"
+sudo chmod 644 "$THEME_DIR"/*
+
+# Configure Plymouth to use minimal theme
 PLYMOUTH_CONF="/etc/plymouth/plymouthd.conf"
-if ! grep -q "^Theme=spinner" "$PLYMOUTH_CONF" 2>/dev/null; then
-    echo "Setting Plymouth theme to spinner..."
-    sudo mkdir -p /etc/plymouth
-    sudo tee "$PLYMOUTH_CONF" > /dev/null << 'EOF'
+echo "Setting Plymouth theme to minimal..."
+sudo mkdir -p /etc/plymouth
+sudo tee "$PLYMOUTH_CONF" > /dev/null << 'EOF'
 [Daemon]
-Theme=spinner
+Theme=minimal
 ShowDelay=0
 EOF
-fi
 
 # Add plymouth hook to mkinitcpio if not present
 MKINITCPIO_CONF="/etc/mkinitcpio.conf"
