@@ -1,193 +1,116 @@
-# Minimal Plymouth Theme
-# Matches SDDM theme style - dark background, centered time, clean password prompt
+# Minimal Plymouth Theme - Simple and reliable
 
-# Colors (matching SDDM theme)
-bg_color.red = 0.10;
-bg_color.green = 0.10;
-bg_color.blue = 0.10;
-
-text_color.red = 1.0;
-text_color.green = 1.0;
-text_color.blue = 1.0;
-
-dim_color.red = 0.53;
-dim_color.green = 0.53;
-dim_color.blue = 0.53;
-
-# Set solid background
-Window.SetBackgroundTopColor(bg_color.red, bg_color.green, bg_color.blue);
-Window.SetBackgroundBottomColor(bg_color.red, bg_color.green, bg_color.blue);
+# Set solid dark background
+Window.SetBackgroundTopColor(0.10, 0.10, 0.10);
+Window.SetBackgroundBottomColor(0.10, 0.10, 0.10);
 
 # Screen dimensions
-screen.width = Window.GetWidth();
-screen.height = Window.GetHeight();
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
 
-# Time display
-fun get_time_string() {
-    time = DateTime.GetLocalTime();
-    hours = time.tm_hour;
-    minutes = time.tm_min;
+# Simple spinner using dots
+NUM_DOTS = 12;
+DOT_RADIUS = 30;
 
-    if (minutes < 10)
-        time_string = hours + ":0" + minutes;
-    else
-        time_string = hours + ":" + minutes;
-
-    return time_string;
+for (i = 0; i < NUM_DOTS; i++) {
+    dots[i] = Sprite();
 }
 
-# Date display
-fun get_date_string() {
-    time = DateTime.GetLocalTime();
+# Animation state
+global.angle = 0;
 
-    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    months = ["January", "February", "March", "April", "May", "June",
-              "July", "August", "September", "October", "November", "December"];
-
-    day_name = days[time.tm_wday];
-    month_name = months[time.tm_mon];
-    day_num = time.tm_mday;
-
-    return day_name + ", " + month_name + " " + day_num;
-}
-
-# Create time sprite
-time_sprite = Sprite();
-time_sprite.SetPosition(screen.width / 2, screen.height * 0.25, 1);
-
-# Create date sprite
-date_sprite = Sprite();
-date_sprite.SetPosition(screen.width / 2, screen.height * 0.25 + 80, 1);
-
-# Update time display
-fun update_time() {
-    time_image = Image.Text(get_time_string(), text_color.red, text_color.green, text_color.blue, 1, "Sans 64");
-    time_sprite.SetImage(time_image);
-    time_sprite.SetPosition(screen.width / 2 - time_image.GetWidth() / 2, screen.height * 0.25, 1);
-
-    date_image = Image.Text(get_date_string(), dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 16");
-    date_sprite.SetImage(date_image);
-    date_sprite.SetPosition(screen.width / 2 - date_image.GetWidth() / 2, screen.height * 0.25 + 80, 1);
-}
-
-update_time();
-
-# Simple spinner animation
-spinner.count = 32;
-spinner.current = 0;
-spinner.sprites = [];
-
-fun create_spinner() {
-    for (i = 0; i < spinner.count; i++) {
-        spinner.sprites[i] = Sprite();
-        spinner.sprites[i].SetPosition(screen.width / 2 - 16 + (i % 8) * 4, screen.height * 0.65, 2);
-        spinner.sprites[i].SetOpacity(0);
-    }
-}
-
-create_spinner();
-
-# Refresh callback - called ~50 times per second
 fun refresh_callback() {
-    update_time();
+    global.angle = global.angle + 0.15;
 
-    # Animate spinner dots
-    for (i = 0; i < spinner.count; i++) {
-        angle = (i / spinner.count) * 2 * 3.14159;
-        x = screen.width / 2 + Math.Cos(angle) * 24;
-        y = screen.height * 0.65 + Math.Sin(angle) * 24;
+    for (i = 0; i < NUM_DOTS; i++) {
+        # Calculate position in circle
+        a = (i * 3.14159 * 2 / NUM_DOTS) + global.angle;
 
-        # Create a small dot
-        dot = Image.Text("●", dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 8");
-        spinner.sprites[i].SetImage(dot);
-        spinner.sprites[i].SetPosition(x - 4, y - 4, 2);
+        # Manual sin/cos approximation using lookup
+        # Normalize angle to 0-2pi range
+        while (a > 6.28318) a = a - 6.28318;
+        while (a < 0) a = a + 6.28318;
 
-        # Fade based on position relative to current
-        distance = (i - spinner.current + spinner.count) % spinner.count;
-        opacity = 1.0 - (distance / spinner.count);
-        spinner.sprites[i].SetOpacity(opacity * 0.6);
+        # Simple sin/cos using quarter values
+        if (a < 1.5708) {
+            cos_val = 1 - (a * a / 2);
+            sin_val = a - (a * a * a / 6);
+        } else if (a < 3.14159) {
+            a2 = a - 1.5708;
+            cos_val = -a2 + (a2 * a2 * a2 / 6);
+            sin_val = 1 - (a2 * a2 / 2);
+        } else if (a < 4.71239) {
+            a2 = a - 3.14159;
+            cos_val = -1 + (a2 * a2 / 2);
+            sin_val = -a2 + (a2 * a2 * a2 / 6);
+        } else {
+            a2 = a - 4.71239;
+            cos_val = a2 - (a2 * a2 * a2 / 6);
+            sin_val = -1 + (a2 * a2 / 2);
+        }
+
+        x = screen_width / 2 + cos_val * DOT_RADIUS;
+        y = screen_height / 2 + sin_val * DOT_RADIUS;
+
+        # Fade based on position
+        opacity = 0.3 + (i / NUM_DOTS) * 0.7;
+
+        dot_image = Image.Text("●", 0.5, 0.5, 0.5, 1, "Sans 10");
+        dots[i].SetImage(dot_image);
+        dots[i].SetPosition(x - 5, y - 5, 2);
+        dots[i].SetOpacity(opacity);
     }
-
-    spinner.current = (spinner.current + 1) % spinner.count;
 }
 
 Plymouth.SetRefreshFunction(refresh_callback);
 
-# Password dialog
-fun password_dialogue_setup(prompt, num_bullets) {
-    # Clear spinner during password entry
-    for (i = 0; i < spinner.count; i++) {
-        spinner.sprites[i].SetOpacity(0);
+# Password prompt
+fun display_password_callback(prompt_text, num_bullets) {
+    # Hide spinner dots during password entry
+    for (i = 0; i < NUM_DOTS; i++) {
+        dots[i].SetOpacity(0);
     }
 
-    # Prompt text
-    prompt_sprite = Sprite();
-    prompt_image = Image.Text(prompt, dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 14");
+    # Prompt label
+    prompt_image = Image.Text(prompt_text, 0.53, 0.53, 0.53, 1, "Sans 14");
     prompt_sprite.SetImage(prompt_image);
-    prompt_sprite.SetPosition(screen.width / 2 - prompt_image.GetWidth() / 2, screen.height / 2 - 60, 10);
+    prompt_sprite.SetPosition(screen_width / 2 - prompt_image.GetWidth() / 2, screen_height / 2 - 50, 10);
 
-    # Password box background
-    box_width = 280;
-    box_height = 48;
-
-    # Draw bullets for entered characters
-    bullet_string = "";
+    # Password bullets
+    bullet_text = "";
     for (i = 0; i < num_bullets; i++) {
-        bullet_string += "● ";
+        bullet_text = bullet_text + "● ";
     }
 
-    bullets_sprite = Sprite();
     if (num_bullets > 0) {
-        bullets_image = Image.Text(bullet_string, text_color.red, text_color.green, text_color.blue, 1, "Sans 16");
-        bullets_sprite.SetImage(bullets_image);
-        bullets_sprite.SetPosition(screen.width / 2 - bullets_image.GetWidth() / 2, screen.height / 2, 10);
-    }
-
-    # Cursor
-    cursor_sprite = Sprite();
-    cursor_image = Image.Text("|", text_color.red, text_color.green, text_color.blue, 1, "Sans 20");
-    cursor_sprite.SetImage(cursor_image);
-
-    if (num_bullets > 0) {
-        cursor_sprite.SetPosition(screen.width / 2 + (num_bullets * 12), screen.height / 2 - 2, 10);
+        bullet_image = Image.Text(bullet_text, 1, 1, 1, 1, "Sans 18");
+        bullet_sprite.SetImage(bullet_image);
+        bullet_sprite.SetPosition(screen_width / 2 - bullet_image.GetWidth() / 2, screen_height / 2, 10);
     } else {
-        cursor_sprite.SetPosition(screen.width / 2, screen.height / 2 - 2, 10);
+        # Clear bullets
+        empty_image = Image.Text(" ", 1, 1, 1, 1, "Sans 18");
+        bullet_sprite.SetImage(empty_image);
+        bullet_sprite.SetPosition(screen_width / 2, screen_height / 2, 10);
     }
-
-    global.prompt_sprite = prompt_sprite;
-    global.bullets_sprite = bullets_sprite;
-    global.cursor_sprite = cursor_sprite;
 }
 
-Plymouth.SetDisplayPasswordFunction(password_dialogue_setup);
+prompt_sprite = Sprite();
+bullet_sprite = Sprite();
 
-fun password_dialogue_opacity(opacity) {
-    global.prompt_sprite.SetOpacity(opacity);
-    global.bullets_sprite.SetOpacity(opacity);
-    global.cursor_sprite.SetOpacity(opacity);
-}
+Plymouth.SetDisplayPasswordFunction(display_password_callback);
 
-Plymouth.SetDisplayPasswordFunction(password_dialogue_setup);
-
-# Message display
+# Messages
 message_sprite = Sprite();
 
 fun message_callback(text) {
-    message_image = Image.Text(text, dim_color.red, dim_color.green, dim_color.blue, 1, "Sans 12");
-    message_sprite.SetImage(message_image);
-    message_sprite.SetPosition(screen.width / 2 - message_image.GetWidth() / 2, screen.height * 0.85, 5);
+    image = Image.Text(text, 0.53, 0.53, 0.53, 1, "Sans 12");
+    message_sprite.SetImage(image);
+    message_sprite.SetPosition(screen_width / 2 - image.GetWidth() / 2, screen_height * 0.8, 5);
 }
 
 Plymouth.SetMessageFunction(message_callback);
 
-# Boot progress (optional - just dims spinner)
-fun boot_progress_callback(time, progress) {
-    # Progress is 0.0 to 1.0
-}
-
-Plymouth.SetBootProgressFunction(boot_progress_callback);
-
-# Quit callback
+# Quit
 fun quit_callback() {
 }
 
