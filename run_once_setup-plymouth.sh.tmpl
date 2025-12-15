@@ -19,8 +19,8 @@ SOURCE_DIR="$HOME/.config/plymouth-theme"
 
 echo "Installing minimal Plymouth theme..."
 sudo mkdir -p "$THEME_DIR"
-sudo cp "$SOURCE_DIR/minimal.plymouth" "$THEME_DIR/"
-sudo cp "$SOURCE_DIR/minimal.script" "$THEME_DIR/"
+sudo cp "$SOURCE_DIR"/*.plymouth "$THEME_DIR/"
+sudo cp "$SOURCE_DIR"/*.png "$THEME_DIR/"
 sudo chmod 644 "$THEME_DIR"/*
 
 # Configure Plymouth to use minimal theme
