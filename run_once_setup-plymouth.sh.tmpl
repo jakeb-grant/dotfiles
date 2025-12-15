@@ -1,0 +1,52 @@
+#!/bin/bash
+# Setup Plymouth boot splash (runs once on new machines)
+
+set -e
+
+# Check if plymouth is installed
+if ! command -v plymouth &> /dev/null; then
+    echo "Plymouth is not installed."
+    echo "Install it first: sudo pacman -S plymouth"
+    exit 1
+fi
+
+echo "Configuring Plymouth boot splash..."
+echo "This requires sudo access."
+
+# Configure Plymouth theme
+PLYMOUTH_CONF="/etc/plymouth/plymouthd.conf"
+if ! grep -q "^Theme=spinner" "$PLYMOUTH_CONF" 2>/dev/null; then
+    echo "Setting Plymouth theme to spinner..."
+    sudo mkdir -p /etc/plymouth
+    sudo tee "$PLYMOUTH_CONF" > /dev/null << 'EOF'
+[Daemon]
+Theme=spinner
+ShowDelay=0
+EOF
+fi
+
+# Add plymouth hook to mkinitcpio if not present
+MKINITCPIO_CONF="/etc/mkinitcpio.conf"
+if ! grep -q "plymouth" "$MKINITCPIO_CONF"; then
+    echo "Adding plymouth hook to mkinitcpio.conf..."
+    # Insert plymouth before encrypt (required for encrypted systems)
+    sudo sed -i 's/\bencrypt\b/plymouth encrypt/' "$MKINITCPIO_CONF"
+fi
+
+# Add splash to GRUB kernel parameters if not present
+GRUB_CONF="/etc/default/grub"
+if ! grep -q "splash" "$GRUB_CONF"; then
+    echo "Adding splash to GRUB kernel parameters..."
+    sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 splash"/' "$GRUB_CONF"
+fi
+
+# Regenerate GRUB config
+echo "Regenerating GRUB config..."
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# Regenerate initramfs
+echo "Regenerating initramfs..."
+sudo mkinitcpio -P
+
+echo "Plymouth setup complete!"
+echo "Reboot to see the boot splash."
