@@ -57,6 +57,29 @@ else
     echo 'GRUB_TIMEOUT_STYLE=hidden' | sudo tee -a "$GRUB_CONF" > /dev/null
 fi
 
+# Install dark GRUB background and dim text colors
+echo "Installing dark GRUB background..."
+sudo cp "$HOME/.config/grub/background.png" /boot/grub/background.png
+
+# Set background
+if grep -q "^GRUB_BACKGROUND=" "$GRUB_CONF"; then
+    sudo sed -i 's|^GRUB_BACKGROUND=.*|GRUB_BACKGROUND="/boot/grub/background.png"|' "$GRUB_CONF"
+else
+    echo 'GRUB_BACKGROUND="/boot/grub/background.png"' | sudo tee -a "$GRUB_CONF" > /dev/null
+fi
+
+# Set dim text colors (dark-gray on black to minimize visibility)
+if grep -q "^GRUB_COLOR_NORMAL=" "$GRUB_CONF"; then
+    sudo sed -i 's/^GRUB_COLOR_NORMAL=.*/GRUB_COLOR_NORMAL="dark-gray\/black"/' "$GRUB_CONF"
+else
+    echo 'GRUB_COLOR_NORMAL="dark-gray/black"' | sudo tee -a "$GRUB_CONF" > /dev/null
+fi
+if grep -q "^GRUB_COLOR_HIGHLIGHT=" "$GRUB_CONF"; then
+    sudo sed -i 's/^GRUB_COLOR_HIGHLIGHT=.*/GRUB_COLOR_HIGHLIGHT="dark-gray\/black"/' "$GRUB_CONF"
+else
+    echo 'GRUB_COLOR_HIGHLIGHT="dark-gray/black"' | sudo tee -a "$GRUB_CONF" > /dev/null
+fi
+
 # Regenerate GRUB config
 echo "Regenerating GRUB config..."
 sudo grub-mkconfig -o /boot/grub/grub.cfg
