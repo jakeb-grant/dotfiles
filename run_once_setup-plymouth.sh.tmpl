@@ -48,6 +48,15 @@ if ! grep -q "splash" "$GRUB_CONF"; then
     sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="\([^"]*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 splash"/' "$GRUB_CONF"
 fi
 
+# Create systemd drop-in for smooth transition to display manager
+echo "Configuring smooth Plymouth-to-DM transition..."
+sudo mkdir -p /etc/systemd/system/plymouth-quit.service.d
+sudo tee /etc/systemd/system/plymouth-quit.service.d/wait-for-dm.conf > /dev/null << 'EOF'
+[Unit]
+After=display-manager.service
+EOF
+sudo systemctl daemon-reload
+
 # Regenerate GRUB config
 echo "Regenerating GRUB config..."
 sudo grub-mkconfig -o /boot/grub/grub.cfg
