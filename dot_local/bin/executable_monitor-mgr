@@ -115,6 +115,89 @@ def delete_profile(profile_name: str) -> bool:
         return False
 
 
+def detect_docks() -> list[dict[str, Any]]:
+    """Detect connected Thunderbolt docks using boltctl."""
+    try:
+        result = subprocess.run(
+            ["boltctl", "list"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode != 0:
+            return []
+
+        docks = []
+        current_dock: dict[str, Any] = {}
+
+        for line in result.stdout.splitlines():
+            stripped = line.strip()
+            # New device entry - handle both unicode bullet and asterisk
+            if line.lstrip().startswith(("●", "*")) and not line.lstrip().startswith("|-"):
+                # Save previous device if exists
+                if current_dock.get("uuid"):
+                    docks.append(current_dock)
+                # Extract name after the marker
+                name_part = re.split(r"[●*]", line, maxsplit=1)[1].strip() if re.search(r"[●*]", line) else ""
+                current_dock = {"name": name_part}
+            # Parse field lines (format: "|- field:  value" or "field: value")
+            elif ":" in stripped:
+                # Remove tree drawing characters
+                clean = re.sub(r"^[|`\-\s]+", "", stripped)
+                if ":" in clean:
+                    key, _, value = clean.partition(":")
+                    key = key.strip().lower()
+                    value = value.strip()
+                    if key == "name":
+                        current_dock["name"] = value
+                    elif key == "uuid":
+                        current_dock["uuid"] = value
+                    elif key == "vendor":
+                        current_dock["vendor"] = value
+                    elif key == "type":
+                        current_dock["type"] = value
+                    elif key == "status":
+                        current_dock["status"] = value
+
+        # Don't forget the last one
+        if current_dock.get("uuid"):
+            docks.append(current_dock)
+
+        # Filter to only peripherals (actual docks, not host controllers)
+        return [d for d in docks if d.get("type") == "peripheral"]
+
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return []
+
+
+def get_dock_for_profile(profile_name: str) -> str | None:
+    """Get the dock UUID linked to a profile, if any."""
+    metadata = load_metadata()
+    dock_profiles = metadata.get("dock_profiles", {})
+    for uuid, name in dock_profiles.items():
+        if name == profile_name:
+            return uuid
+    return None
+
+
+def link_profile_to_dock(profile_name: str, dock_uuid: str) -> bool:
+    """Link a profile to a dock UUID."""
+    metadata = load_metadata()
+    if "dock_profiles" not in metadata:
+        metadata["dock_profiles"] = {}
+    metadata["dock_profiles"][dock_uuid] = profile_name
+    return save_metadata(metadata)
+
+
+def unlink_profile_from_dock(profile_name: str) -> bool:
+    """Remove dock linking for a profile."""
+    metadata = load_metadata()
+    dock_profiles = metadata.get("dock_profiles", {})
+    # Find and remove any dock linked to this profile
+    to_remove = [uuid for uuid, name in dock_profiles.items() if name == profile_name]
+    for uuid in to_remove:
+        del dock_profiles[uuid]
+    metadata["dock_profiles"] = dock_profiles
+    return save_metadata(metadata)
+
+
 def detect_monitors() -> list[dict[str, Any]]:
     """Detect current monitor setup from hyprctl."""
     try:
@@ -193,27 +276,37 @@ class MonitorOrderCanvas(Static):
             selected = ">>> " if i == self.selected_index else "    "
             name = monitor["name"]
             res = monitor["resolution"]
+            enabled = monitor.get("enabled", True)
+            status = "" if enabled else " [DISABLED]"
 
-            # Find workspace assigned to this monitor
-            ws_num = "—"
-            for ws in self.workspaces:
-                if ws["monitor"] == name:
-                    ws_num = str(ws["id"])
-                    break
+            # Find all workspaces assigned to this monitor
+            if enabled:
+                ws_ids = sorted([ws["id"] for ws in self.workspaces if ws["monitor"] == name])
+                ws_str = ", ".join(str(w) for w in ws_ids) if ws_ids else "—"
+            else:
+                ws_str = "—"
 
             lines.append(
-                f"{selected}[{i + 1}] {name:10} | {res:12} | Workspace: {ws_num}"
+                f"{selected}[{i + 1}] {name:10} | {res:12} | Workspaces: {ws_str}{status}"
             )
 
         lines.append("")
         lines.append("Visual Layout:")
-        layout = "  " + "  ".join([f"[{m['name']}]" for m in self.monitors])
+        monitor_strs = []
+        for m in self.monitors:
+            if m.get("enabled", True):
+                monitor_strs.append(f"[{m['name']}]")
+            else:
+                monitor_strs.append(f"[{m['name']} OFF]")
+        layout = "  " + "  ".join(monitor_strs)
         lines.append(layout)
         lines.append("")
         lines.append("Controls:")
         lines.append("  ↑↓      : Select monitor")
         lines.append("  ←→      : Move monitor left/right in order")
-        lines.append("  1-9     : Assign workspace number to selected monitor")
+        lines.append("  d       : Toggle disable (keeps in config but turns off)")
+        lines.append("  x/Del   : Remove monitor from profile entirely")
+        lines.append("  1-9, 0  : Toggle workspace on selected monitor (0 = WS 10)")
 
         return "\n".join(lines)
 
@@ -226,6 +319,9 @@ class MonitorArrangement(Screen):
         ("down", "select_next", "Next"),
         ("left", "move_left", "Move Left"),
         ("right", "move_right", "Move Right"),
+        ("d", "toggle_disable", "Disable"),
+        ("x", "remove_monitor", "Remove"),
+        ("delete", "remove_monitor", "Remove"),
         ("1", "assign_workspace('1')", "WS 1"),
         ("2", "assign_workspace('2')", "WS 2"),
         ("3", "assign_workspace('3')", "WS 3"),
@@ -235,6 +331,7 @@ class MonitorArrangement(Screen):
         ("7", "assign_workspace('7')", "WS 7"),
         ("8", "assign_workspace('8')", "WS 8"),
         ("9", "assign_workspace('9')", "WS 9"),
+        ("0", "assign_workspace('10')", "WS 10"),
         ("escape", "cancel", "Cancel"),
         ("enter", "save", "Save"),
     ]
@@ -283,6 +380,49 @@ class MonitorArrangement(Screen):
         self._recalculate_positions()
         self.refresh_canvas()
 
+    def action_toggle_disable(self) -> None:
+        """Toggle the selected monitor between enabled and disabled."""
+        if not self.monitors:
+            return
+
+        monitor = self.monitors[self.selected_index]
+        current = monitor.get("enabled", True)
+        monitor["enabled"] = not current
+
+        if monitor["enabled"]:
+            self.notify(f"Enabled {monitor['name']}", severity="information")
+        else:
+            # Remove workspaces from disabled monitor
+            self.workspaces = [ws for ws in self.workspaces if ws["monitor"] != monitor["name"]]
+            self.notify(f"Disabled {monitor['name']}", severity="information")
+
+        self.refresh_canvas()
+
+    def action_remove_monitor(self) -> None:
+        """Remove the selected monitor from the profile."""
+        if not self.monitors:
+            return
+
+        if len(self.monitors) <= 1:
+            self.notify("Cannot remove the last monitor", severity="warning")
+            return
+
+        monitor_name = self.monitors[self.selected_index]["name"]
+
+        # Remove the monitor
+        del self.monitors[self.selected_index]
+
+        # Remove any workspaces assigned to this monitor
+        self.workspaces = [ws for ws in self.workspaces if ws["monitor"] != monitor_name]
+
+        # Adjust selected index if needed
+        if self.selected_index >= len(self.monitors):
+            self.selected_index = len(self.monitors) - 1
+
+        self._recalculate_positions()
+        self.notify(f"Removed {monitor_name}", severity="information")
+        self.refresh_canvas()
+
     def action_move_right(self) -> None:
         """Move selected monitor right in order."""
         if not self.monitors or self.selected_index >= len(self.monitors) - 1:
@@ -302,29 +442,43 @@ class MonitorArrangement(Screen):
         """Recalculate monitor positions based on order."""
         x_offset = 0
         for monitor in self.monitors:
-            monitor["position"]["x"] = x_offset
-            monitor["position"]["y"] = 0
-            width = int(monitor["resolution"].split("x")[0])
-            x_offset += width
+            if monitor.get("enabled", True):
+                monitor["position"]["x"] = x_offset
+                monitor["position"]["y"] = 0
+                width = int(monitor["resolution"].split("x")[0])
+                x_offset += width
 
     def _assign_workspace(self, ws_num: int) -> None:
-        """Assign workspace number to selected monitor."""
+        """Toggle workspace assignment for selected monitor."""
         if not self.monitors or not (0 <= self.selected_index < len(self.monitors)):
             return
 
         monitor_name = self.monitors[self.selected_index]["name"]
 
-        # Remove existing workspace assignment for this monitor
-        self.workspaces = [
-            ws for ws in self.workspaces if ws["monitor"] != monitor_name
-        ]
-
-        # Add new workspace assignment
-        self.workspaces.append({"id": ws_num, "monitor": monitor_name, "default": True})
-
-        self.notify(
-            f"Assigned workspace {ws_num} to {monitor_name}", severity="information"
+        # Check if this workspace is already assigned to this monitor
+        existing = next(
+            (ws for ws in self.workspaces if ws["id"] == ws_num and ws["monitor"] == monitor_name),
+            None
         )
+
+        if existing:
+            # Toggle off - remove from this monitor
+            self.workspaces = [ws for ws in self.workspaces if not (ws["id"] == ws_num and ws["monitor"] == monitor_name)]
+            self.notify(
+                f"Removed workspace {ws_num} from {monitor_name}", severity="information"
+            )
+        else:
+            # Remove from any other monitor first
+            self.workspaces = [ws for ws in self.workspaces if ws["id"] != ws_num]
+            # Assign to this monitor
+            self.workspaces.append({"id": ws_num, "monitor": monitor_name, "default": False})
+            self.notify(
+                f"Assigned workspace {ws_num} to {monitor_name}", severity="information"
+            )
+
+        # Sort workspaces by id for cleaner display
+        self.workspaces.sort(key=lambda ws: ws["id"])
+
         self.refresh_canvas()
 
     def action_assign_workspace(self, ws_num: str) -> None:
@@ -341,6 +495,16 @@ class MonitorArrangement(Screen):
 
     def action_save(self) -> None:
         """Save the arrangement and return."""
+        # Set the lowest workspace on each monitor as the default
+        monitor_mins: dict[str, int] = {}
+        for ws in self.workspaces:
+            mon = ws["monitor"]
+            if mon not in monitor_mins or ws["id"] < monitor_mins[mon]:
+                monitor_mins[mon] = ws["id"]
+
+        for ws in self.workspaces:
+            ws["default"] = ws["id"] == monitor_mins.get(ws["monitor"])
+
         self.dismiss((self.monitors, self.workspaces))
 
     def action_cancel(self) -> None:
@@ -367,6 +531,7 @@ class ProfileEditor(Screen):
     BINDINGS = [
         ("d", "detect", "Detect"),
         ("a", "arrange", "Arrange"),
+        ("l", "link_dock", "Link Dock"),
         ("s", "save", "Save"),
         ("escape", "cancel", "Cancel"),
         ("tab", "focus_next_input", "Next field"),
@@ -400,6 +565,39 @@ class ProfileEditor(Screen):
                 "on_open": "preferred,0x0,1",
             },
         }
+
+    def _get_dock_status_text(self) -> str:
+        """Get dock link status text for display."""
+        profile_name = self.profile.get("name", "")
+        linked_dock = get_dock_for_profile(profile_name) if self.original_name else None
+        connected_docks = detect_docks()
+
+        lines = []
+
+        if linked_dock:
+            # Find dock info if it's connected
+            dock_info = next((d for d in connected_docks if d["uuid"] == linked_dock), None)
+            if dock_info:
+                lines.append(f"  Linked: {dock_info.get('name', 'Unknown')} (connected)")
+            else:
+                lines.append(f"  Linked: {linked_dock[:16]}... (not connected)")
+        else:
+            lines.append("  Not linked to any dock")
+
+        if connected_docks:
+            lines.append(f"  Connected docks: {len(connected_docks)}")
+            for dock in connected_docks:
+                name = dock.get("name", "Unknown")
+                lines.append(f"    - {name}")
+        else:
+            lines.append("  No docks connected")
+
+        return "\n".join(lines)
+
+    def _refresh_dock_display(self) -> None:
+        """Refresh the dock status display."""
+        dock_display = self.query_one("#dock_display", Static)
+        dock_display.update(self._get_dock_status_text())
 
     def compose(self) -> ComposeResult:
         """Compose the editor UI."""
@@ -442,11 +640,28 @@ class ProfileEditor(Screen):
             )
             yield Static(workspaces_text, id="workspaces_display")
 
+            # Dock linking section
+            yield Label("\nDock Link:")
+            yield Static(self._get_dock_status_text(), id="dock_display")
+
             with Horizontal():
                 yield Button("Detect (d)", id="detect_btn", variant="primary")
                 yield Button("Arrange (a)", id="arrange_btn", variant="primary")
+                yield Button("Link Dock (l)", id="link_btn", variant="primary")
                 yield Button("Save (s)", id="save_btn", variant="success")
                 yield Button("Cancel (Esc)", id="cancel_btn")
+
+    def _arrange_monitors_left_to_right(self, monitors: list[dict[str, Any]]) -> None:
+        """Arrange monitors left-to-right with no overlap."""
+        x_offset = 0
+        for monitor in monitors:
+            if monitor.get("enabled", True):
+                monitor["position"]["x"] = x_offset
+                monitor["position"]["y"] = 0
+                # Get width from resolution
+                res = monitor.get("resolution", "1920x1080")
+                width = int(res.split("x")[0])
+                x_offset += width
 
     @on(Button.Pressed, "#detect_btn")
     def action_detect(self) -> None:
@@ -456,6 +671,12 @@ class ProfileEditor(Screen):
         if not monitors:
             self.notify("Could not detect monitors", severity="error")
             return
+
+        # Sort monitors: external first, laptop last
+        monitors.sort(key=lambda m: (1 if "eDP" in m["name"] else 0, m["name"]))
+
+        # Arrange left-to-right with no overlap
+        self._arrange_monitors_left_to_right(monitors)
 
         # Update profile with detected monitors
         self.profile["monitors"] = monitors
@@ -508,6 +729,48 @@ class ProfileEditor(Screen):
             ),
             on_arrangement_saved,
         )
+
+    @on(Button.Pressed, "#link_btn")
+    def action_link_dock(self) -> None:
+        """Link or unlink this profile to/from a connected dock."""
+        profile_name = self.profile.get("name", "")
+
+        # Check if already linked
+        linked_dock = get_dock_for_profile(profile_name) if self.original_name else None
+
+        if linked_dock:
+            # Unlink
+            if unlink_profile_from_dock(profile_name):
+                self.notify(f"Unlinked profile from dock", severity="information")
+            else:
+                self.notify("Failed to unlink", severity="error")
+            self._refresh_dock_display()
+            return
+
+        # Try to link to a connected dock
+        connected_docks = detect_docks()
+
+        if not connected_docks:
+            self.notify("No docks connected", severity="warning")
+            return
+
+        if len(connected_docks) == 1:
+            # Only one dock, link directly
+            dock = connected_docks[0]
+            if link_profile_to_dock(profile_name, dock["uuid"]):
+                self.notify(f"Linked to {dock.get('name', 'dock')}", severity="information")
+            else:
+                self.notify("Failed to link", severity="error")
+            self._refresh_dock_display()
+        else:
+            # Multiple docks - just use the first for now
+            # TODO: Could add a dock selection screen
+            dock = connected_docks[0]
+            if link_profile_to_dock(profile_name, dock["uuid"]):
+                self.notify(f"Linked to {dock.get('name', 'dock')}", severity="information")
+            else:
+                self.notify("Failed to link", severity="error")
+            self._refresh_dock_display()
 
     def _refresh_display(self) -> None:
         """Refresh the monitor and workspace displays."""

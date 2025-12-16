@@ -12,15 +12,17 @@ Generates ~/.config/hypr/monitors.conf and optionally applies via hyprctl.
 
 Usage:
     monitor-apply <profile-name>       Apply a saved profile
-    monitor-apply --detect              Auto-detect and apply matching profile
-    monitor-apply --current             Show currently active profile
-    monitor-apply --list                List all available profiles
+    monitor-apply --auto               Apply profile based on connected dock
+    monitor-apply --current            Show currently active profile
+    monitor-apply --list               List all available profiles
 """
 
 import argparse
 import json
+import re
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -46,14 +48,14 @@ def ensure_default_config() -> None:
 
     OUTPUT_CONFIG.parent.mkdir(parents=True, exist_ok=True)
 
-    default_config = """
-    # Default monitor configuration
-    # This uses Hyprland's automatic monitor detection and positioning.
-    # To customize, use: monitor-mgr
+    default_config = """\
+# Default monitor configuration
+# This uses Hyprland's automatic monitor detection and positioning.
+# To customize, use: monitor-mgr
 
-    # Automatic monitor setup
-    monitor = ,preferred,auto,1
-    """
+# Automatic monitor setup
+monitor = ,preferred,auto,1
+"""
 
     try:
         with open(OUTPUT_CONFIG, "w") as f:
@@ -116,61 +118,79 @@ def save_metadata(metadata: dict[str, Any]) -> None:
 
 
 # ==============================================================================
-# Monitor Detection
+# Dock Detection
 # ==============================================================================
 
 
-def detect_monitors() -> list[dict[str, Any]]:
-    """Detect current monitor setup from hyprctl."""
+def detect_docks() -> list[dict[str, Any]]:
+    """Detect connected Thunderbolt docks using boltctl."""
     try:
         result = subprocess.run(
-            ["hyprctl", "monitors", "-j"], capture_output=True, text=True, timeout=5
+            ["boltctl", "list"], capture_output=True, text=True, timeout=5
         )
-
         if result.returncode != 0:
             return []
 
-        monitors = json.loads(result.stdout)
+        docks = []
+        current_dock: dict[str, Any] = {}
 
-        return [
-            {
-                "name": m["name"],
-                "enabled": not m.get("disabled", False),
-                "resolution": f"{m['width']}x{m['height']}",
-                "refresh_rate": round(m["refreshRate"], 2),
-                "position": {"x": m["x"], "y": m["y"]},
-                "scale": m["scale"],
-                "transform": m.get("transform", 0),
-                "mode": f"{m['width']}x{m['height']}@{round(m['refreshRate'])}",
-            }
-            for m in monitors
-        ]
-    except (
-        subprocess.TimeoutExpired,
-        json.JSONDecodeError,
-        FileNotFoundError,
-        KeyError,
-    ) as e:
-        print(f"Error detecting monitors: {e}", file=sys.stderr)
+        for line in result.stdout.splitlines():
+            stripped = line.strip()
+            # New device entry - handle both unicode bullet and asterisk
+            if line.lstrip().startswith(("●", "*")) and not line.lstrip().startswith("|-"):
+                # Save previous device if exists
+                if current_dock.get("uuid"):
+                    docks.append(current_dock)
+                # Extract name after the marker
+                name_part = re.split(r"[●*]", line, maxsplit=1)[1].strip() if re.search(r"[●*]", line) else ""
+                current_dock = {"name": name_part}
+            # Parse field lines (format: "|- field:  value" or "field: value")
+            elif ":" in stripped:
+                # Remove tree drawing characters
+                clean = re.sub(r"^[|`\-\s]+", "", stripped)
+                if ":" in clean:
+                    key, _, value = clean.partition(":")
+                    key = key.strip().lower()
+                    value = value.strip()
+                    if key == "name":
+                        current_dock["name"] = value
+                    elif key == "uuid":
+                        current_dock["uuid"] = value
+                    elif key == "type":
+                        current_dock["type"] = value
+
+        # Don't forget the last one
+        if current_dock.get("uuid"):
+            docks.append(current_dock)
+
+        # Filter to only peripherals (actual docks, not host controllers)
+        return [d for d in docks if d.get("type") == "peripheral"]
+    except (subprocess.TimeoutExpired, FileNotFoundError):
         return []
 
 
-def find_matching_profile(connected_monitors: list[str]) -> str | None:
-    """Find profile matching current monitor setup."""
-    profiles = list_profiles()
-    connected_set = set(connected_monitors)
+def get_profile_for_dock(dock_uuid: str) -> str | None:
+    """Get the profile linked to a dock UUID."""
+    metadata = load_metadata()
+    return metadata.get("dock_profiles", {}).get(dock_uuid)
 
-    for profile_name in profiles:
-        profile = load_profile(profile_name)
-        if not profile:
-            continue
 
-        profile_monitors = set(m["name"] for m in profile.get("monitors", []))
+def get_undocked_profile() -> str | None:
+    """Get the profile to use when undocked."""
+    metadata = load_metadata()
+    return metadata.get("undocked_profile")
 
-        if profile_monitors == connected_set:
-            return profile_name
 
-    return None
+def send_notification(title: str, message: str, icon: str = "display") -> None:
+    """Send a desktop notification via notify-send."""
+    try:
+        subprocess.run(
+            ["notify-send", "-i", icon, "-a", "Monitor Manager", title, message],
+            capture_output=True,
+            timeout=5,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass  # Notifications are non-critical
 
 
 # ==============================================================================
@@ -265,22 +285,36 @@ def apply_profile_runtime(profile: dict[str, Any]) -> bool:
             )
             success = False
 
-    # Move workspaces to monitors
-    for ws in profile.get("workspaces", []):
-        try:
-            subprocess.run(
-                [
-                    "hyprctl",
-                    "dispatch",
-                    "moveworkspacetomonitor",
-                    str(ws["id"]),
-                    ws["monitor"],
-                ],
-                capture_output=True,
-                timeout=5,
-            )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass  # Non-critical
+    # Wait for monitors to be recognized by Hyprland
+    time.sleep(1)
+
+    # Move workspaces to monitors (with retry)
+    for attempt in range(3):
+        all_moved = True
+        for ws in profile.get("workspaces", []):
+            try:
+                result = subprocess.run(
+                    [
+                        "hyprctl",
+                        "dispatch",
+                        "moveworkspacetomonitor",
+                        str(ws["id"]),
+                        ws["monitor"],
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                )
+                # Check if the move failed (monitor not found)
+                if "couldn't find" in result.stdout.lower() or "invalid" in result.stdout.lower():
+                    all_moved = False
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                all_moved = False
+
+        if all_moved:
+            break
+        # Wait before retry
+        time.sleep(0.5)
 
     return success
 
@@ -348,7 +382,7 @@ def main() -> int:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("profile", nargs="?", help="Profile name to apply")
     group.add_argument(
-        "--detect", action="store_true", help="Auto-detect and apply matching profile"
+        "--auto", action="store_true", help="Apply profile based on connected dock"
     )
     group.add_argument(
         "--current", action="store_true", help="Show currently active profile"
@@ -393,23 +427,60 @@ def main() -> int:
             print("No active profile")
             return 1
 
-    # Auto-detect
-    if args.detect:
-        monitors = detect_monitors()
-        if not monitors:
-            print("Error: Could not detect monitors", file=sys.stderr)
+    # Auto mode - apply based on connected dock
+    if args.auto:
+        docks = detect_docks()
+
+        if docks:
+            # Try to find a profile linked to any connected dock
+            for dock in docks:
+                profile_name = get_profile_for_dock(dock["uuid"])
+                if profile_name:
+                    dock_name = dock.get('name', 'Dock')
+                    print(f"Dock detected: {dock_name}")
+                    print(f"Applying linked profile: {profile_name}")
+                    success = apply_profile(profile_name, not args.no_runtime)
+                    if success:
+                        send_notification(
+                            "Dock Connected",
+                            f"Applied profile: {profile_name}",
+                            "video-display"
+                        )
+                    return 0 if success else 1
+
+            # Dock connected but no profile linked
+            dock_name = docks[0].get('name', 'Unknown dock')
+            print(f"Dock connected but no profile linked", file=sys.stderr)
+            print("Use monitor-mgr to link a profile to this dock", file=sys.stderr)
+            send_notification(
+                "Dock Connected",
+                f"{dock_name}\nNo profile linked - use monitor-mgr to configure",
+                "dialog-warning"
+            )
             return 1
-
-        monitor_names = [m["name"] for m in monitors]
-        print(f"Detected monitors: {', '.join(monitor_names)}")
-
-        profile_name = find_matching_profile(monitor_names)
-        if not profile_name:
-            print("No matching profile found", file=sys.stderr)
-            return 1
-
-        print(f"Found matching profile: {profile_name}")
-        return 0 if apply_profile(profile_name, not args.no_runtime) else 1
+        else:
+            # No dock - try undocked profile or generate default
+            undocked = get_undocked_profile()
+            if undocked:
+                print("No dock detected, applying undocked profile")
+                success = apply_profile(undocked, not args.no_runtime)
+                if success:
+                    send_notification(
+                        "Dock Disconnected",
+                        f"Applied profile: {undocked}",
+                        "video-display"
+                    )
+                return 0 if success else 1
+            else:
+                # No undocked profile configured - use default auto config
+                print("No dock detected, using default monitor config")
+                send_notification(
+                    "No Dock Detected",
+                    "Using default monitor configuration",
+                    "video-display"
+                )
+                ensure_default_config()
+                return 0
 
     # Apply specific profile
     if args.profile:
