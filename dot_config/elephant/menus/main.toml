@@ -3,49 +3,68 @@ name_pretty = "Main Menu"
 icon = "view-app-grid"
 
 [[entries]]
-text = "1. Applications"
+text = "Applications"
 keywords = ["apps", "launch", "programs"]
 icon = "applications-other"
 actions = { "open" = "walker -s apps -H" }
 
 [[entries]]
-text = "2. Packages"
+text = "Packages"
 keywords = ["install", "aur", "pacman", "yay"]
 icon = "system-software-install"
 actions = { "open" = "walker -m archlinuxpkgs -H" }
 
 [[entries]]
-text = "3. Files"
+text = "Files"
 keywords = ["search", "find", "documents"]
 icon = "folder"
 actions = { "open" = "walker -s files -H" }
 
 [[entries]]
-text = "4. Windows"
+text = "Windows"
 keywords = ["switch", "focus"]
 icon = "preferences-system-windows"
 actions = { "open" = "walker -s windows -H" }
 
 [[entries]]
-text = "5. Keybinds"
+text = "Keybinds"
 keywords = ["shortcuts", "hotkeys", "keys"]
 icon = "input-keyboard"
 actions = { "open" = "walker -s keybinds -H" }
 
 [[entries]]
-text = "6. Clipboard"
+text = "Clipboard"
 keywords = ["paste", "history", "copy"]
 icon = "edit-paste"
 actions = { "open" = "walker -s clipboard -H" }
 
 [[entries]]
-text = "7. Calculator"
+text = "Calculator"
 keywords = ["math", "calc", "convert"]
 icon = "accessories-calculator"
 actions = { "open" = "walker -s calc -H" }
 
 [[entries]]
-text = "8. Themes"
+text = "Themes"
 keywords = ["theme", "switch", "wallpaper", "rice", "colors"]
 icon = "preferences-desktop-theme"
 actions = { "open" = "walker -s themes -H" }
+
+[[entries]]
+text = "Monitors"
+keywords = ["display", "screen", "profile", "dock", "external"]
+icon = "video-display"
+actions = { "exec" = "ghostty -e monitor-mgr" }
+
+[[entries]]
+text = "System"
+keywords = ["info", "specs", "hardware", "neofetch", "fastfetch"]
+icon = "computer"
+actions = { "exec" = "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" }
+
+[[entries]]
+text = "Process Manager"
+keywords = ["htop", "btop", "top", "cpu", "memory", "task"]
+icon = "utilities-system-monitor"
+actions = { "exec" = "ghostty -e btop" }
+
