@@ -25,7 +25,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 # ==============================================================================
 # Configuration
 # ==============================================================================
@@ -39,6 +38,7 @@ OUTPUT_CONFIG = Path.home() / ".config" / "hypr" / "monitors.conf"
 # Default Configuration
 # ==============================================================================
 
+
 def ensure_default_config() -> None:
     """Ensure monitors.conf exists with default auto setup if missing."""
     if OUTPUT_CONFIG.exists():
@@ -46,13 +46,14 @@ def ensure_default_config() -> None:
 
     OUTPUT_CONFIG.parent.mkdir(parents=True, exist_ok=True)
 
-    default_config = """# Default monitor configuration
-# This uses Hyprland's automatic monitor detection and positioning.
-# To customize, use: monitor-mgr
+    default_config = """
+    # Default monitor configuration
+    # This uses Hyprland's automatic monitor detection and positioning.
+    # To customize, use: monitor-mgr
 
-# Automatic monitor setup
-monitor = ,preferred,auto,1
-"""
+    # Automatic monitor setup
+    monitor = ,preferred,auto,1
+    """
 
     try:
         with open(OUTPUT_CONFIG, "w") as f:
@@ -64,6 +65,7 @@ monitor = ,preferred,auto,1
 # ==============================================================================
 # Profile Loading
 # ==============================================================================
+
 
 def load_profile(profile_name: str) -> dict[str, Any] | None:
     """Load a monitor profile from JSON file."""
@@ -117,14 +119,12 @@ def save_metadata(metadata: dict[str, Any]) -> None:
 # Monitor Detection
 # ==============================================================================
 
+
 def detect_monitors() -> list[dict[str, Any]]:
     """Detect current monitor setup from hyprctl."""
     try:
         result = subprocess.run(
-            ["hyprctl", "monitors", "-j"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            ["hyprctl", "monitors", "-j"], capture_output=True, text=True, timeout=5
         )
 
         if result.returncode != 0:
@@ -145,7 +145,12 @@ def detect_monitors() -> list[dict[str, Any]]:
             }
             for m in monitors
         ]
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError, KeyError) as e:
+    except (
+        subprocess.TimeoutExpired,
+        json.JSONDecodeError,
+        FileNotFoundError,
+        KeyError,
+    ) as e:
         print(f"Error detecting monitors: {e}", file=sys.stderr)
         return []
 
@@ -171,6 +176,7 @@ def find_matching_profile(connected_monitors: list[str]) -> str | None:
 # ==============================================================================
 # Config Generation
 # ==============================================================================
+
 
 def generate_hyprland_config(profile: dict[str, Any]) -> str:
     """Generate Hyprland monitor configuration from profile."""
@@ -226,6 +232,7 @@ def generate_hyprland_config(profile: dict[str, Any]) -> str:
 # Profile Application
 # ==============================================================================
 
+
 def apply_profile_runtime(profile: dict[str, Any]) -> bool:
     """Apply profile to running Hyprland via hyprctl."""
     success = True
@@ -244,24 +251,33 @@ def apply_profile_runtime(profile: dict[str, Any]) -> bool:
 
         try:
             result = subprocess.run(
-                ["hyprctl", "keyword", "monitor", cmd],
-                capture_output=True,
-                timeout=5
+                ["hyprctl", "keyword", "monitor", cmd], capture_output=True, timeout=5
             )
             if result.returncode != 0:
-                print(f"Warning: Failed to apply monitor {monitor['name']}", file=sys.stderr)
+                print(
+                    f"Warning: Failed to apply monitor {monitor['name']}",
+                    file=sys.stderr,
+                )
                 success = False
         except (subprocess.TimeoutExpired, FileNotFoundError):
-            print(f"Warning: Could not apply monitor {monitor['name']}", file=sys.stderr)
+            print(
+                f"Warning: Could not apply monitor {monitor['name']}", file=sys.stderr
+            )
             success = False
 
     # Move workspaces to monitors
     for ws in profile.get("workspaces", []):
         try:
             subprocess.run(
-                ["hyprctl", "dispatch", "moveworkspacetomonitor", str(ws["id"]), ws["monitor"]],
+                [
+                    "hyprctl",
+                    "dispatch",
+                    "moveworkspacetomonitor",
+                    str(ws["id"]),
+                    ws["monitor"],
+                ],
                 capture_output=True,
-                timeout=5
+                timeout=5,
             )
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass  # Non-critical
@@ -298,7 +314,10 @@ def apply_profile(profile_name: str, runtime: bool = True) -> bool:
             if apply_profile_runtime(profile):
                 print(f"Applied profile '{profile_name}' to running Hyprland")
             else:
-                print(f"Applied profile '{profile_name}' with some warnings", file=sys.stderr)
+                print(
+                    f"Applied profile '{profile_name}' with some warnings",
+                    file=sys.stderr,
+                )
         except (subprocess.CalledProcessError, FileNotFoundError):
             print("Hyprland not running - config generated only")
 
@@ -315,6 +334,7 @@ def apply_profile(profile_name: str, runtime: bool = True) -> bool:
 # Main
 # ==============================================================================
 
+
 def main() -> int:
     """Main entry point."""
     # Ensure default config exists
@@ -327,11 +347,21 @@ def main() -> int:
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument("profile", nargs="?", help="Profile name to apply")
-    group.add_argument("--detect", action="store_true", help="Auto-detect and apply matching profile")
-    group.add_argument("--current", action="store_true", help="Show currently active profile")
-    group.add_argument("--list", action="store_true", help="List all available profiles")
+    group.add_argument(
+        "--detect", action="store_true", help="Auto-detect and apply matching profile"
+    )
+    group.add_argument(
+        "--current", action="store_true", help="Show currently active profile"
+    )
+    group.add_argument(
+        "--list", action="store_true", help="List all available profiles"
+    )
 
-    parser.add_argument("--no-runtime", action="store_true", help="Generate config only, don't apply via hyprctl")
+    parser.add_argument(
+        "--no-runtime",
+        action="store_true",
+        help="Generate config only, don't apply via hyprctl",
+    )
 
     args = parser.parse_args()
 

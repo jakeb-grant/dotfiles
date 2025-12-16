@@ -960,6 +960,18 @@ class MonitorManagerApp(App):
         align: center middle;
         width: 100%;
     }
+
+    ScrollBar {
+        background: ansi_default;
+    }
+
+    ScrollBar > .scrollbar--bar {
+        color: ansi_blue;
+    }
+
+    ScrollBar > .scrollbar--bar:hover {
+        color: ansi_bright_blue;
+    }
     """
 
     def __init__(self) -> None:
