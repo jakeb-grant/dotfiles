@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+#
+# dock-enroll - Enroll Thunderbolt docks for automatic authorization
+#
+# Usage: dock-enroll [list|enroll|status]
+#
+
+set -euo pipefail
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+usage() {
+    echo "Usage: dock-enroll [command]"
+    echo ""
+    echo "Commands:"
+    echo "  list     List all Thunderbolt devices and their enrollment status"
+    echo "  enroll   Enroll all unenrolled devices with auto policy"
+    echo "  status   Show current Thunderbolt security mode"
+    echo ""
+    echo "If no command is given, defaults to 'list'"
+}
+
+check_bolt() {
+    if ! command -v boltctl &>/dev/null; then
+        echo -e "${RED}Error: boltctl not found${NC}"
+        echo "Install with: sudo pacman -S bolt"
+        exit 1
+    fi
+}
+
+list_devices() {
+    check_bolt
+    echo -e "${BLUE}Thunderbolt Devices:${NC}"
+    echo ""
+
+    # Get device list
+    local devices
+    devices=$(boltctl list 2>/dev/null || true)
+
+    if [[ -z "$devices" ]]; then
+        echo "  No Thunderbolt devices connected"
+        return
+    fi
+
+    # Parse and display devices
+    boltctl list
+}
+
+get_unenrolled() {
+    # Get UUIDs of devices that are not stored (enrolled)
+    boltctl list 2>/dev/null | awk -F': +' '
+        /uuid:/ { uuid = $2 }
+        /stored:.*no/ { print uuid }
+    '
+}
+
+enroll_devices() {
+    check_bolt
+
+    local unenrolled
+    unenrolled=$(get_unenrolled)
+
+    if [[ -z "$unenrolled" ]]; then
+        echo -e "${GREEN}All connected devices are already enrolled${NC}"
+        return
+    fi
+
+    echo -e "${YELLOW}Enrolling unenrolled devices...${NC}"
+    echo ""
+
+    while IFS= read -r uuid; do
+        # Skip empty lines and validate UUID format
+        if [[ -n "$uuid" && "$uuid" =~ ^[0-9a-f-]+$ ]]; then
+            local name
+            name=$(boltctl info "$uuid" 2>/dev/null | awk -F': +' '/name:/ {print $2; exit}')
+            echo -e "  Enrolling: ${BLUE}${name:-$uuid}${NC} ($uuid)"
+
+            if sudo boltctl enroll --policy auto "$uuid"; then
+                echo -e "    ${GREEN}Success${NC}"
+            else
+                echo -e "    ${RED}Failed${NC}"
+            fi
+        fi
+    done <<< "$unenrolled"
+
+    echo ""
+    echo -e "${GREEN}Done!${NC} USB devices should now be available."
+}
+
+show_status() {
+    check_bolt
+
+    local security
+    security=$(cat /sys/bus/thunderbolt/devices/domain0/security 2>/dev/null || echo "unknown")
+
+    echo -e "${BLUE}Thunderbolt Security Mode:${NC} $security"
+    echo ""
+
+    case "$security" in
+        none)
+            echo "  All devices are automatically authorized (no security)"
+            ;;
+        user)
+            echo "  Devices require user authorization (default)"
+            echo "  Use 'dock-enroll enroll' to authorize and remember devices"
+            ;;
+        secure)
+            echo "  Devices require secure authorization with key exchange"
+            ;;
+        dponly)
+            echo "  Only DisplayPort tunneling is allowed (no PCIe/USB)"
+            ;;
+        *)
+            echo "  Unknown security mode"
+            ;;
+    esac
+}
+
+# Main
+case "${1:-list}" in
+    list)
+        list_devices
+        ;;
+    enroll)
+        enroll_devices
+        ;;
+    status)
+        show_status
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        echo -e "${RED}Unknown command: $1${NC}"
+        usage
+        exit 1
+        ;;
+esac
