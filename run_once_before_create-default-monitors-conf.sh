@@ -8,7 +8,6 @@ if [ ! -f "$MONITORS_CONF" ]; then
     cat > "$MONITORS_CONF" << 'EOF'
 # Default monitor configuration
 # This uses Hyprland's automatic monitor detection and positioning.
-# To customize, use: monitor-mgr
 
 # Automatic monitor setup
 monitor = ,preferred,auto,1

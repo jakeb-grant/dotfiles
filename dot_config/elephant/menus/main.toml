@@ -51,12 +51,6 @@ icon = "preferences-desktop-theme"
 actions = { "open" = "walker -s themes -H" }
 
 [[entries]]
-text = "Monitors"
-keywords = ["display", "screen", "profile", "dock", "external"]
-icon = "video-display"
-actions = { "exec" = "ghostty -e monitor-mgr" }
-
-[[entries]]
 text = "System"
 keywords = ["info", "specs", "hardware", "neofetch", "fastfetch"]
 icon = "computer"

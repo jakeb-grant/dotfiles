@@ -40,11 +40,7 @@ env = AQ_DRM_DEVICES,/dev/dri/card1:/dev/dri/card0
 # ------------------------------------------------------------------------------
 # Monitor Configuration
 # ------------------------------------------------------------------------------
-# Managed by monitor-mgr - edit profiles with: monitor-mgr
-# Active profile: see ~/.config/monitor-profiles/.metadata.json
-#
-# This imports monitor configuration from an external file that is NOT managed
-# by theme-switch, ensuring your monitor setup persists across theme changes.
+# Imported from external file to persist across theme changes.
 source = $HOME/.config/hypr/monitors.conf
 
 # ------------------------------------------------------------------------------

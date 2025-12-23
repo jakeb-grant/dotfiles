@@ -8,45 +8,18 @@
 
 """
 Waybar module for pacman/AUR updates.
-Outputs JSON for waybar custom module with return-type=json.
+Click-to-check model: left-click refreshes, right-click opens yay.
 """
 
 import json
-import os
 import subprocess
-import time
+import sys
 from pathlib import Path
-from typing import Optional
 
 import requests
 
-CACHE_DIR = Path.home() / ".cache" / "waybar-updates"
-CACHE_FILE = CACHE_DIR / "updates.json"
-CACHE_MAX_AGE = 300  # 5 minutes
-AUR_BATCH_SIZE = 100  # Max packages per AUR API request
-
-
-def get_cache() -> Optional[dict]:
-    """Load cached update data if fresh enough."""
-    if not CACHE_FILE.exists():
-        return None
-
-    try:
-        age = time.time() - CACHE_FILE.stat().st_mtime
-        if age > CACHE_MAX_AGE:
-            return None
-
-        with open(CACHE_FILE) as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return None
-
-
-def save_cache(data: dict) -> None:
-    """Save update data to cache."""
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    with open(CACHE_FILE, "w") as f:
-        json.dump(data, f)
+CACHE_FILE = Path.home() / ".cache" / "waybar-updates" / "updates.json"
+AUR_BATCH_SIZE = 100
 
 
 def get_pacman_updates() -> list[tuple[str, str, str]]:
@@ -105,7 +78,6 @@ def query_aur_api(package_names: list[str]) -> tuple[dict[str, str], bool]:
     results = {}
     api_failed = False
 
-    # Batch requests to avoid overly long URLs
     for i in range(0, len(package_names), AUR_BATCH_SIZE):
         batch = package_names[i:i + AUR_BATCH_SIZE]
         try:
@@ -122,6 +94,23 @@ def query_aur_api(package_names: list[str]) -> tuple[dict[str, str], bool]:
             continue
 
     return results, not api_failed
+
+
+def compare_versions(new: str, old: str) -> bool:
+    """Check if new version is actually newer using vercmp."""
+    if new == old:
+        return False
+
+    try:
+        result = subprocess.run(
+            ["vercmp", new, old],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        return result.stdout.strip() == "1"
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
+        return new != old
 
 
 def get_aur_updates_fallback() -> list[tuple[str, str, str]]:
@@ -149,28 +138,8 @@ def get_aur_updates_fallback() -> list[tuple[str, str, str]]:
         return []
 
 
-def compare_versions(new: str, old: str) -> bool:
-    """Check if new version is actually newer using vercmp."""
-    if new == old:
-        return False
-
-    try:
-        result = subprocess.run(
-            ["vercmp", new, old],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        # vercmp returns: 1 if new > old, 0 if equal, -1 if new < old
-        return result.stdout.strip() == "1"
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, FileNotFoundError):
-        # Fallback to simple string comparison
-        return new != old
-
-
 def get_aur_updates() -> tuple[list[tuple[str, str, str]], bool]:
-    """Get list of available AUR updates: (name, old_ver, new_ver).
-    Returns (updates, api_ok) where api_ok is False if we fell back to yay."""
+    """Get list of available AUR updates. Returns (updates, api_ok)."""
     local_packages = get_local_aur_packages()
     if not local_packages:
         return [], True
@@ -178,7 +147,7 @@ def get_aur_updates() -> tuple[list[tuple[str, str, str]], bool]:
     package_names = [name for name, _ in local_packages]
     aur_versions, api_ok = query_aur_api(package_names)
 
-    # If API failed, fall back to yay
+    # Fall back to yay if API failed
     if not api_ok:
         return get_aur_updates_fallback(), False
 
@@ -192,107 +161,107 @@ def get_aur_updates() -> tuple[list[tuple[str, str, str]], bool]:
     return updates, True
 
 
-def format_tooltip(
+def format_update_list(
     pacman_updates: list[tuple[str, str, str]],
     aur_updates: list[tuple[str, str, str]]
 ) -> str:
     """Format update list for tooltip."""
     lines = []
-
     for name, old_ver, new_ver in pacman_updates:
         lines.append(f"{name}: {old_ver} → {new_ver}")
-
     for name, old_ver, new_ver in aur_updates:
         lines.append(f"{name} (AUR): {old_ver} → {new_ver}")
-
-    return "\n".join(lines) if lines else "System up to date"
-
-
-LOCK_FILE = CACHE_DIR / "lock"
-LOCK_MAX_AGE = 120  # Consider lock stale after 2 minutes
+    return "\n".join(lines)
 
 
-def fetch_updates_background():
-    """Fetch updates and save to cache (runs in background)."""
+def load_cache() -> dict | None:
+    """Load cached state if it exists."""
     try:
-        pacman_updates = get_pacman_updates()
-        aur_updates, aur_api_ok = get_aur_updates()
-
-        total = len(pacman_updates) + len(aur_updates)
-        tooltip = format_tooltip(pacman_updates, aur_updates)
-
-        if not aur_api_ok:
-            tooltip = "⚠ AUR API unavailable (using yay fallback)\n" + tooltip
-
-        if total > 0:
-            icon = "󰏔" if aur_api_ok else "󰏔 ⚠"
-            output = {
-                "text": f"{icon} {total}",
-                "tooltip": tooltip,
-                "class": "has-updates" if aur_api_ok else "has-updates api-warning",
-                "alt": "has-updates"
-            }
-        else:
-            output = {
-                "text": "" if aur_api_ok else "⚠",
-                "tooltip": tooltip if not aur_api_ok else "System up to date",
-                "class": "updated" if aur_api_ok else "api-warning",
-                "alt": "updated"
-            }
-
-        save_cache(output)
-    finally:
-        LOCK_FILE.unlink(missing_ok=True)
+        if CACHE_FILE.exists():
+            with open(CACHE_FILE) as f:
+                return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        pass
+    return None
 
 
-def is_lock_stale() -> bool:
-    """Check if lock file exists and is stale."""
-    # Defensive check - caller should verify existence first
-    if not LOCK_FILE.exists():
-        return False
+def save_cache(data: dict) -> None:
+    """Save state to cache."""
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(CACHE_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def signal_waybar() -> None:
+    """Send signal to waybar to refresh the module."""
     try:
-        age = time.time() - LOCK_FILE.stat().st_mtime
-        return age > LOCK_MAX_AGE
-    except OSError:
-        return False
+        subprocess.run(["pkill", "-RTMIN+8", "waybar"], check=False)
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+
+
+def check_updates() -> dict:
+    """Run update check and return waybar JSON output."""
+    pacman_updates = get_pacman_updates()
+    aur_updates, aur_api_ok = get_aur_updates()
+
+    total = len(pacman_updates) + len(aur_updates)
+    actions = "Left-click: Refresh\nRight-click: Open package manager"
+
+    if total > 0:
+        update_list = format_update_list(pacman_updates, aur_updates)
+        warning = "" if aur_api_ok else "⚠ AUR API unavailable\n\n"
+        tooltip = f"{total} updates available\n\n{warning}{update_list}\n\n{actions}"
+        output = {
+            "text": f"󰏔 {total}",
+            "tooltip": tooltip,
+            "class": "has-updates",
+            "alt": "has-updates"
+        }
+    else:
+        warning = "⚠ AUR API unavailable\n\n" if not aur_api_ok else ""
+        tooltip = f"{warning}System up to date\n\n{actions}"
+        output = {
+            "text": "󰏔",
+            "tooltip": tooltip,
+            "class": "updated",
+            "alt": "updated"
+        }
+
+    save_cache(output)
+    return output
 
 
 def main():
-    # Check cache first
-    cached = get_cache()
+    if len(sys.argv) > 1 and sys.argv[1] == "check":
+        # Show checking state immediately
+        checking = {
+            "text": "󰑓",
+            "tooltip": "Checking for updates...",
+            "class": "checking",
+            "alt": "checking"
+        }
+        save_cache(checking)
+        signal_waybar()
+
+        # Run the actual check (saves to cache)
+        check_updates()
+        signal_waybar()
+        return
+
+    # Initial load - show cached state or idle
+    cached = load_cache()
     if cached:
-        print(json.dumps(cached))
-        return
-
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-    # If lock exists and not stale, another process is fetching
-    if LOCK_FILE.exists():
-        if not is_lock_stale():
-            print(json.dumps({"text": "󰑓", "tooltip": "Checking for updates...", "class": "checking"}))
-            return
-        # Stale lock - remove it
-        LOCK_FILE.unlink(missing_ok=True)
-
-    # Create lock atomically (O_EXCL fails if file exists)
-    try:
-        fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        os.close(fd)
-    except FileExistsError:
-        # Another process just created it, show checking state
-        print(json.dumps({"text": "󰑓", "tooltip": "Checking for updates...", "class": "checking"}))
-        return
-
-    pid = os.fork()
-    if pid > 0:
-        # Parent: output checking state and exit immediately
-        print(json.dumps({"text": "󰑓", "tooltip": "Checking for updates...", "class": "checking"}))
-        return
+        output = cached
     else:
-        # Child: detach and close stdout
-        os.setsid()
-        os.close(1)  # Close stdout
-        fetch_updates_background()
+        output = {
+            "text": "󰏔",
+            "tooltip": "Left-click: Check for updates\nRight-click: Open package manager",
+            "class": "idle",
+            "alt": "idle"
+        }
+
+    print(json.dumps(output))
 
 
 if __name__ == "__main__":

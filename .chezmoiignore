@@ -4,6 +4,3 @@ README.md
 docs/
 screenshots/
 
-# Monitor profile manager - generated/runtime files
-dot_config/hypr/monitors.conf
-dot_config/monitor-profiles/.metadata.json
