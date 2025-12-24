@@ -35,14 +35,26 @@ tooltip label {
     margin: 4px 3px;
 }
 
-#custom-updates {
+#packages {
+    background: rgba(32, 39, 44, 0.90);
+    border-radius: 12px;
+    margin: 4px 3px;
+    padding: 0 4px;
+}
+
+#packages #custom-updates,
+#packages #custom-rebuild {
+    background: transparent;
+    padding: 4px 10px;
+    margin: 0;
+}
+
+#custom-updates,
+#custom-rebuild {
     color: #61b0d8;
 }
 
-#custom-updates.api-warning {
-    color: #dca13b;
-}
-
+#custom-updates.api-warning,
 #custom-rebuild.needs-rebuild {
     color: #dca13b;
 }
