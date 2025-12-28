@@ -3,7 +3,7 @@
     "position": "top",
     "height": 34,
 
-    "modules-left": ["custom/launcher", "clock", "group/packages"],
+    "modules-left": ["custom/launcher", "clock"],
     "modules-center": ["hyprland/workspaces"],
     "modules-right": ["group/hardware", "group/controls", "group/status", "custom/notification"],
 
@@ -26,11 +26,6 @@
         "modules": ["custom/hardware", "disk", "cpu", "memory", "temperature"]
     },
 
-    "group/packages": {
-        "orientation": "horizontal",
-        "modules": ["custom/updates", "custom/rebuild"]
-    },
-
     "custom/launcher": {
         "format": "󰀻",
         "tooltip": false,
@@ -40,24 +35,6 @@
     "custom/hardware": {
         "format": "󰍛",
         "tooltip": false
-    },
-
-    "custom/updates": {
-        "exec": "waybar-updates",
-        "return-type": "json",
-        "interval": "once",
-        "signal": 8,
-        "on-click": "waybar-updates check &",
-        "on-click-right": "ghostty -e bash -c 'yay; waybar-updates check'"
-    },
-
-    "custom/rebuild": {
-        "exec": "waybar-rebuild",
-        "return-type": "json",
-        "interval": "once",
-        "signal": 9,
-        "on-click": "waybar-rebuild check &",
-        "on-click-right": "ghostty -e bash -c 'waybar-rebuild fix; read -p \"Press Enter to close...\"'"
     },
 
     "hyprland/workspaces": {

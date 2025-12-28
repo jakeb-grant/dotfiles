@@ -25,38 +25,12 @@ tooltip label {
 #clock,
 #workspaces,
 #custom-launcher,
-#custom-updates,
-#custom-rebuild,
 #custom-notification {
     background: {< background | rgba(_blur_opacity.float) >};
     color: {< foreground >};
     border-radius: 12px;
     padding: 4px 14px;
     margin: 4px 3px;
-}
-
-#packages {
-    background: {< background | rgba(_blur_opacity.float) >};
-    border-radius: 12px;
-    margin: 4px 3px;
-    padding: 0 4px;
-}
-
-#packages #custom-updates,
-#packages #custom-rebuild {
-    background: transparent;
-    padding: 4px 10px;
-    margin: 0;
-}
-
-#custom-updates,
-#custom-rebuild {
-    color: {< info >};
-}
-
-#custom-updates.api-warning,
-#custom-rebuild.needs-rebuild {
-    color: {< warning >};
 }
 
 #custom-launcher {

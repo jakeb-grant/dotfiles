@@ -15,6 +15,12 @@ icon = "system-software-install"
 actions = { "open" = "walker -m archlinuxpkgs -H" }
 
 [[entries]]
+text = "Upkeep"
+keywords = ["update", "upgrade", "rebuild", "upkeep", "maintenance"]
+icon = "software-update-available"
+actions = { "exec" = "ghostty -e upkeep" }
+
+[[entries]]
 text = "Files"
 keywords = ["search", "find", "documents"]
 icon = "folder"
