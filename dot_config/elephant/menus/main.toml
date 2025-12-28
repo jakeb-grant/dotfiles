@@ -23,7 +23,7 @@ actions = { "open" = "walker -s files -H" }
 [[entries]]
 text = "Windows"
 keywords = ["switch", "focus"]
-icon = "preferences-system-windows"
+icon = "view-restore"
 actions = { "open" = "walker -s windows -H" }
 
 [[entries]]
@@ -59,7 +59,7 @@ actions = { "exec" = "ghostty -e hyprpier mgr" }
 [[entries]]
 text = "About"
 keywords = ["info", "specs", "hardware", "neofetch", "fastfetch"]
-icon = "computer"
+icon = "help-about"
 actions = { "exec" = "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" }
 
 [[entries]]
