@@ -10,9 +10,9 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 ## Features
 
 - **Window Manager**: Hyprland
-- **Status Bar**: Waybar with system monitoring, update checker, rebuild detector
+- **Status Bar**: Waybar with system monitoring
 - **Notifications**: SwayNC notification center with quick actions
-- **Launcher**: Walker with custom menus (apps, packages, keybinds, clipboard, calculator)
+- **Launcher**: Walker with custom menus (apps, keybinds, clipboard, calculator)
 - **Terminal**: Ghostty with themed colors
 - **Editor**: Zed with theme integration
 - **File Manager**: Nautilus (GTK themed), Yazi (terminal)
@@ -77,9 +77,7 @@ dot_config/
 ├── themes/             # Theme definitions (JSON)
 └── theme-templates/    # Jinja2 theme templates
 dot_local/bin/
-├── theme-switch        # Theme switching utility
-├── waybar-updates      # Package update checker
-└── waybar-rebuild      # Go plugin rebuild detector
+└── theme-switch        # Theme switching utility
 ```
 
 ## Theme System
@@ -140,7 +138,7 @@ On first run, chezmoi prompts for machine-specific settings stored in `~/.config
 
 | Variable | Options | Description |
 |----------|---------|-------------|
-| `graphics` | `amd`, `nvidia`, `nvidia-prime` | GPU driver configuration |
+| `graphics` | `amd`, `prime`, `nvidia` | GPU driver configuration |
 
 To change settings:
 ```bash
