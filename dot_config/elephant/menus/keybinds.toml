@@ -45,13 +45,6 @@ icon = "edit-paste"
 subtext = "Super + Ctrl + V"
 actions = { "exec" = "walker -m clipboard" }
 
-[[entries]]
-text = "Package Search"
-keywords = ["install", "aur"]
-icon = "system-software-install"
-subtext = "Super + I"
-actions = { "exec" = "walker -m archlinuxpkgs" }
-
 # Window Management
 [[entries]]
 text = "Close Window"

@@ -9,12 +9,6 @@ icon = "applications-other"
 actions = { "open" = "walker -s apps -H" }
 
 [[entries]]
-text = "Packages"
-keywords = ["install", "aur", "pacman", "yay"]
-icon = "system-software-install"
-actions = { "open" = "walker -m archlinuxpkgs -H" }
-
-[[entries]]
 text = "Upkeep"
 keywords = ["update", "upgrade", "rebuild", "upkeep", "maintenance"]
 icon = "software-update-available"
