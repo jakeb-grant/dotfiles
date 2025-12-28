@@ -23,7 +23,7 @@ actions = { "open" = "walker -s files -H" }
 [[entries]]
 text = "Windows"
 keywords = ["switch", "focus"]
-icon = "window-stack"
+icon = "preferences-system-windows"
 actions = { "open" = "walker -s windows -H" }
 
 [[entries]]
