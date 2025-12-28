@@ -184,7 +184,3 @@ popover {
 :not(.calc).current {
   font-style: italic;
 }
-
-.preview-content.archlinuxpkgs {
-  font-family: monospace;
-}
