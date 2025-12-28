@@ -51,7 +51,13 @@ icon = "preferences-desktop-theme"
 actions = { "open" = "walker -s themes -H" }
 
 [[entries]]
-text = "System"
+text = "Display"
+keywords = ["monitor", "display", "screen", "resolution", "hyprpier"]
+icon = "video-display"
+actions = { "exec" = "ghostty -e hyprpier mgr" }
+
+[[entries]]
+text = "About"
 keywords = ["info", "specs", "hardware", "neofetch", "fastfetch"]
 icon = "computer"
 actions = { "exec" = "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" }
