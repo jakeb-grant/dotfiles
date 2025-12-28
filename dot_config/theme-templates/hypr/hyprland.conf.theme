@@ -51,7 +51,7 @@ exec-once = swaync
 exec-once = nm-applet --indicator
 exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
-exec-once = elephant
+# elephant managed by systemd user service
 exec-once = awww-daemon
 exec-once = walker --gapplication-service
 exec-once = hypridle
