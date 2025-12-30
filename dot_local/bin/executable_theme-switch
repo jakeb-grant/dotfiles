@@ -252,8 +252,10 @@ async def reload_swaync() -> None:
 
 
 async def reload_elephant() -> None:
-    """Restart Elephant."""
-    await restart_app("Elephant", "elephant", ["elephant"], start_if_not_running=True)
+    """Restart Elephant by killing it (elephant-wrapper will auto-restart)."""
+    if await is_running("elephant"):
+        await run_async(["killall", "-w", "elephant"])
+        print("    Elephant restarted")
 
 
 async def reload_ghostty() -> None:

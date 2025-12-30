@@ -24,6 +24,7 @@ env = GDK_BACKEND,wayland,x11
 env = XCURSOR_THEME,Bibata-Modern-Classic
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_SIZE,24
+env = PATH,$HOME/.local/bin:$PATH
 
 {{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
 # NVIDIA environment variables
