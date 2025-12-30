@@ -1,0 +1,101 @@
+#!/bin/bash
+# Windows VM management script
+
+COMPOSE_DIR="$HOME/.config/windows-vm"
+COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yaml"
+
+ensure_docker() {
+    # Check if user is in docker group
+    if ! groups | grep -q '\bdocker\b'; then
+        echo "Adding $USER to docker group..."
+        pkexec usermod -aG docker "$USER"
+        echo "Added to docker group. Please restart your system, then run this again."
+        exit 1
+    fi
+
+    # Check if docker daemon is running
+    if ! systemctl is-active --quiet docker; then
+        echo "Starting docker daemon..."
+        pkexec systemctl start docker
+    fi
+}
+
+is_running() {
+    docker compose -f "$COMPOSE_FILE" ps --status running 2>/dev/null | grep -q windows
+}
+
+show_help() {
+    cat <<EOF
+Windows VM management script
+
+Usage: win-vm [command]
+
+Commands:
+  (none)     Start VM and connect via RDP (default)
+  start      Start VM in background
+  stop       Stop VM gracefully
+  restart    Restart VM
+  status     Show VM status
+  open       Connect to VM via RDP
+
+Access:
+  RDP:       localhost:3389 (user: Docker, pass: admin)
+  Browser:   http://localhost:8006 (fallback)
+
+Data:       ~/Windows
+EOF
+}
+
+case "${1:-start-and-open}" in
+    start)
+        ensure_docker
+        docker compose -f "$COMPOSE_FILE" up -d
+        echo "Windows VM starting... Access at http://localhost:8006"
+        ;;
+    stop)
+        if ! systemctl is-active --quiet docker; then
+            echo "Docker is not running."
+            exit 0
+        fi
+        if ! is_running; then
+            echo "Windows VM is not running."
+            exit 0
+        fi
+        docker compose -f "$COMPOSE_FILE" down
+        echo "Windows VM stopped."
+        ;;
+    restart)
+        ensure_docker
+        docker compose -f "$COMPOSE_FILE" restart
+        echo "Windows VM restarted."
+        ;;
+    status)
+        if ! systemctl is-active --quiet docker; then
+            echo "Docker is not running."
+            exit 0
+        fi
+        if is_running; then
+            echo "Windows VM is running."
+            echo "  Browser: http://localhost:8006"
+            echo "  RDP:     localhost:3389"
+        else
+            echo "Windows VM is not running."
+        fi
+        ;;
+    open)
+        sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+        ;;
+    start-and-open)
+        ensure_docker
+        docker compose -f "$COMPOSE_FILE" up -d
+        sleep 2
+        sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        show_help
+        exit 1
+        ;;
+esac

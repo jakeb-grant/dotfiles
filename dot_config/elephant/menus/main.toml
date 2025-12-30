@@ -68,3 +68,9 @@ keywords = ["htop", "btop", "top", "cpu", "memory", "task"]
 icon = "utilities-system-monitor"
 actions = { "exec" = "ghostty -e btop" }
 
+[[entries]]
+text = "Windows VM"
+keywords = ["windows", "vm", "virtual", "machine", "win11", "docker"]
+icon = "computer"
+actions = { "open" = "win-vm" }
+

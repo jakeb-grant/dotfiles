@@ -18,6 +18,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 - **File Manager**: Nautilus (GTK themed), Yazi (terminal)
 - **Theme System**: Runtime theme switching with Jinja2 templates
 - **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
+- **Windows VM**: Docker-based Windows 11 VM with RDP access
 
 ## Getting Started
 
@@ -75,9 +76,11 @@ dot_config/
 ├── elephant/           # Walker backend & custom menus
 │   └── menus/          # Main menu, keybinds menu
 ├── themes/             # Theme definitions (JSON)
-└── theme-templates/    # Jinja2 theme templates
+├── theme-templates/    # Jinja2 theme templates
+└── windows-vm/         # Windows VM docker config
 dot_local/bin/
-└── theme-switch        # Theme switching utility
+├── theme-switch        # Theme switching utility
+└── win-vm              # Windows VM management
 ```
 
 ## Theme System
