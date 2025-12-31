@@ -50,7 +50,8 @@ source = $HOME/.config/hypr/monitors.conf
 exec-once = waybar
 exec-once = swaync
 exec-once = nm-applet --indicator
-exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+# exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+exec-once = phylax
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
 exec-once = elephant-wrapper
 exec-once = awww-daemon
@@ -276,3 +277,4 @@ misc {
 # ------------------------------------------------------------------------------
 windowrulev2 = suppressevent maximize, class:.*
 windowrulev2 = nofocus,class:^$,title:^$,xwayland:1,floating:1,fullscreen:0,pinned:0
+windowrulev2 = pin, class:io.github.jakebgrant.phylax

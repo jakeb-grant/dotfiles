@@ -1,0 +1,72 @@
+● /* Window */
+window.auth-window.background,
+window.auth-window {
+    background-color: {< background >};
+}
+
+/* Typography */
+.auth-header {
+    color: {< foreground_bright >};
+    font-weight: bold;
+}
+
+.auth-message {
+    color: {< foreground >};
+}
+
+.auth-retry {
+    color: {< error >};
+}
+
+/* Identity dropdown */
+dropdown.auth-identity > button.toggle {
+    background: none;
+    background-color: {< background_medium >};
+    border-color: {< border >};
+    border-radius: 8px;
+    color: {< foreground >};
+}
+
+dropdown.auth-identity > popover.menu > contents,
+dropdown.auth-identity listview {
+    background-color: {< background_medium >};
+    border-color: {< border >};
+}
+
+dropdown.auth-identity listview > row:hover,
+dropdown.auth-identity listview > row:selected {
+    background-color: {< background_light >};
+}
+
+dropdown.auth-identity listview > row:focus:not(:hover) {
+    background-color: transparent;
+}
+
+/* Password entry */
+.auth-password {
+    background: {< background_medium >};
+    border-color: {< border >};
+    border-radius: 8px;
+    color: {< foreground >};
+}
+
+entry.auth-password:focus-within {
+    outline-color: {< primary >};
+}
+
+/* Buttons */
+.auth-buttons {
+    margin-top: 4px;
+}
+
+.auth-cancel,
+.auth-confirm {
+    background: {< background_medium >};
+    border-color: {< border >};
+    color: {< foreground >};
+}
+
+.auth-cancel:hover,
+.auth-confirm:hover {
+    background: {< background_light >};
+}
