@@ -15,7 +15,7 @@ window.auth-window {
 }
 
 .auth-retry {
-    color: {< error >};
+    color: {< foreground >};
 }
 
 /* Identity dropdown */
