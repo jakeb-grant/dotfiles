@@ -206,63 +206,34 @@ async def is_running(process: str) -> bool:
     return proc.returncode == 0
 
 
-async def restart_app(
-    name: str,
-    process: str,
-    cmd: list[str],
-    start_if_not_running: bool = False,
-) -> None:
-    """Kill (if running) and restart an application."""
-    was_running = await is_running(process)
-    if was_running:
-        # -w waits for process to die before returning
-        await run_async(["killall", "-w", process])
-        subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        print(f"    {name} restarted")
-    elif start_if_not_running:
-        subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        print(f"    {name} started")
-
-
 async def reload_hyprland() -> None:
     """Reload Hyprland config."""
-    if await is_running("Hyprland"):
-        await run_async(["hyprctl", "reload"])
-        print("    Hyprland reloaded")
+    await run_async(["hyprctl", "reload"])
+    print("    Hyprland reloaded")
 
 
 async def reload_waybar() -> None:
-    """Restart Waybar."""
-    await restart_app("Waybar", "waybar", ["waybar"], start_if_not_running=True)
+    """Reload Waybar via SIGUSR2."""
+    await run_async(["pkill", "-USR2", "waybar"])
+    print("    Waybar reloaded")
 
 
 async def reload_swaync() -> None:
-    """Restart SwayNC."""
-    await restart_app("SwayNC", "swaync", ["swaync"], start_if_not_running=True)
+    """Reload SwayNC CSS via client."""
+    await run_async(["swaync-client", "--reload-css"])
+    print("    SwayNC reloaded")
 
 
 async def reload_elephant() -> None:
-    """Restart Elephant by killing it (elephant-wrapper will auto-restart)."""
-    if await is_running("elephant"):
-        await run_async(["killall", "-w", "elephant"])
-        print("    Elephant restarted")
+    """Restart Elephant (elephant-wrapper will auto-restart)."""
+    await run_async(["pkill", "-x", "elephant"])
+    print("    Elephant restarted")
 
 
 async def reload_ghostty() -> None:
     """Reload Ghostty config via SIGUSR2."""
-    if await is_running("ghostty"):
-        await run_async(["pkill", "-USR2", "ghostty"])
-        print("    Ghostty reloaded")
+    await run_async(["pkill", "-USR2", "ghostty"])
+    print("    Ghostty reloaded")
 
 
 async def set_wallpaper(theme_data: dict) -> None:
@@ -277,7 +248,12 @@ async def set_wallpaper(theme_data: dict) -> None:
         return
 
     if await is_running("awww-daemon"):
-        await run_async(["awww", "img", str(wallpaper_path)])
+        await run_async([
+            "awww", "img", str(wallpaper_path),
+            "--transition-type", "center",
+            "--transition-duration", "1",
+            "--transition-fps", "60",
+        ])
         print(f"    Wallpaper set: {wallpaper}")
     else:
         print("    Warning: awww-daemon not running, skipping wallpaper")
