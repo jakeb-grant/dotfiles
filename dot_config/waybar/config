@@ -9,7 +9,7 @@
 
     "group/controls": {
         "orientation": "horizontal",
-        "modules": ["backlight", "pulseaudio"]
+        "modules": ["idle_inhibitor", "backlight", "pulseaudio"]
     },
 
     "group/status": {
@@ -80,6 +80,16 @@
         "format": "SSD {percentage_used}%",
         "tooltip-format": "Disk: {used} / {total}",
         "interval": 30
+    },
+
+    "idle_inhibitor": {
+        "format": "{icon}",
+        "format-icons": {
+            "activated": "󰅶",
+            "deactivated": "󰾪"
+        },
+        "tooltip-format-activated": "Caffeine on - system will not sleep",
+        "tooltip-format-deactivated": "Caffeine off - normal idle behavior"
     },
 
     "backlight": {
