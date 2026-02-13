@@ -134,8 +134,27 @@ Update the generated `biome.json` to include Svelte files:
 
 ```json
 {
+  "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "files": {
-    "includes": ["**/*.svelte"]
+    "includes": [
+      "**/*.{js,ts,jsx,tsx}",
+      "**/*.json",
+      "**/*.css",
+      "**/*.svelte"
+    ]
+  },
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "linter": {
+    "rules": {
+      "recommended": true,
+      "correctness": "error",
+      "security": "error",
+      "suspicious": "warn"
+    }
   }
 }
 ```
