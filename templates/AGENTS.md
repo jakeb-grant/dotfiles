@@ -130,32 +130,58 @@ bun add -D @biomejs/biome @testing-library/svelte @happy-dom/global-registrator
 bunx biome init
 ```
 
-Update the generated `biome.json` to include Svelte files:
+Replace the generated `biome.json` with:
 
 ```json
 {
   "$schema": "https://biomejs.dev/schemas/latest/schema.json",
   "files": {
-    "includes": [
-      "**/*.{js,ts,jsx,tsx}",
-      "**/*.json",
-      "**/*.css",
-      "**/*.svelte"
-    ]
+    "includes": ["**/*.{js,ts,jsx,tsx}", "**/*.json", "**/*.css", "**/*.svelte"]
   },
   "vcs": {
     "enabled": true,
     "clientKind": "git",
     "useIgnoreFile": true
   },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "tab"
+  },
   "linter": {
     "rules": {
       "recommended": true,
-      "correctness": "error",
+      "correctness": {
+        "recommended": true,
+        "noNodejsModules": "off"
+      },
       "security": "error",
       "suspicious": "warn"
     }
-  }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.svelte"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          },
+          "suspicious": {
+            "noUnassignedVariables": "off"
+          }
+        }
+      }
+    }
+  ]
 }
 ```
 
