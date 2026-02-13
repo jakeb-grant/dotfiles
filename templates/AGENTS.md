@@ -211,7 +211,7 @@ my-app/
 
 ## MCP Servers
 
-The following MCP servers should be available to agents. Check for them before starting work and install if missing.
+The following MCP servers should be available to agents. Check for them before starting work. Attempt to install if missing, but ask the user to install manually if unable.
 
 - **Svelte** (`@sveltejs/mcp`) — Svelte/SvelteKit documentation and assistance
   ```bash
