@@ -231,3 +231,4 @@ The following MCP servers should be available to agents. Check for them before s
 - Do not add features, refactoring, or "improvements" beyond what was asked.
 - Run linting and type checking before considering a task complete.
 - Run tests after making changes to verify nothing is broken.
+- Do not add `Co-Authored-By` or other self-attribution to git commits.
