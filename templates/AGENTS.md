@@ -109,7 +109,7 @@ Use **bun** as the runtime, package manager, and test runner. Do not use npm/yar
 | bunx       | Ephemeral tool exec  | `bunx sv create`     |
 | bun run    | Script runner        | `bun run dev`, `bun run build` |
 | bun test   | Testing              | `bun test`           |
-| biome      | Linting & formatting | `bunx biome check --write` |
+| biome      | Linting & formatting | `bunx biome check` (review first), `bunx biome check --write` |
 
 ### Project Setup
 
@@ -158,6 +158,11 @@ Replace the generated `biome.json` with:
       "suspicious": "warn"
     }
   },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
   "assist": {
     "enabled": true,
     "actions": {
@@ -177,6 +182,9 @@ Replace the generated `biome.json` with:
           },
           "suspicious": {
             "noUnassignedVariables": "off"
+          },
+          "style": {
+            "useConst": "off"
           }
         }
       }
