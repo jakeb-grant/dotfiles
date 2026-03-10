@@ -1,0 +1,43 @@
+import Quickshell
+import Quickshell.Wayland
+import QtQuick
+import qs.utils as Utils
+
+Scope {
+    id: root
+
+    required property ShellScreen screen
+    required property Item bar
+
+    // Left edge: bar width
+    ExclusionZone {
+        anchors.left: true
+        exclusiveZone: root.bar.exclusiveZone
+    }
+
+    // Top edge: border thickness
+    ExclusionZone {
+        anchors.top: true
+    }
+
+    // Right edge: border thickness
+    ExclusionZone {
+        anchors.right: true
+    }
+
+    // Bottom edge: border thickness
+    ExclusionZone {
+        anchors.bottom: true
+    }
+
+    component ExclusionZone: PanelWindow {
+        screen: root.screen
+        WlrLayershell.namespace: "quickshell-exclusion"
+        WlrLayershell.layer: WlrLayer.Top
+        color: "transparent"
+        exclusiveZone: Utils.Theme.borderThickness
+        mask: Region {}
+        implicitWidth: 1
+        implicitHeight: 1
+    }
+}
