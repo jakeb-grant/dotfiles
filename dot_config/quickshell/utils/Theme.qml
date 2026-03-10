@@ -52,12 +52,20 @@ Singleton {
     readonly property int roundingSmall: 10
     readonly property int roundingNormal: 16
     readonly property int roundingFull: 999
+    readonly property int popoutRounding: 20
 
     // Font
     readonly property string fontFamily: "JetBrainsMono Nerd Font"
     readonly property string iconFontFamily: "Material Symbols Rounded"
 
-    // Animation
-    readonly property int animDuration: 250
+    // Animation curves (MD3 BezierSpline)
+    readonly property var animCurveEmphasized: [0.05, 0, 2 / 15, 0.06, 1 / 6, 0.4, 5 / 24, 0.82, 0.25, 1, 1, 1]
+    readonly property var animCurveStandard: [0.2, 0, 0, 1, 1, 1]
+    readonly property var animCurveEmphasizedAccel: [0.3, 0, 0.8, 0.15, 1, 1]
+    readonly property var animCurveEmphasizedDecel: [0.05, 0.7, 0.1, 1, 1, 1]
+
+    // Animation durations
+    readonly property int animDuration: 400
+    readonly property int animDurationSmall: 200
     readonly property int animDurationFast: 150
 }

@@ -9,18 +9,27 @@ Item {
     required property real barWidth
     required property ShellScreen screen
 
+    // active tracks hasCurrent (controls width), NOT currentName
     readonly property bool active: Services.Popout.isOpen && Services.Popout.activeScreen === screen
+
+    // currentPopout checks currentName — stays valid during close retraction
+    readonly property var currentPopout: contentArea.children.find(c => c.shouldBeActive) ?? null
+
+    // Non-animated target sizes
+    readonly property real nonAnimWidth: active
+        ? (currentPopout?.implicitWidth ?? 0) + Utils.Theme.spacingLarge * 2 : 0
+    readonly property real nonAnimHeight: (currentPopout?.implicitHeight ?? 0) + Utils.Theme.spacingLarge * 2
 
     // Expose geometry for Drawers.qml background + mask
     readonly property real popoutX: barWidth
     readonly property real popoutY: {
         if (!active && popoutContainer.implicitWidth <= 0) return 0;
         const border = Utils.Theme.borderThickness;
-        const ideal = Services.Popout.centerY - popoutHeight / 2;
-        return Math.max(border, Math.min(ideal, root.height - popoutHeight - border));
+        const ideal = Services.Popout.centerY - nonAnimHeight / 2;
+        return Math.max(border, Math.min(ideal, root.height - nonAnimHeight - border));
     }
     readonly property real popoutWidth: popoutContainer.implicitWidth
-    readonly property real popoutHeight: popoutContainer.implicitWidth > 0 ? popoutContainer.targetHeight : 0
+    readonly property real popoutHeight: popoutContainer.implicitWidth > 0 ? popoutContainer.implicitHeight : 0
     readonly property bool flushTop: popoutY <= Utils.Theme.borderThickness
     readonly property bool flushBottom: popoutY + popoutHeight >= root.height - Utils.Theme.borderThickness
 
@@ -29,120 +38,88 @@ Item {
     anchors.left: parent.left
     anchors.right: parent.right
 
-    onActiveChanged: {
-        if (active)
-            popoutContainer.open();
-        else
-            popoutContainer.close();
-    }
-
+    // Clip container — all sizing driven by Behaviors
     Item {
         id: popoutContainer
-
-        // Cache name so content survives during close animation
-        property string displayedName: ""
-
-        readonly property real targetWidth: (popoutLoader.item?.implicitWidth ?? 0) + Utils.Theme.spacingLarge * 2
-        readonly property real targetHeight: (popoutLoader.item?.implicitHeight ?? 0) + Utils.Theme.spacingLarge * 2
 
         x: root.barWidth
         y: root.popoutY
         width: implicitWidth
-        height: targetHeight
+        height: implicitHeight
         clip: true
         visible: implicitWidth > 0
 
-        Behavior on implicitWidth {
-            id: widthBehavior
+        // Mutable curve/duration — swapped for close to decelerate at the end
+        property var animCurve: Utils.Theme.animCurveEmphasized
+        property int animDuration: Utils.Theme.animDuration
 
-            NumberAnimation {
-                duration: Utils.Theme.animDuration
-                easing.type: Easing.OutCubic
+        implicitWidth: root.nonAnimWidth
+        implicitHeight: root.nonAnimHeight
+
+        // When retraction completes, clean up the service state and reset curve
+        onImplicitWidthChanged: {
+            if (implicitWidth <= 0 && !root.active) {
+                Services.Popout.cleanup();
+                animCurve = Utils.Theme.animCurveEmphasized;
+                animDuration = Utils.Theme.animDuration;
             }
         }
 
-        function open() {
-            closeAnim.stop();
-            widthBehavior.enabled = true;
-            displayedName = Services.Popout.currentName;
-            popoutLoader.active = true;
-            implicitWidth = targetWidth;
-            contentArea.opacity = 1;
-        }
-
-        function close() {
-            closeAnim.start();
-        }
-
-        SequentialAnimation {
-            id: closeAnim
-
-            // Fade content out first
-            NumberAnimation {
-                target: contentArea
-                property: "opacity"
-                to: 0
-                duration: 100
-                easing.type: Easing.InCubic
-            }
-            // Disable Behavior so we control retraction timing
-            PropertyAction {
-                target: widthBehavior
-                property: "enabled"
-                value: false
-            }
-            // Retract width
-            NumberAnimation {
-                target: popoutContainer
-                property: "implicitWidth"
-                to: 0
-                duration: Utils.Theme.animDurationFast
-                easing.type: Easing.InCubic
-            }
-            // Cleanup
-            ScriptAction {
-                script: {
-                    popoutLoader.active = false;
-                    popoutContainer.displayedName = "";
-                    widthBehavior.enabled = true;
+        // Swap to decel curve on close for a slow finish
+        Connections {
+            target: root
+            function onActiveChanged() {
+                if (!root.active) {
+                    popoutContainer.animCurve = Utils.Theme.animCurveEmphasizedDecel;
+                    popoutContainer.animDuration = Utils.Theme.animDuration + 100;
                 }
             }
         }
 
-        // Content area — pinned to full target size so it never squashes
+        Behavior on implicitWidth {
+            NumberAnimation {
+                duration: popoutContainer.animDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: popoutContainer.animCurve
+            }
+        }
+
+        Behavior on implicitHeight {
+            enabled: popoutContainer.implicitWidth > 0
+
+            NumberAnimation {
+                duration: popoutContainer.animDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: popoutContainer.animCurve
+            }
+        }
+
+        Behavior on y {
+            enabled: popoutContainer.implicitWidth > 0
+
+            NumberAnimation {
+                duration: popoutContainer.animDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: popoutContainer.animCurve
+            }
+        }
+
+        // Content area — fills container with padding
         Item {
             id: contentArea
 
-            width: popoutContainer.targetWidth
-            height: popoutContainer.targetHeight
-            opacity: 0
+            anchors.fill: parent
+            anchors.margins: Utils.Theme.spacingLarge
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Utils.Theme.animDuration
-                    easing.type: Easing.OutCubic
-                }
-            }
-
-            Loader {
-                id: popoutLoader
-
-                active: false
-                anchors.centerIn: parent
-
-                sourceComponent: {
-                    switch (popoutContainer.displayedName) {
-                        case "clock": return clockPopout;
-                        default: return null;
-                    }
-                }
+            Popout {
+                name: "clock"
+                sourceComponent: clockComponent
             }
         }
 
-        // Hover area — full target size so it works during animation
+        // Hover area — full container
         MouseArea {
-            width: popoutContainer.targetWidth
-            height: popoutContainer.targetHeight
+            anchors.fill: parent
             hoverEnabled: true
 
             onEntered: {
@@ -155,6 +132,11 @@ Item {
         }
     }
 
+    Component {
+        id: clockComponent
+        ClockPopout {}
+    }
+
     // Click-outside-to-close overlay
     MouseArea {
         anchors.fill: parent
@@ -163,8 +145,68 @@ Item {
         z: -1
     }
 
-    Component {
-        id: clockPopout
-        ClockPopout {}
+    // Popout component — individual Loader with scale+opacity transitions
+    // On close: content stays visible, clipped by wrapper retraction.
+    // Fade+scale only fires on popout SWITCH (currentName changes).
+    component Popout: Loader {
+        id: popout
+
+        required property string name
+        readonly property bool shouldBeActive: Services.Popout.currentName === name
+
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.right: parent.right
+
+        opacity: 0
+        scale: 0.8
+        active: false
+
+        states: State {
+            name: "active"
+            when: popout.shouldBeActive
+
+            PropertyChanges {
+                popout.active: true
+                popout.opacity: 1
+                popout.scale: 1
+            }
+        }
+
+        transitions: [
+            Transition {
+                from: ""
+                to: "active"
+
+                SequentialAnimation {
+                    PropertyAction {
+                        target: popout
+                        property: "active"
+                    }
+                    NumberAnimation {
+                        properties: "opacity,scale"
+                        duration: Utils.Theme.animDuration
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Utils.Theme.animCurveStandard
+                    }
+                }
+            },
+            Transition {
+                from: "active"
+                to: ""
+
+                SequentialAnimation {
+                    NumberAnimation {
+                        properties: "opacity,scale"
+                        duration: Utils.Theme.animDurationSmall
+                        easing.type: Easing.BezierSpline
+                        easing.bezierCurve: Utils.Theme.animCurveStandard
+                    }
+                    PropertyAction {
+                        target: popout
+                        property: "active"
+                    }
+                }
+            }
+        ]
     }
 }

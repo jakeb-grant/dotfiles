@@ -6,19 +6,23 @@ import QtQuick
 Singleton {
     id: root
 
+    // currentName stays set during close so content survives retraction.
+    // hasCurrent controls whether the wrapper is open.
     property string currentName: ""
+    property bool hasCurrent: false
     property real centerY: 0
     property var activeScreen: null
     property bool barItemHovered: false
     property bool popoutHovered: false
 
-    readonly property bool isOpen: currentName !== ""
+    readonly property bool isOpen: hasCurrent
 
     function show(name: string, y: real, screen: ShellScreen) {
         closeTimer.stop();
         currentName = name;
         centerY = y;
         activeScreen = screen;
+        hasCurrent = true;
         barItemHovered = true;
     }
 
@@ -28,9 +32,14 @@ Singleton {
 
     function close() {
         closeTimer.stop();
-        currentName = "";
+        hasCurrent = false;
         barItemHovered = false;
         popoutHovered = false;
+        // currentName, centerY, activeScreen cleared by wrapper after retraction completes
+    }
+
+    function cleanup() {
+        currentName = "";
         activeScreen = null;
     }
 
