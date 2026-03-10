@@ -111,18 +111,23 @@ Variants {
                         direction: PathArc.Counterclockwise
                     }
 
-                    // Top edge
+                    // Top edge — extend to right fillet or convex corner
                     PathLine {
-                        x: popoutBg.pw - (popoutBg.ft ? 0 : popoutBg.convexR)
+                        x: popoutBg.ft
+                            ? popoutBg.pw + popoutBg.concaveR
+                            : popoutBg.pw - popoutBg.convexR
                         y: popoutBg.topExt
                     }
 
-                    // Top-right: convex (normal) or square (flush top, for now)
+                    // Top-right: concave fillet into frame (flush top) or convex (normal)
                     PathArc {
                         x: popoutBg.pw
-                        y: popoutBg.topExt + (popoutBg.ft ? 0 : popoutBg.convexR)
-                        radiusX: popoutBg.ft ? 0 : popoutBg.convexR
-                        radiusY: popoutBg.ft ? 0 : popoutBg.convexR
+                        y: popoutBg.topExt + (popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR)
+                        radiusX: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
+                        radiusY: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
+                        direction: popoutBg.ft
+                            ? PathArc.Counterclockwise
+                            : PathArc.Clockwise
                     }
 
                     // Right edge — stop short when flush bottom for concave fillet

@@ -2,6 +2,7 @@ import qs.modules.bar.components
 import Quickshell
 import QtQuick
 import QtQuick.Layouts
+import qs.services as Services
 import qs.utils as Utils
 
 ColumnLayout {
@@ -15,12 +16,35 @@ ColumnLayout {
     Item { Layout.preferredHeight: Utils.Theme.spacingSmall }
 
     // Arch logo
-    Text {
+    Item {
+        id: archLogo
+
         Layout.alignment: Qt.AlignHCenter
-        text: "\uf303"
-        font.family: Utils.Theme.fontFamily
-        font.pixelSize: Utils.Theme.iconSize
-        color: Utils.Theme.blue
+        implicitWidth: archText.implicitWidth
+        implicitHeight: archText.implicitHeight
+
+        Text {
+            id: archText
+            anchors.centerIn: parent
+            text: "\uf303"
+            font.family: Utils.Theme.fontFamily
+            font.pixelSize: Utils.Theme.iconSize
+            color: Utils.Theme.blue
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+
+            onEntered: {
+                const globalPos = archLogo.mapToGlobal(0, archLogo.height / 2);
+                Services.Popout.show("system", globalPos.y, root.screen);
+            }
+            onExited: {
+                Services.Popout.barItemHovered = false;
+                Services.Popout.requestClose();
+            }
+        }
     }
 
     Workspaces {
@@ -46,6 +70,7 @@ ColumnLayout {
 
     StatusIcons {
         Layout.alignment: Qt.AlignHCenter
+        screen: root.screen
     }
 
     ClockWidget {

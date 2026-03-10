@@ -20,18 +20,23 @@ Item {
         ? (currentPopout?.implicitWidth ?? 0) + Utils.Theme.spacingLarge * 2 : 0
     readonly property real nonAnimHeight: (currentPopout?.implicitHeight ?? 0) + Utils.Theme.spacingLarge * 2
 
-    // Expose geometry for Drawers.qml background + mask
-    readonly property real popoutX: barWidth
-    readonly property real popoutY: {
+    // Target Y — non-animated, used for flush detection and as base for positioning
+    readonly property real targetY: {
         if (!active && popoutContainer.implicitWidth <= 0) return 0;
         const border = Utils.Theme.borderThickness;
         const ideal = Services.Popout.centerY - nonAnimHeight / 2;
         return Math.max(border, Math.min(ideal, root.height - nonAnimHeight - border));
     }
+
+    // Flush detection uses target (non-animated) values so it's stable during transitions
+    readonly property bool flushTop: targetY <= Utils.Theme.borderThickness
+    readonly property bool flushBottom: targetY + nonAnimHeight >= root.height - Utils.Theme.borderThickness
+
+    // Expose geometry for Drawers.qml background + mask
+    readonly property real popoutX: barWidth
+    readonly property real popoutY: popoutContainer.y
     readonly property real popoutWidth: popoutContainer.implicitWidth
     readonly property real popoutHeight: popoutContainer.implicitWidth > 0 ? popoutContainer.implicitHeight : 0
-    readonly property bool flushTop: popoutY <= Utils.Theme.borderThickness
-    readonly property bool flushBottom: popoutY + popoutHeight >= root.height - Utils.Theme.borderThickness
 
     anchors.top: parent.top
     anchors.bottom: parent.bottom
@@ -41,9 +46,15 @@ Item {
     // Clip container — all sizing driven by Behaviors
     Item {
         id: popoutContainer
+        z: 1
 
         x: root.barWidth
-        y: root.popoutY
+        // When flush, derive y from animated height to maintain edge constraint
+        y: root.flushBottom
+            ? root.height - implicitHeight - Utils.Theme.borderThickness
+            : root.flushTop
+                ? Utils.Theme.borderThickness
+                : root.targetY
         width: implicitWidth
         height: implicitHeight
         clip: true
@@ -52,6 +63,8 @@ Item {
         // Mutable curve/duration — swapped for close to decelerate at the end
         property var animCurve: Utils.Theme.animCurveEmphasized
         property int animDuration: Utils.Theme.animDuration
+        // Separate duration for height/Y during switches (faster reshape)
+        property int reshapeDuration: Utils.Theme.animDuration
 
         implicitWidth: root.nonAnimWidth
         implicitHeight: root.nonAnimHeight
@@ -62,16 +75,31 @@ Item {
                 Services.Popout.cleanup();
                 animCurve = Utils.Theme.animCurveEmphasized;
                 animDuration = Utils.Theme.animDuration;
+                reshapeDuration = Utils.Theme.animDuration;
             }
         }
 
-        // Swap to decel curve on close for a slow finish
+        // React to close and switch events
         Connections {
             target: root
             function onActiveChanged() {
                 if (!root.active) {
+                    // Swap to decel curve on close for a slow finish
                     popoutContainer.animCurve = Utils.Theme.animCurveEmphasizedDecel;
                     popoutContainer.animDuration = Utils.Theme.animDuration + 100;
+                    popoutContainer.reshapeDuration = Utils.Theme.animDuration + 100;
+                }
+            }
+        }
+
+        Connections {
+            target: Services.Popout
+            function onCurrentNameChanged() {
+                // If switching while open, use fast reshape for height/Y
+                if (root.active && Services.Popout.currentName !== "") {
+                    popoutContainer.animCurve = Utils.Theme.animCurveEmphasized;
+                    popoutContainer.animDuration = Utils.Theme.animDuration;
+                    popoutContainer.reshapeDuration = Utils.Theme.animDurationFast;
                 }
             }
         }
@@ -88,17 +116,17 @@ Item {
             enabled: popoutContainer.implicitWidth > 0
 
             NumberAnimation {
-                duration: popoutContainer.animDuration
+                duration: popoutContainer.reshapeDuration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: popoutContainer.animCurve
             }
         }
 
         Behavior on y {
-            enabled: popoutContainer.implicitWidth > 0
+            enabled: popoutContainer.implicitWidth > 0 && !root.flushTop && !root.flushBottom
 
             NumberAnimation {
-                duration: popoutContainer.animDuration
+                duration: popoutContainer.reshapeDuration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: popoutContainer.animCurve
             }
@@ -110,6 +138,21 @@ Item {
 
             anchors.fill: parent
             anchors.margins: Utils.Theme.spacingLarge
+
+            Popout {
+                name: "system"
+                sourceComponent: systemComponent
+            }
+
+            Popout {
+                name: "volume"
+                sourceComponent: volumeComponent
+            }
+
+            Popout {
+                name: "battery"
+                sourceComponent: batteryComponent
+            }
 
             Popout {
                 name: "clock"
@@ -133,6 +176,21 @@ Item {
     }
 
     Component {
+        id: systemComponent
+        SystemPopout {}
+    }
+
+    Component {
+        id: volumeComponent
+        VolumePopout {}
+    }
+
+    Component {
+        id: batteryComponent
+        BatteryPopout {}
+    }
+
+    Component {
         id: clockComponent
         ClockPopout {}
     }
@@ -142,7 +200,7 @@ Item {
         anchors.fill: parent
         visible: root.active
         onClicked: Services.Popout.close()
-        z: -1
+        z: 0
     }
 
     // Popout component — individual Loader with scale+opacity transitions
