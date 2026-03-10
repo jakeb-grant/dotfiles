@@ -1,3 +1,4 @@
+import Quickshell
 import QtQuick
 import QtQuick.Layouts
 import qs.services as Services
@@ -5,6 +6,8 @@ import qs.utils as Utils
 
 Rectangle {
     id: root
+
+    required property ShellScreen screen
 
     implicitWidth: Utils.Theme.barInnerWidth
     implicitHeight: col.implicitHeight + Utils.Theme.spacingNormal * 2
@@ -33,6 +36,20 @@ Rectangle {
             font.pixelSize: Utils.Theme.fontSize
             font.bold: true
             color: Utils.Theme.subtext0
+        }
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        hoverEnabled: true
+
+        onEntered: {
+            const globalPos = root.mapToGlobal(0, root.height / 2);
+            Services.Popout.show("clock", globalPos.y, root.screen);
+        }
+        onExited: {
+            Services.Popout.barItemHovered = false;
+            Services.Popout.requestClose();
         }
     }
 }

@@ -50,6 +50,7 @@ ColumnLayout {
 
     ClockWidget {
         Layout.alignment: Qt.AlignHCenter
+        screen: root.screen
     }
 
     // Bottom padding
