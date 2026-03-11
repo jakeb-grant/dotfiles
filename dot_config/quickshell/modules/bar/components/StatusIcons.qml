@@ -121,10 +121,22 @@ Rectangle {
             Utils.MaterialIcon {
                 id: bluetoothIcon
                 anchors.centerIn: parent
-                text: "bluetooth"
+                text: {
+                    if (!Services.Bluetooth.powered) return "bluetooth_disabled";
+                    if (Services.Bluetooth.connectedDevice) return "bluetooth_connected";
+                    return "bluetooth";
+                }
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize
-                color: Utils.Theme.blue
+                color: {
+                    if (!Services.Bluetooth.powered) return Utils.Theme.overlay0;
+                    if (Services.Bluetooth.connectedDevice) return Utils.Theme.blue;
+                    return Utils.Theme.overlay1;
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
             }
 
             MouseArea {

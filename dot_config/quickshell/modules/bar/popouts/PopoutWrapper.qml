@@ -325,7 +325,7 @@ Item {
 
     Component {
         id: bluetoothComponent
-        PlaceholderPopout { title: "Bluetooth"; icon: "bluetooth" }
+        BluetoothPopout {}
     }
 
     Component {
