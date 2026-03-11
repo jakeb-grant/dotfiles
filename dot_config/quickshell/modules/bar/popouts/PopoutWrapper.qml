@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Services.SystemTray
 import QtQuick
 import qs.services as Services
 import qs.utils as Utils
@@ -158,6 +159,124 @@ Item {
                 name: "clock"
                 sourceComponent: clockComponent
             }
+
+            Popout {
+                name: "calendar"
+                sourceComponent: calendarComponent
+            }
+
+            Popout {
+                name: "wifi"
+                sourceComponent: wifiComponent
+            }
+
+            Popout {
+                name: "bluetooth"
+                sourceComponent: bluetoothComponent
+            }
+
+            Popout {
+                name: "power"
+                sourceComponent: powerComponent
+            }
+
+            // Per-tray-item popout menus (one per SystemTray item)
+            Repeater {
+                model: SystemTray.items
+
+                Item {
+                    id: trayWrapper
+
+                    required property SystemTrayItem modelData
+                    required property int index
+
+                    readonly property string popoutName: `traymenu${index}`
+                    readonly property bool shouldBeActive: Services.Popout.currentName === popoutName
+
+                    // Expose for currentPopout lookup
+                    implicitWidth: trayLoader.item?.implicitWidth ?? 0
+                    implicitHeight: trayLoader.item?.implicitHeight ?? 0
+
+                    anchors.verticalCenter: parent?.verticalCenter
+                    anchors.right: parent?.right
+
+                    opacity: 0
+                    scale: 0.8
+
+                    Loader {
+                        id: trayLoader
+                        active: false
+                        sourceComponent: trayMenuComp
+
+                        // Force recreation on open
+                        Connections {
+                            target: Services.Popout
+
+                            function onIsOpenChanged() {
+                                if (Services.Popout.isOpen && trayWrapper.shouldBeActive) {
+                                    trayLoader.sourceComponent = null;
+                                    trayLoader.sourceComponent = trayMenuComp;
+                                }
+                            }
+                        }
+
+                        Component {
+                            id: trayMenuComp
+                            TrayMenuPopout {
+                                trayItem: trayWrapper.modelData
+                            }
+                        }
+                    }
+
+                    states: State {
+                        name: "active"
+                        when: trayWrapper.shouldBeActive
+
+                        PropertyChanges {
+                            trayLoader.active: true
+                            trayWrapper.opacity: 1
+                            trayWrapper.scale: 1
+                        }
+                    }
+
+                    transitions: [
+                        Transition {
+                            from: ""
+                            to: "active"
+
+                            SequentialAnimation {
+                                PropertyAction {
+                                    target: trayLoader
+                                    property: "active"
+                                }
+                                NumberAnimation {
+                                    properties: "opacity,scale"
+                                    duration: Utils.Theme.animDuration
+                                    easing.type: Easing.BezierSpline
+                                    easing.bezierCurve: Utils.Theme.animCurveStandard
+                                }
+                            }
+                        },
+                        Transition {
+                            from: "active"
+                            to: ""
+
+                            SequentialAnimation {
+                                NumberAnimation {
+                                    properties: "opacity,scale"
+                                    duration: Utils.Theme.animDurationSmall
+                                    easing.type: Easing.BezierSpline
+                                    easing.bezierCurve: Utils.Theme.animCurveStandard
+                                }
+                                PropertyAction {
+                                    target: trayLoader
+                                    property: "active"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
         }
 
         // Hover area — full container
@@ -193,6 +312,26 @@ Item {
     Component {
         id: clockComponent
         ClockPopout {}
+    }
+
+    Component {
+        id: calendarComponent
+        PlaceholderPopout { title: "Calendar"; icon: "calendar_today" }
+    }
+
+    Component {
+        id: wifiComponent
+        PlaceholderPopout { title: "Wi-Fi"; icon: "wifi" }
+    }
+
+    Component {
+        id: bluetoothComponent
+        PlaceholderPopout { title: "Bluetooth"; icon: "bluetooth" }
+    }
+
+    Component {
+        id: powerComponent
+        PlaceholderPopout { title: "Power"; icon: "power_settings_new" }
     }
 
     // Click-outside-to-close overlay

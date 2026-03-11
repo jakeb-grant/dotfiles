@@ -40,8 +40,6 @@ Rectangle {
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: Services.Audio.toggleMute()
 
                 onEntered: {
                     const globalPos = volumeItem.mapToGlobal(0, volumeItem.height / 2);
@@ -54,13 +52,68 @@ Rectangle {
             }
         }
 
-        // Network
-        Utils.MaterialIcon {
+        // Wifi
+        Item {
+            id: wifiItem
+
             Layout.alignment: Qt.AlignHCenter
-            text: Services.Network.state === "connected" ? "wifi" : "wifi_off"
-            fill: Services.Network.state === "connected" ? 1 : 0
-            font.pixelSize: Utils.Theme.iconSize
-            color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.overlay0
+            implicitWidth: wifiIcon.implicitWidth
+            implicitHeight: wifiIcon.implicitHeight
+
+            Utils.MaterialIcon {
+                id: wifiIcon
+                anchors.centerIn: parent
+                text: Services.Network.state === "connected" ? "wifi" : "wifi_off"
+                fill: Services.Network.state === "connected" ? 1 : 0
+                font.pixelSize: Utils.Theme.iconSize
+                color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.overlay0
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+
+                onEntered: {
+                    const globalPos = wifiItem.mapToGlobal(0, wifiItem.height / 2);
+                    Services.Popout.show("wifi", globalPos.y, root.screen);
+                }
+                onExited: {
+                    Services.Popout.barItemHovered = false;
+                    Services.Popout.requestClose();
+                }
+            }
+        }
+
+        // Bluetooth
+        Item {
+            id: bluetoothItem
+
+            Layout.alignment: Qt.AlignHCenter
+            implicitWidth: bluetoothIcon.implicitWidth
+            implicitHeight: bluetoothIcon.implicitHeight
+
+            Utils.MaterialIcon {
+                id: bluetoothIcon
+                anchors.centerIn: parent
+                text: "bluetooth"
+                fill: 1
+                font.pixelSize: Utils.Theme.iconSize
+                color: Utils.Theme.blue
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+
+                onEntered: {
+                    const globalPos = bluetoothItem.mapToGlobal(0, bluetoothItem.height / 2);
+                    Services.Popout.show("bluetooth", globalPos.y, root.screen);
+                }
+                onExited: {
+                    Services.Popout.barItemHovered = false;
+                    Services.Popout.requestClose();
+                }
+            }
         }
 
         // Battery

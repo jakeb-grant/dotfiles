@@ -145,9 +145,18 @@ Rectangle {
                         Text {
                             anchors.centerIn: parent
                             anchors.verticalCenterOffset: 1
-                            text: "󰮯"
+                            text: wsSlot.occupied ? "󰮯" : "•"
                             font.family: Utils.Theme.fontFamily
-                            font.pixelSize: wsSlot.active ? 14 : wsSlot.occupied ? 12 : 8
+                            font.pixelSize: wsSlot.active ? 14 : wsSlot.occupied ? 12 : 10
+                            opacity: wsSlot.occupied ? 1 : (wsSlot.active ? 1 : 0.8)
+                            scale: wsSlot.occupied ? 1 : (wsSlot.active ? 1.2 : 1)
+
+                            Behavior on scale {
+                                Utils.Anim {}
+                            }
+                            Behavior on opacity {
+                                Utils.Anim {}
+                            }
                             color: wsSlot.active ? Utils.Theme.crust : wsSlot.occupied ? Utils.Theme.subtext0 : Utils.Theme.surface2
 
                             Behavior on font.pixelSize {
