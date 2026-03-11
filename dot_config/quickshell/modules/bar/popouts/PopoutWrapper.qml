@@ -280,16 +280,15 @@ Item {
         }
 
         // Hover area — full container
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-
-            onEntered: {
-                Services.Popout.popoutHovered = true;
-            }
-            onExited: {
-                Services.Popout.popoutHovered = false;
-                Services.Popout.requestClose();
+        HoverHandler {
+            id: popoutHover
+            onHoveredChanged: {
+                if (hovered) {
+                    Services.Popout.popoutHovered = true;
+                } else {
+                    Services.Popout.popoutHovered = false;
+                    Services.Popout.requestClose();
+                }
             }
         }
     }

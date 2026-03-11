@@ -14,6 +14,7 @@ Singleton {
     property var activeScreen: null
     property bool barItemHovered: false
     property bool popoutHovered: false
+    property bool graceActive: false
 
     readonly property bool isOpen: hasCurrent
 
@@ -35,6 +36,7 @@ Singleton {
         hasCurrent = false;
         barItemHovered = false;
         popoutHovered = false;
+        graceActive = false;
         // currentName, centerY, activeScreen cleared by wrapper after retraction completes
     }
 
@@ -48,7 +50,7 @@ Singleton {
 
         interval: 200
         onTriggered: {
-            if (!root.barItemHovered && !root.popoutHovered)
+            if (!root.barItemHovered && !root.popoutHovered && !root.graceActive)
                 root.close();
         }
     }

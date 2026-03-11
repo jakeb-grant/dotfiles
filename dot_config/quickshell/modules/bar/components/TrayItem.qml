@@ -10,11 +10,7 @@ Rectangle {
     implicitWidth: Utils.Theme.iconSize + 4
     implicitHeight: Utils.Theme.iconSize + 4
     radius: Utils.Theme.roundingSmall
-    color: hover.containsMouse ? Utils.Theme.surface1 : "transparent"
-
-    Behavior on color {
-        ColorAnimation { duration: 150 }
-    }
+    color: "transparent"
 
     Image {
         anchors.centerIn: parent

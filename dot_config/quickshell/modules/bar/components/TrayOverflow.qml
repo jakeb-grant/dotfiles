@@ -38,11 +38,7 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Utils.Theme.roundingSmall
-                    color: hover.containsMouse ? Utils.Theme.surface1 : "transparent"
-
-                    Behavior on color {
-                        ColorAnimation { duration: 150 }
-                    }
+                    color: "transparent"
                 }
 
                 Image {
