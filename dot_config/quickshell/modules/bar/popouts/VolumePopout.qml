@@ -1,3 +1,4 @@
+import Quickshell.Services.Pipewire
 import QtQuick
 import QtQuick.Layouts
 import qs.services as Services
@@ -7,7 +8,12 @@ ColumnLayout {
     id: root
 
     spacing: Utils.Theme.spacingNormal
-    implicitWidth: 220
+
+    // Width spacer
+    Item {
+        implicitWidth: 280
+        implicitHeight: 0
+    }
 
     RowLayout {
         spacing: Utils.Theme.spacingNormal
@@ -154,5 +160,110 @@ ColumnLayout {
         font.family: Utils.Theme.fontFamily
         font.pixelSize: Utils.Theme.fontSizeSmall
         color: Utils.Theme.overlay0
+    }
+
+    // --- Separator ---
+    Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Utils.Theme.surface1
+        visible: sinkRepeater.count > 0
+    }
+
+    // --- Section header: "Output" ---
+    Text {
+        text: "Output"
+        font.family: Utils.Theme.fontFamily
+        font.pixelSize: Utils.Theme.fontSizeSmall
+        font.weight: Font.Medium
+        color: Utils.Theme.subtext0
+        visible: sinkRepeater.count > 0
+    }
+
+    // --- Device list ---
+    Column {
+        Layout.fillWidth: true
+        spacing: 2
+        visible: sinkRepeater.count > 0
+
+        Repeater {
+            id: sinkRepeater
+            model: Services.Audio.sinks
+
+            delegate: Rectangle {
+                id: sinkDelegate
+
+                required property var modelData
+
+                readonly property bool isDefault: modelData === Pipewire.defaultAudioSink
+
+                width: parent?.width ?? 0
+                height: 32
+                radius: 6
+                color: "transparent"
+
+                // Hover background
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 6
+                    color: Utils.Theme.surface1
+                    opacity: !sinkDelegate.isDefault && sinkMouse.containsMouse ? 1 : 0
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                    }
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    spacing: Utils.Theme.spacingNormal
+
+                    // Device type icon
+                    Utils.MaterialIcon {
+                        text: {
+                            const desc = (sinkDelegate.modelData.description ?? "").toLowerCase();
+                            if (desc.includes("headphone") || desc.includes("headset")) return "headphones";
+                            if (desc.includes("hdmi") || desc.includes("monitor") || desc.includes("display")) return "monitor";
+                            if (desc.includes("bluetooth") || desc.includes("a2dp")) return "bluetooth";
+                            return "volume_up";
+                        }
+                        font.pixelSize: 14
+                        color: sinkDelegate.isDefault ? Utils.Theme.blue : Utils.Theme.overlay1
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    // Device name
+                    Text {
+                        text: sinkDelegate.modelData.description || sinkDelegate.modelData.nickname || sinkDelegate.modelData.name || "Unknown"
+                        font.family: Utils.Theme.fontFamily
+                        font.pixelSize: 13
+                        color: Utils.Theme.text
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    // Active check
+                    Utils.MaterialIcon {
+                        visible: sinkDelegate.isDefault
+                        text: "check"
+                        font.pixelSize: 16
+                        color: Utils.Theme.blue
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+                }
+
+                MouseArea {
+                    id: sinkMouse
+                    anchors.fill: parent
+                    hoverEnabled: !sinkDelegate.isDefault
+                    cursorShape: sinkDelegate.isDefault ? Qt.ArrowCursor : Qt.PointingHandCursor
+                    enabled: !sinkDelegate.isDefault
+                    onClicked: Services.Audio.setSink(sinkDelegate.modelData)
+                }
+            }
+        }
     }
 }
