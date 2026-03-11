@@ -31,10 +31,28 @@ Rectangle {
             Utils.MaterialIcon {
                 id: volumeIcon
                 anchors.centerIn: parent
-                text: Services.Audio.muted ? "volume_off" : Services.Audio.volumePercent > 50 ? "volume_up" : "volume_down"
+                text: {
+                    const v = Services.Audio.volumePercent;
+                    if (Services.Audio.muted) return "volume_off";
+                    if (v === 0) return "volume_mute";
+                    if (v <= 25) return "volume_down";
+                    return "volume_up";
+                }
                 fill: Services.Audio.muted ? 0 : 1
                 font.pixelSize: Utils.Theme.iconSize
-                color: Services.Audio.muted ? Utils.Theme.overlay0 : Utils.Theme.blue
+                color: {
+                    const v = Services.Audio.volumePercent;
+                    if (Services.Audio.muted || v === 0) return Utils.Theme.overlay0;
+                    if (v <= 15) return Utils.Theme.subtext0;
+                    if (v <= 35) return Utils.Theme.lavender;
+                    if (v <= 60) return Utils.Theme.blue;
+                    if (v <= 85) return Utils.Theme.teal;
+                    return Utils.Theme.green;
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
             }
 
             MouseArea {
@@ -60,13 +78,21 @@ Rectangle {
             implicitWidth: wifiIcon.implicitWidth
             implicitHeight: wifiIcon.implicitHeight
 
-            Utils.MaterialIcon {
+            Text {
                 id: wifiIcon
                 anchors.centerIn: parent
-                text: Services.Network.state === "connected" ? "wifi" : "wifi_off"
-                fill: Services.Network.state === "connected" ? 1 : 0
+                text: {
+                    if (Services.Network.state !== "connected") return "󰤮";
+                    const icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"];
+                    return icons[Services.Network.signalLevel];
+                }
+                font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.iconSize
                 color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.overlay0
+
+                Behavior on color {
+                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
             }
 
             MouseArea {

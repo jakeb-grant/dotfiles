@@ -105,8 +105,13 @@ ColumnLayout {
     RowLayout {
         spacing: Utils.Theme.spacingNormal
 
-        Utils.MaterialIcon {
-            text: Services.Network.state === "connected" ? "wifi" : "wifi_off"
+        Text {
+            text: {
+                if (Services.Network.state !== "connected") return "󰤮";
+                const icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"];
+                return icons[Services.Network.signalLevel];
+            }
+            font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.iconSize
             color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.overlay0
         }

@@ -315,12 +315,12 @@ Item {
 
     Component {
         id: calendarComponent
-        PlaceholderPopout { title: "Calendar"; icon: "calendar_today" }
+        CalendarPopout {}
     }
 
     Component {
         id: wifiComponent
-        PlaceholderPopout { title: "Wi-Fi"; icon: "wifi" }
+        WifiPopout {}
     }
 
     Component {
