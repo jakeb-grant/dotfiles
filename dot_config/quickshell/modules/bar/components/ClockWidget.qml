@@ -43,7 +43,7 @@ Item {
 
         onEntered: {
             const globalPos = root.mapToGlobal(0, root.height / 2);
-            Services.Popout.show("clock", globalPos.y, root.screen);
+            Services.Popout.show("calendar", globalPos.y, root.screen);
         }
         onExited: {
             Services.Popout.barItemHovered = false;
