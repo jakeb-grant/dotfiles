@@ -65,23 +65,54 @@ ColumnLayout {
     // ── Gap ──
     Item { Layout.preferredHeight: Utils.Theme.spacingNormal }
 
-    // ── Calendar + Clock (no pill, own group) ──
-
-    // Calendar
+    // ── Calendar + Clock (single hover group) ──
     Item {
-        id: calendarItem
+        id: calendarClockGroup
 
         Layout.alignment: Qt.AlignHCenter
-        implicitWidth: calendarIcon.implicitWidth
-        implicitHeight: calendarIcon.implicitHeight
+        implicitWidth: Utils.Theme.barInnerWidth
+        implicitHeight: calendarClockCol.implicitHeight
 
-        Utils.MaterialIcon {
-            id: calendarIcon
+        Column {
+            id: calendarClockCol
             anchors.centerIn: parent
-            text: "calendar_today"
-            fill: 0
-            font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.overlay1
+            spacing: 2
+
+            Utils.MaterialIcon {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: "calendar_today"
+                fill: 0
+                font.pixelSize: Utils.Theme.iconSize
+                color: Utils.Theme.overlay1
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Services.Clock.hours
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: Utils.Theme.fontSize + 2
+                font.bold: true
+                color: Utils.Theme.teal
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Services.Clock.minutes
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: Utils.Theme.fontSize + 2
+                font.bold: true
+                color: Utils.Theme.subtext0
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Services.Clock.ampm
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: 9
+                font.weight: Font.Medium
+                font.letterSpacing: 2
+                color: Utils.Theme.overlay0
+            }
         }
 
         MouseArea {
@@ -89,7 +120,7 @@ ColumnLayout {
             hoverEnabled: true
 
             onEntered: {
-                const globalPos = calendarItem.mapToGlobal(0, calendarItem.height / 2);
+                const globalPos = calendarClockGroup.mapToGlobal(0, calendarClockGroup.height / 2);
                 Services.Popout.show("calendar", globalPos.y, root.screen);
             }
             onExited: {
@@ -97,12 +128,6 @@ ColumnLayout {
                 Services.Popout.requestClose();
             }
         }
-    }
-
-    // Clock
-    ClockWidget {
-        Layout.alignment: Qt.AlignHCenter
-        screen: root.screen
     }
 
     // ── Gap ──
