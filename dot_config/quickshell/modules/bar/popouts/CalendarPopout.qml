@@ -7,7 +7,12 @@ ColumnLayout {
     id: root
 
     spacing: Utils.Theme.spacingNormal
-    implicitWidth: 7 * cellSize + 6 * gridSpacing
+
+    // Width spacer
+    Item {
+        implicitWidth: 280
+        implicitHeight: 0
+    }
 
     readonly property int cellSize: 32
     readonly property int gridSpacing: 2

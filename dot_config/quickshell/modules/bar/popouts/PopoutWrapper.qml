@@ -156,11 +156,6 @@ Item {
             }
 
             Popout {
-                name: "clock"
-                sourceComponent: clockComponent
-            }
-
-            Popout {
                 name: "calendar"
                 sourceComponent: calendarComponent
             }
@@ -309,11 +304,6 @@ Item {
     }
 
     Component {
-        id: clockComponent
-        ClockPopout {}
-    }
-
-    Component {
         id: calendarComponent
         CalendarPopout {}
     }
@@ -330,7 +320,7 @@ Item {
 
     Component {
         id: powerComponent
-        PlaceholderPopout { title: "Power"; icon: "power_settings_new" }
+        PowerPopout {}
     }
 
     // Click-outside-to-close overlay

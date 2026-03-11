@@ -167,18 +167,12 @@ Rectangle {
                 id: batteryIcon
                 anchors.centerIn: parent
                 fill: 1
-                text: {
-                    if (Services.Battery.charging) return "battery_charging_full";
-                    if (Services.Battery.percent > 75) return "battery_full";
-                    if (Services.Battery.percent > 50) return "battery_5_bar";
-                    if (Services.Battery.percent > 25) return "battery_3_bar";
-                    return "battery_1_bar";
-                }
+                text: Services.Battery.icon
                 font.pixelSize: Utils.Theme.iconSize
-                color: {
-                    if (Services.Battery.charging) return Utils.Theme.green;
-                    if (Services.Battery.percent < 20) return Utils.Theme.red;
-                    return Utils.Theme.yellow;
+                color: Services.Battery.iconColor
+
+                Behavior on color {
+                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
                 }
             }
 

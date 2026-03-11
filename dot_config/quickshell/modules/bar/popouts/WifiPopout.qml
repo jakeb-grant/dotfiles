@@ -16,7 +16,7 @@ ColumnLayout {
 
     // Width spacer — forces ColumnLayout's implicitWidth
     Item {
-        implicitWidth: 320
+        implicitWidth: 280
         implicitHeight: 0
     }
 

@@ -8,7 +8,12 @@ ColumnLayout {
     id: root
 
     spacing: Utils.Theme.spacingNormal
-    implicitWidth: 260
+
+    // Width spacer
+    Item {
+        implicitWidth: 280
+        implicitHeight: 0
+    }
 
     // Distro + kernel
     Text {
@@ -93,7 +98,7 @@ ColumnLayout {
             Process {
                 id: hostnameProc
                 property string output: ""
-                command: ["hostname"]
+                command: ["cat", "/etc/hostname"]
                 running: true
 
                 stdout: SplitParser {
@@ -127,6 +132,46 @@ ColumnLayout {
 
                 stdout: SplitParser {
                     onRead: data => shellProc.output = data.trim()
+                }
+            }
+        }
+    }
+
+    // Packages
+    RowLayout {
+        spacing: Utils.Theme.spacingNormal
+
+        Utils.MaterialIcon {
+            text: "inventory_2"
+            font.pixelSize: Utils.Theme.iconSize
+            color: Utils.Theme.peach
+        }
+
+        Text {
+            text: nativeProc.output + " native, " + aurProc.output + " AUR"
+            font.family: Utils.Theme.fontFamily
+            font.pixelSize: Utils.Theme.fontSizeSmall
+            color: Utils.Theme.text
+
+            Process {
+                id: nativeProc
+                property string output: ""
+                command: ["sh", "-c", "pacman -Qn | wc -l"]
+                running: true
+
+                stdout: SplitParser {
+                    onRead: data => nativeProc.output = data.trim()
+                }
+            }
+
+            Process {
+                id: aurProc
+                property string output: ""
+                command: ["sh", "-c", "pacman -Qm | wc -l"]
+                running: true
+
+                stdout: SplitParser {
+                    onRead: data => aurProc.output = data.trim()
                 }
             }
         }

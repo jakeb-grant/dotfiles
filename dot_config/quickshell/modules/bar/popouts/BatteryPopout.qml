@@ -7,19 +7,24 @@ ColumnLayout {
     id: root
 
     spacing: Utils.Theme.spacingNormal
-    implicitWidth: 220
+
+    // Width spacer
+    Item {
+        implicitWidth: 280
+        implicitHeight: 0
+    }
 
     // Battery percentage + status
     RowLayout {
         spacing: Utils.Theme.spacingNormal
 
         Utils.MaterialIcon {
-            text: Services.Battery.charging ? "battery_charging_full" : "battery_full"
+            text: Services.Battery.icon
             font.pixelSize: 28
-            color: {
-                if (Services.Battery.charging) return Utils.Theme.green;
-                if (Services.Battery.percent < 20) return Utils.Theme.red;
-                return Utils.Theme.yellow;
+            color: Services.Battery.iconColor
+
+            Behavior on color {
+                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
             }
         }
 
@@ -83,44 +88,79 @@ ColumnLayout {
         }
     }
 
-    // Volume
-    RowLayout {
-        spacing: Utils.Theme.spacingNormal
-
-        Utils.MaterialIcon {
-            text: Services.Audio.muted ? "volume_off" : "volume_up"
-            font.pixelSize: Utils.Theme.iconSize
-            color: Services.Audio.muted ? Utils.Theme.overlay0 : Utils.Theme.blue
-        }
-
-        Text {
-            text: Services.Audio.muted ? "Muted" : Services.Audio.volumePercent + "%"
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: Utils.Theme.fontSizeSmall
-            color: Utils.Theme.text
-        }
+    Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Utils.Theme.surface1
     }
 
-    // Network
-    RowLayout {
-        spacing: Utils.Theme.spacingNormal
+    // Power profile
+    ColumnLayout {
+        spacing: Utils.Theme.spacingSmall
 
         Text {
-            text: {
-                if (Services.Network.state !== "connected") return "󰤮";
-                const icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"];
-                return icons[Services.Network.signalLevel];
+            text: "Power Profile"
+            font.family: Utils.Theme.fontFamily
+            font.pixelSize: Utils.Theme.fontSizeSmall
+            color: Utils.Theme.subtext0
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Utils.Theme.spacingSmall
+
+            Repeater {
+                model: [
+                    { profile: "power-saver", label: "Saver", icon: "eco", accent: "green" },
+                    { profile: "balanced", label: "Balanced", icon: "balance", accent: "blue" },
+                    { profile: "performance", label: "Perf", icon: "bolt", accent: "peach" },
+                ]
+
+                Rectangle {
+                    id: pill
+
+                    required property var modelData
+
+                    readonly property bool active: Services.Battery.powerProfile === modelData.profile
+                    readonly property color accent: Utils.Theme[modelData.accent]
+
+                    Layout.fillWidth: true
+                    height: 30
+                    radius: height / 2
+                    color: active ? Utils.Theme.surface2 : (pillMouse.containsMouse ? Utils.Theme.surface1 : Utils.Theme.surface0)
+
+                    Behavior on color {
+                        ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                    }
+
+                    RowLayout {
+                        anchors.centerIn: parent
+                        spacing: 4
+
+                        Utils.MaterialIcon {
+                            text: pill.modelData.icon
+                            font.pixelSize: 14
+                            color: pill.active ? pill.accent : Utils.Theme.overlay1
+                        }
+
+                        Text {
+                            text: pill.modelData.label
+                            font.family: Utils.Theme.fontFamily
+                            font.pixelSize: Utils.Theme.fontSizeSmall
+                            color: pill.active ? pill.accent : Utils.Theme.overlay1
+                        }
+                    }
+
+                    MouseArea {
+                        id: pillMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Services.Battery.setProfile(pill.modelData.profile)
+                    }
+                }
             }
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: Utils.Theme.iconSize
-            color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.overlay0
-        }
-
-        Text {
-            text: Services.Network.label
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: Utils.Theme.fontSizeSmall
-            color: Utils.Theme.text
         }
     }
+
 }
