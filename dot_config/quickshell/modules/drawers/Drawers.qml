@@ -54,7 +54,11 @@ Variants {
                 windows: [win]
             }
 
-            // Composited frame + popout layer — single shadow for combined silhouette
+            // Composited frame + popout layer — single shadow for combined silhouette.
+            // NOTE: layer.enabled forces GPU offscreen rendering every frame during
+            // popout animation (Border + Shape + shadow blur). This is the most
+            // expensive part of the render pipeline. If animations feel sluggish on
+            // older GPUs, try reducing frameShadowBlur or disabling shadowEnabled.
             Item {
                 anchors.fill: parent
                 layer.enabled: true
