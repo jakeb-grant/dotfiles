@@ -161,6 +161,11 @@ Item {
             }
 
             Popout {
+                name: "brightness"
+                sourceComponent: brightnessComponent
+            }
+
+            Popout {
                 name: "battery"
                 sourceComponent: batteryComponent
             }
@@ -311,6 +316,11 @@ Item {
     Component {
         id: volumeComponent
         VolumePopout {}
+    }
+
+    Component {
+        id: brightnessComponent
+        BrightnessPopout {}
     }
 
     Component {

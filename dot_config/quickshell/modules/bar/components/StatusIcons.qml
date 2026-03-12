@@ -70,6 +70,58 @@ Rectangle {
             }
         }
 
+        // Brightness
+        Item {
+            id: brightnessItem
+
+            Layout.alignment: Qt.AlignHCenter
+            visible: Services.Brightness.available
+            implicitWidth: brightnessIcon.implicitWidth
+            implicitHeight: brightnessIcon.implicitHeight
+
+            Utils.MaterialIcon {
+                id: brightnessIcon
+                anchors.centerIn: parent
+                text: {
+                    const p = Services.Brightness.percent;
+                    if (p <= 14) return "brightness_1";
+                    if (p <= 28) return "brightness_2";
+                    if (p <= 42) return "brightness_3";
+                    if (p <= 56) return "brightness_4";
+                    if (p <= 70) return "brightness_5";
+                    if (p <= 85) return "brightness_6";
+                    return "brightness_7";
+                }
+                fill: 1
+                font.pixelSize: Utils.Theme.iconSize
+                color: {
+                    const p = Services.Brightness.percent;
+                    if (p <= 15) return Utils.Theme.subtext0;
+                    if (p <= 40) return Utils.Theme.lavender;
+                    if (p <= 70) return Utils.Theme.blue;
+                    return Utils.Theme.yellow;
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+
+                onEntered: {
+                    const globalPos = brightnessItem.mapToGlobal(0, brightnessItem.height / 2);
+                    Services.Popout.show("brightness", globalPos.y, root.screen);
+                }
+                onExited: {
+                    Services.Popout.barItemHovered = false;
+                    Services.Popout.requestClose();
+                }
+            }
+        }
+
         // Wifi
         Item {
             id: wifiItem

@@ -28,7 +28,15 @@ ColumnLayout {
             }
             fill: Services.Audio.muted ? 0 : 1
             font.pixelSize: Utils.Theme.headerIconSize
-            color: Services.Audio.muted ? Utils.Theme.disabledText : Utils.Theme.subtleText
+            color: {
+                const v = Services.Audio.volumePercent;
+                if (Services.Audio.muted || v === 0) return Utils.Theme.disabledText;
+                if (v <= 15) return Utils.Theme.subtext0;
+                if (v <= 35) return Utils.Theme.lavender;
+                if (v <= 60) return Utils.Theme.blue;
+                if (v <= 85) return Utils.Theme.teal;
+                return Utils.Theme.green;
+            }
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }

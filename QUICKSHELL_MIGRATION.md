@@ -31,7 +31,7 @@ dot_config/quickshell/
         Network.qml               # Singleton: iwd via Process polling
         Popout.qml                # Singleton: popout state machine (show/close/cleanup + graceActive)
         Brightness.qml            # TODO: brightnessctl via Process
-        Players.qml               # TODO: Quickshell.Services.Mpris
+        Players.qml               # Singleton: Quickshell.Services.Mpris
         Calendar.qml              # TODO: khal event polling via Process
 
     modules/
@@ -286,8 +286,8 @@ Query examples:
 - [x] UI polish — three-pass design review: color consistency, tokenization, tray icon fallbacks
 - [x] Composited frame shadow — single MultiEffect layer for unified frame + popout silhouette shadow
 - [x] Flush popout fix — cached content height prevents top-flush detection flicker during Loader activation
-- [ ] Bar: MediaWidget — MPRIS now-playing icon + popout with controls
-- [ ] Startup animations — bar slide-in, workspace pill cascade
+- [x] `services/Players.qml` — MPRIS singleton (media controls for dashboard/future use, not bar)
+- [x] Startup animations — bar slide-in, workspace pill cascade
 - [x] Hover effects on bar items — color transitions on status icons, scale/opacity on workspace indicators
 
 ### Phase 2: OSD

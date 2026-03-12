@@ -12,6 +12,18 @@ Rectangle {
 
     required property ShellScreen screen
 
+    // ── Workspace entrance cascade ──
+    property bool entranceReady: false
+    property int _wsAnimStep: -1
+
+    Timer {
+        id: wsEntranceTimer
+        interval: 55
+        repeat: true
+        running: root.entranceReady && root._wsAnimStep < root.configuredIds.length
+        onTriggered: root._wsAnimStep++
+    }
+
     readonly property HyprlandMonitor monitor: Services.Hypr.monitorFor(screen)
     readonly property int activeWsId: monitor?.activeWorkspace?.id ?? -1
 
@@ -124,6 +136,17 @@ Rectangle {
                 readonly property bool occupied: root.occupiedIds[wsId] ?? false
                 readonly property var icons: root.windowIcons[wsId] ?? []
                 readonly property int contentHeight: 28 + icons.length * 24
+
+                // Entrance cascade
+                property real _yShift: root._wsAnimStep >= index ? 0 : 8
+                Behavior on _yShift {
+                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
+                opacity: root._wsAnimStep >= index ? 1 : 0
+                Behavior on opacity {
+                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
+                transform: Translate { y: wsSlot._yShift }
 
                 Layout.alignment: Qt.AlignHCenter
                 Layout.preferredWidth: 28
