@@ -22,68 +22,56 @@ Replacing Waybar + swaync with a unified Quickshell desktop shell on Hyprland.
 dot_config/quickshell/
     shell.qml                     # ShellRoot entry point
 
-    theme/
-        qmldir
-        Theme.qml                 # Singleton: reads ~/.config/themes/active.json via FileView
-
     services/
-        qmldir
         Audio.qml                 # Singleton: Quickshell.Services.Pipewire
-        Hypr.qml                  # Singleton: Quickshell.Hyprland + raw event handling
-        Power.qml                 # Singleton: Quickshell.Services.UPower
-        Players.qml               # Singleton: Quickshell.Services.Mpris
-        Network.qml               # Singleton: iwd via Process polling (no native API)
-        Brightness.qml            # Singleton: brightnessctl via Process
-        Tray.qml                  # Singleton: Quickshell.Services.SystemTray
+        Battery.qml               # Singleton: UPower + powerprofilesctl power profile switching
+        Bluetooth.qml             # Singleton: Quickshell.Services.Bluetooth
+        Clock.qml                 # Singleton: SystemClock + format helpers
+        Hypr.qml                  # Singleton: Quickshell.Hyprland + workspace rules
+        Network.qml               # Singleton: iwd via Process polling
+        Popout.qml                # Singleton: popout state machine (show/close/cleanup + graceActive)
+        Brightness.qml            # TODO: brightnessctl via Process
+        Players.qml               # TODO: Quickshell.Services.Mpris
+        Calendar.qml              # TODO: khal event polling via Process
 
     modules/
-        shell/                     # Full-screen wrapper (Caelestia "drawers" pattern)
-            qmldir
-            Shell.qml              # Variants per screen, full-screen layershell window
-            Panels.qml             # Anchors all panel wrappers (osd, session, sidebar, dashboard)
-            Interactions.qml       # Mouse/drag logic for showing/hiding panels
-            Backgrounds.qml        # Shaped backgrounds behind panels (optional)
+        drawers/                   # Full-screen wrapper (Caelestia "drawers" pattern)
+            Drawers.qml            # Variants per screen, layershell window, popout background Shape
+            Border.qml             # Screen frame with shadow
+            Exclusions.qml         # Wayland exclusion zones
 
         bar/
-            qmldir
-            Bar.qml                # Vertical bar (left edge), ColumnLayout
+            BarWrapper.qml         # Outer container with background + padding
+            BarContent.qml         # Vertical ColumnLayout with all bar components
             components/
-                Workspaces.qml
-                ActiveWindow.qml
-                Clock.qml
-                StatusIcons.qml    # Battery, network, audio, bluetooth
-                TrayHost.qml
-                MediaWidget.qml    # MPRIS now-playing
+                Workspaces.qml     # Workspace switcher with per-workspace window icons
+                ActiveWindow.qml   # Rotated active window title
+                ClockWidget.qml    # Hours/minutes display with popout trigger
+                StatusIcons.qml    # Volume, network, battery icons with popout triggers
+                Tray.qml           # System tray container
+                TrayItem.qml       # Individual tray icon
+                TrayOverflow.qml   # Tray icons with hover-to-open popout menus
+            popouts/
+                PopoutWrapper.qml  # Master popout container with animations + flush-edge pinning
+                CalendarPopout.qml # Month grid with today highlight, nav, clock footer
+                SystemPopout.qml   # Distro, kernel, uptime, hostname, shell, package counts
+                BatteryPopout.qml  # Battery %, capacity bar, power profile toggle
+                VolumePopout.qml   # Volume slider + output device switcher
+                WifiPopout.qml     # Wi-Fi status, network list, connect/disconnect
+                BluetoothPopout.qml # Bluetooth device list, connect/disconnect
+                PowerPopout.qml    # Shutdown, restart, sleep, lock, logout
+                TrayMenuPopout.qml # Dynamic tray app menus with submenu navigation
 
-        osd/
-            qmldir
-            OsdPopup.qml           # Volume/brightness overlay (right edge, center)
+        osd/                       # TODO
+        session/                   # TODO
+        sidebar/                   # TODO
+        dashboard/                 # TODO
 
-        session/
-            qmldir
-            SessionPanel.qml       # Slide-in from right: logout/shutdown/reboot/hibernate
-
-        sidebar/
-            qmldir
-            Sidebar.qml            # Slide-in from right: notification history + dock
-            NotifDock.qml          # Live notification list
-
-        dashboard/
-            qmldir
-            Dashboard.qml          # Slide-down from top: clock, calendar, media, stats
-
-    components/
-        qmldir
-        StyledRect.qml             # Theme-aware rectangle
-        StyledText.qml             # Theme-aware text
-        IconLabel.qml              # Nerd font icon + label pattern
-        Pill.qml                   # Rounded pill container
-
-    rust/                          # Rust workspace (optional, for perf-critical features)
-        Cargo.toml
-        crates/
-            qs-visualizer/         # Audio FFT visualization
-            qs-color-extract/      # Wallpaper dominant color extraction
+    utils/
+        Theme.qml                  # Design tokens: colors, sizes, spacing, animation curves
+        Icons.qml                  # Material Symbol icon mappings for app categories
+        Anim.qml                   # Standard MD3-curve NumberAnimation helper
+        MaterialIcon.qml           # Material Symbols variable font component
 ```
 
 ### Dependencies
@@ -99,10 +87,10 @@ sudo pacman -S ttf-material-symbols-variable
 
 1. **Use native Quickshell APIs** wherever possible (PipeWire, UPower, Hyprland, MPRIS, SystemTray). Only fall back to `Process` polling for iwd network and brightnessctl.
 2. **Service singletons** wrap Quickshell APIs and expose clean properties. UI modules never import Quickshell service modules directly.
-3. **Theme.qml** reads `~/.config/themes/active.json` via `FileView` with `watchChanges: true`. Theme switches are detected automatically. No chezmoi `.tmpl` processing needed for QML files.
-4. **Single full-screen window per monitor** — one `WlrLayershell` window hosts bar + all panels. `Variants { model: Quickshell.screens }` at the shell level, not per-module. Panels slide in/out via width/height animations with `HyprlandFocusGrab` for click-away dismissal.
-5. **Material Symbols Rounded for icons** — use `utils/MaterialIcon.qml` component. Set `text` to icon name, `fill` (0=outline, 1=filled), `color` for theming. Animate `fill` for state transitions.
-5. **Don't over-engineer** — no 16-file config system, no typed config classes. Keep it flat.
+3. **Single full-screen window per monitor** — one `WlrLayershell` window hosts bar + all panels. `Variants { model: Quickshell.screens }` at the shell level, not per-module. Panels slide in/out via width/height animations with `HyprlandFocusGrab` for click-away dismissal.
+4. **Material Symbols Rounded for icons** — use `utils/MaterialIcon.qml` component. Set `text` to icon name, `fill` (0=outline, 1=filled), `color` for theming. Animate `fill` for state transitions.
+5. **MD3 animation curves** — BezierSpline easing (Emphasized, Standard, EmphasizedDecel) via `utils/Anim.qml`. Durations: 400ms normal, 200ms small, 150ms fast.
+6. **Don't over-engineer** — no 16-file config system, no typed config classes. Keep it flat.
 
 ### Full-Screen Wrapper Architecture (from Caelestia "drawers" pattern)
 
@@ -137,9 +125,9 @@ The key insight: instead of separate `PanelWindow`/`PopupWindow` per UI element,
 
 **Simplified vs Caelestia:**
 - We skip their drag-threshold system (just use hover + click/keybind)
-- We skip their popouts system (bar popouts are separate PopupWindows if needed)
 - We skip their config abstraction layer (hardcode sensible defaults, theme from JSON)
 - We keep: focus grab, region masking, visibility state, slide animations
+- We built our own popout system with hover-triggered shelf extending from the bar, concave protrusion ShapePath, flush-edge pinning, and MD3 animation curves
 
 ### Rust Integration
 
@@ -267,60 +255,68 @@ Query examples:
 
 ## Roadmap
 
-### Phase 1: Foundation + Shell Wrapper + Bar
-- [ ] Create directory structure and qmldir module declarations
-- [ ] `theme/Theme.qml` — read active.json, expose all color properties
-- [ ] `services/Hypr.qml` — workspace/monitor/toplevel state, dispatch(), raw event handling
-- [ ] `services/Audio.qml` — PipeWire volume/mute state, increment/decrement
-- [ ] `components/` — StyledRect, StyledText, Pill, IconLabel
-- [ ] `modules/shell/Shell.qml` — full-screen layershell window per monitor, ExclusionMode.Ignore, Region mask
-- [ ] `modules/shell/Panels.qml` — anchor all panel wrappers, pass visibilities
-- [ ] `modules/bar/Bar.qml` — vertical bar (left edge), ColumnLayout
-- [ ] Bar: Workspaces — numbered buttons, active/occupied/empty states, click to switch, animations
-- [ ] Bar: Clock — date + time with nerd font icon
-- [ ] Bar: StatusIcons — volume, network, battery with state-appropriate icons and colors
-- [ ] Bar: TrayHost — system tray icons
-- [ ] Bar: ActiveWindow — focused window title
-- [ ] Bar: MediaWidget — MPRIS now-playing with controls
-- [ ] Startup animations — slide-in, cascade workspace pills, tray icon pop-in
-- [ ] Hover effects — scale, border glow, color transitions
+### Phase 1: Foundation + Shell Wrapper + Bar ✅
+- [x] Directory structure with `qs.` module imports
+- [x] `utils/Theme.qml` — design tokens (colors, sizes, spacing, animation curves)
+- [x] `utils/MaterialIcon.qml` — variable Material Symbols font component
+- [x] `services/` — Audio, Battery, Bluetooth, Clock, Hypr, Network, Popout singletons
+- [x] `modules/drawers/Drawers.qml` — full-screen layershell window, Region mask, Border
+- [x] `modules/bar/` — vertical bar (left edge) with BarWrapper + BarContent
+- [x] Bar: Workspaces — per-workspace window icons, active indicator pill, click to switch
+- [x] Bar: Clock — 12-hour AM/PM display with calendar+clock hover group
+- [x] Bar: StatusIcons — volume, network, battery with hover popouts
+- [x] Bar: Tray — system tray icons
+- [x] Bar: ActiveWindow — rotated focused window title
+- [x] Popout system — hover-triggered shelf with concave protrusion, flush-edge pinning, MD3 curves
 
-### Phase 2: OSD + Session Panel
+### Phase 1.5: Bar Polish
+- [x] Tray menus — dynamic QsMenuOpener menus with StackView submenu navigation, fade transitions, back pill button
+- [x] Tray interaction fixes — HoverHandler for non-blocking hover, acceptedButtons: Qt.NoButton for click passthrough
+- [x] Popout grace period — graceActive flag prevents premature close during menu resize/transitions
+- [x] Bar: CalendarPopout — month grid with today highlight, month navigation, fixed 6-row layout, clock footer
+- [x] Bar: VolumePopout — drag/click slider, mute toggle, output device switcher with click-to-select
+- [x] Bar: WifiPopout — iwd/iwctl network list, click to connect/disconnect, scan button, signal levels
+- [x] Bar: BluetoothPopout — native Quickshell.Bluetooth API, device list, click to connect/disconnect
+- [x] Bar: BatteryPopout — capacity bar, power profile pill toggle (powerprofilesctl)
+- [x] Bar: PowerPopout — click actions for shutdown, restart, sleep, lock, logout
+- [x] Bar: SystemPopout — distro, kernel, uptime, hostname, shell, native/AUR package counts
+- [x] Standardized popout widths — all popouts use 280px Item spacer pattern
+- [ ] Theme integration — read active.json via FileView instead of hardcoded colors
+- [ ] Bar: MediaWidget — MPRIS now-playing icon + popout with controls
+- [ ] Startup animations — bar slide-in, workspace pill cascade
+- [x] Hover effects on bar items — color transitions on status icons, scale/opacity on workspace indicators
+
+### Phase 2: OSD
 - [ ] `services/Brightness.qml` — brightnessctl wrapper
-- [ ] `modules/osd/OsdPopup.qml` — volume/brightness overlay (right edge, vertically centered)
-- [ ] Auto-show on change, auto-hide after timeout
-- [ ] `modules/session/SessionPanel.qml` — slide-in from right with scrim overlay
-- [ ] Session buttons: logout, shutdown, reboot, hibernate with keyboard navigation
-- [ ] HyprlandFocusGrab when session panel is open
-- [ ] Trigger via keybind (GlobalShortcut or Hyprland IPC)
+- [ ] `modules/osd/OsdPopup.qml` — volume/brightness overlay (auto-show on change, auto-hide)
 
 ### Phase 3: Sidebar (Notifications)
-- [ ] `modules/sidebar/Sidebar.qml` — slide-in from right, notification dock
-- [ ] `modules/sidebar/NotifDock.qml` — live notification list with dismiss/action
-- [ ] Notification history (scrollable)
 - [ ] `Quickshell.Services.Notifications` as notification server (replaces swaync)
-- [ ] Hover or keybind to reveal sidebar
+- [ ] `modules/sidebar/Sidebar.qml` — slide-in from right, notification dock
+- [ ] Live notification list with dismiss/action
+- [ ] Notification history (scrollable)
+- [ ] Keybind to reveal sidebar
 
-### Phase 4: Dashboard
+### Phase 4: Calendar Integration
+- [ ] Set up pimsync (vdirsyncer successor) with CalDAV sources + secret storage
+- [ ] Set up khal to read pimsync vdir for CLI event queries
+- [ ] `services/Calendar.qml` — periodic `khal list` polling via Process, parse into event model
+- [ ] `CalendarPopout.qml` — integrate khal events below month grid (today + upcoming)
+- [ ] Event indicators on calendar days (dots for days with events)
+
+### Phase 5: Dashboard
 - [ ] `modules/dashboard/Dashboard.qml` — slide-down from top edge
-- [ ] Calendar widget
 - [ ] Media player controls (MPRIS)
 - [ ] System stats (CPU/RAM/disk/temp via Process)
-- [ ] Hover or keybind to reveal
+- [ ] Keybind to reveal
 
-### Phase 5: Interactions + Polish
-- [ ] `modules/shell/Interactions.qml` — hover zones, drag-to-reveal, click-away dismiss
-- [ ] Coordinated panel visibility (e.g., opening session closes sidebar)
-- [ ] Popup windows for bar items (audio mixer, battery details)
+### Phase 6: Polish + Cutover
+- [ ] Coordinated panel visibility (opening one closes others)
 - [ ] Per-monitor workspace support
-
-### Phase 6: Replace Waybar + swaync
 - [ ] Run Quickshell alongside Waybar, validate parity
 - [ ] Disable Waybar in Hyprland config
 - [ ] Remove Waybar/swaync from chezmoi
 
-### Phase 7: Rust Tooling
-- [ ] Set up Rust workspace with cargo
+### Phase 7: Rust Tooling (optional)
 - [ ] `qs-visualizer` — PipeWire FFT, JSON line output
-- [ ] Visualizer bar widget or desktop background integration
-- [ ] `qs-color-extract` — wallpaper dominant color extraction (optional)
+- [ ] `qs-color-extract` — wallpaper dominant color extraction

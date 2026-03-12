@@ -6,7 +6,7 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 
 ### Arch Logo (standalone)
 - [x] Icon: `\uf303` nerd font
-- [x] Popout: SystemPopout (distro, kernel, uptime, hostname, shell)
+- [x] Popout: SystemPopout (distro, kernel, uptime, hostname, shell, native/AUR package counts)
 
 ### Workspaces (pill + sliding indicator)
 - [x] Per-workspace window icons
@@ -20,20 +20,17 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 - [x] Icons with fallback (custom `?path=` icons fall back to theme icon by id, then Material fallback)
 - [x] Dynamic popout menus via `QsMenuOpener` — renders real app menu entries
 - [x] Per-item popout architecture (Repeater in PopoutWrapper)
-- [ ] Fix click interaction — menu items render but clicks don't reach them
-- [ ] Submenu navigation for entries with `hasChildren`
-- [ ] Polish: icons for menu entries, checkbox/radio state display
+- [x] Click interaction — menu items receive clicks correctly
+- [x] Submenu navigation — StackView with back button for entries with `hasChildren`
+- [x] Menu entry icons — icon theme cache with graceful fallback (hide all if any fail per menu)
+- [ ] Polish: checkbox/radio state display for menu entries
 
 ### --- gap ---
 
-### Calendar (standalone, no pill)
-- [x] Icon: `calendar_today` (Material Symbol)
-- [x] Popout: PlaceholderPopout
-- [ ] Popout: real calendar widget, upcoming events
-
-### Clock (standalone, no pill)
-- [x] Icon: hours/minutes stacked text (slightly enlarged font)
-- [x] Popout: ClockPopout (day, date, time)
+### Calendar + Clock (merged hover group, no pill)
+- [x] Icon: `calendar_today` + hours/minutes stacked text
+- [x] Popout: CalendarPopout (month grid, today highlight, month navigation, 6-row layout, clock footer)
+- [ ] Calendar events integration (khal/pimsync)
 
 ### --- gap ---
 
@@ -41,35 +38,28 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 
 **Volume**
 - [x] Icon: `volume_up` / `volume_down` / `volume_off` (Material Symbol)
-- [x] Popout: VolumePopout (level bar, mute hint)
+- [x] Popout: VolumePopout (drag/click slider, mute toggle, output device switcher)
 
 **Wifi**
 - [x] Icon: `wifi` (Material Symbol)
-- [x] Popout: PlaceholderPopout
-- [ ] Popout: real wifi controls (SSID, signal strength, saved networks)
+- [x] Popout: WifiPopout (iwd/iwctl network list, connect/disconnect, scan, signal levels)
 
 **Bluetooth**
-- [x] Icon: `bluetooth` (Material Symbol)
-- [x] Popout: PlaceholderPopout
-- [ ] Popout: real bluetooth controls (connected devices, toggle)
+- [x] Icon: `bluetooth` / `bluetooth_connected` / `bluetooth_disabled` (Material Symbol)
+- [x] Popout: BluetoothPopout (native Quickshell.Bluetooth API, device list, connect/disconnect)
 
 **Battery**
-- [x] Icon: battery state icons (Material Symbol)
-- [x] Popout: BatteryPopout (percent, capacity bar, charging status)
+- [x] Icon: granular battery state icons (Material Symbol, color-coded by level)
+- [x] Popout: BatteryPopout (percent, capacity bar, power profile toggle via powerprofilesctl)
 
 ### --- gap ---
 
 ### Power (prominent, standalone)
 - [x] Icon: `power_settings_new` (Material Symbol, red)
-- [x] Popout: PlaceholderPopout
-- [ ] Popout: real session actions (shutdown, reboot, logout, suspend, hibernate)
+- [x] Popout: PowerPopout (shutdown, restart, sleep, lock screen, logout)
 
 ## Remaining Work
 
-1. [ ] Fix tray menu click interaction (MouseArea not receiving events)
-2. [ ] Add submenu navigation (StackView or nested QsMenuOpener for `hasChildren` entries)
-3. [ ] Build calendar popout (calendar grid, events)
-4. [ ] Build wifi popout (NetworkManager integration)
-5. [ ] Build bluetooth popout (bluez integration)
-6. [ ] Build power popout (session actions via systemd/logind)
-7. [ ] Build spotify MPRIS popout (now-playing, controls, album art)
+1. [ ] Polish: tray menu checkbox/radio state display
+2. [ ] Calendar events integration (khal/pimsync)
+3. [ ] MPRIS media widget + popout (now-playing, controls, album art)

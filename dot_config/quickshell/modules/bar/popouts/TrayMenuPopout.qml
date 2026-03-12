@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import QtQuick
@@ -13,6 +14,24 @@ ColumnLayout {
     id: root
 
     property SystemTrayItem trayItem
+
+    // Cache of icon names that exist in installed icon themes
+    property var _iconCache: ({})
+
+    Component.onCompleted: iconCacheProc.running = true
+
+    Process {
+        id: iconCacheProc
+        // Collect all icon filenames across all installed themes
+        command: ["sh", "-c", "find /usr/share/icons -type f \\( -name '*.svg' -o -name '*.png' \\) -printf '%f\\n' | sort -u"]
+
+        stdout: SplitParser {
+            onRead: data => {
+                const name = data.trim().replace(/\.(svg|png)$/, "");
+                if (name !== "") root._iconCache[name] = true;
+            }
+        }
+    }
 
     function navigateWithGrace() {
         Services.Popout.graceActive = true;
@@ -164,6 +183,9 @@ ColumnLayout {
         property var handle
         property bool isSubMenu: false
 
+        // Whether any entry in this menu has a resolvable icon
+        property bool hasAnyIcon: false
+
         spacing: 1
 
         QsMenuOpener {
@@ -226,15 +248,35 @@ ColumnLayout {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Utils.Theme.spacingNormal
 
-                    // Menu item icon
-                    Image {
-                        visible: menuItem.modelData.icon !== ""
-                        source: menuItem.modelData.icon
-                        sourceSize.width: 16
-                        sourceSize.height: 16
-                        width: 16
-                        height: 16
+                    // Menu item icon — only load if icon exists in theme cache.
+                    // Reserve space if other entries in this menu have icons.
+                    Item {
+                        visible: menu.hasAnyIcon
+                        implicitWidth: 16
+                        implicitHeight: 16
                         Layout.alignment: Qt.AlignVCenter
+
+                        IconImage {
+                            readonly property string iconSrc: menuItem.modelData.icon
+                            readonly property string iconName: {
+                                const s = iconSrc;
+                                if (s === "") return "";
+                                if (s.startsWith("image://icon/")) {
+                                    const rest = s.substring("image://icon/".length);
+                                    const q = rest.indexOf("?");
+                                    return q >= 0 ? rest.substring(0, q) : rest;
+                                }
+                                return s;
+                            }
+                            readonly property bool knownIcon: iconSrc !== "" && (iconName in root._iconCache || iconSrc.startsWith("image://qsimage/"))
+                            visible: knownIcon
+                            source: knownIcon ? iconSrc : ""
+                            anchors.fill: parent
+
+                            onKnownIconChanged: {
+                                if (knownIcon) menu.hasAnyIcon = true;
+                            }
+                        }
                     }
 
                     // Menu item text
