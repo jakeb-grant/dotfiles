@@ -99,68 +99,87 @@ ColumnLayout {
         spacing: Utils.Theme.spacingSmall
 
         Text {
-            text: "Power Profile"
+            text: "Power Profile: " + segmentedSlider.profiles[segmentedSlider.activeIndex].label
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             color: Utils.Theme.subtext0
         }
 
-        RowLayout {
+        // Segmented slider
+        Rectangle {
+            id: segmentedSlider
+
+            readonly property var profiles: [
+                { profile: "power-saver", label: "Power Saver", icon: "eco", accent: "green" },
+                { profile: "balanced", label: "Balanced", icon: "balance", accent: "blue" },
+                { profile: "performance", label: "Performance", icon: "bolt", accent: "peach" },
+            ]
+            readonly property int activeIndex: {
+                for (let i = 0; i < profiles.length; i++)
+                    if (profiles[i].profile === Services.Battery.powerProfile) return i;
+                return 1;
+            }
+            readonly property real segmentWidth: (width - 6) / 3
+
             Layout.fillWidth: true
-            spacing: Utils.Theme.spacingSmall
+            height: 38
+            radius: height / 2
+            color: Utils.Theme.surface0
 
-            Repeater {
-                model: [
-                    { profile: "power-saver", label: "Saver", icon: "eco", accent: "green" },
-                    { profile: "balanced", label: "Balanced", icon: "balance", accent: "blue" },
-                    { profile: "performance", label: "Perf", icon: "bolt", accent: "peach" },
-                ]
+            // Sliding highlight
+            Rectangle {
+                x: 3 + segmentedSlider.activeIndex * segmentedSlider.segmentWidth
+                y: 3
+                width: segmentedSlider.segmentWidth
+                height: parent.height - 6
+                radius: height / 2
+                color: Utils.Theme.surface2
 
-                Rectangle {
-                    id: pill
+                Behavior on x {
+                    NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
+                }
+            }
 
-                    required property var modelData
+            // Icon segments
+            Row {
+                anchors.fill: parent
+                anchors.leftMargin: 3
+                anchors.rightMargin: 3
 
-                    readonly property bool active: Services.Battery.powerProfile === modelData.profile
-                    readonly property color accent: Utils.Theme[modelData.accent]
+                Repeater {
+                    model: segmentedSlider.profiles
 
-                    Layout.fillWidth: true
-                    height: 30
-                    radius: height / 2
-                    color: active ? Utils.Theme.surface2 : (pillMouse.containsMouse ? Utils.Theme.surface1 : Utils.Theme.surface0)
+                    Item {
+                        required property var modelData
+                        required property int index
 
-                    Behavior on color {
-                        ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-                    }
+                        readonly property bool active: index === segmentedSlider.activeIndex
+                        readonly property color accent: Utils.Theme[modelData.accent]
 
-                    RowLayout {
-                        anchors.centerIn: parent
-                        spacing: 4
+                        width: segmentedSlider.segmentWidth
+                        height: parent.height
 
                         Utils.MaterialIcon {
-                            text: pill.modelData.icon
-                            font.pixelSize: 14
-                            color: pill.active ? pill.accent : Utils.Theme.overlay1
+                            anchors.centerIn: parent
+                            text: modelData.icon
+                            font.pixelSize: 20
+                            color: active ? accent : Utils.Theme.overlay1
+
+                            Behavior on color {
+                                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                            }
                         }
 
-                        Text {
-                            text: pill.modelData.label
-                            font.family: Utils.Theme.fontFamily
-                            font.pixelSize: Utils.Theme.fontSizeSmall
-                            color: pill.active ? pill.accent : Utils.Theme.overlay1
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: Services.Battery.setProfile(modelData.profile)
                         }
-                    }
-
-                    MouseArea {
-                        id: pillMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Services.Battery.setProfile(pill.modelData.profile)
                     }
                 }
             }
         }
+
     }
 
 }
