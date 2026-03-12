@@ -22,21 +22,23 @@ Singleton {
 
     readonly property string icon: {
         if (charging) {
-            if (percent >= 90) return "battery_charging_full";
-            if (percent >= 80) return "battery_charging_6_bar";
-            if (percent >= 60) return "battery_charging_5_bar";
-            if (percent >= 40) return "battery_charging_4_bar";
-            if (percent >= 25) return "battery_charging_3_bar";
-            if (percent >= 10) return "battery_charging_2_bar";
-            return "battery_charging_1_bar";
+            if (percent >= 99) return "battery_full";
+            if (percent >= 90) return "battery_charging_90";
+            if (percent >= 80) return "battery_charging_80";
+            if (percent >= 60) return "battery_charging_60";
+            if (percent >= 50) return "battery_charging_50";
+            if (percent >= 30) return "battery_charging_30";
+            if (percent >= 20) return "battery_charging_20";
+            return "battery_charging_full";
         }
-        if (percent >= 90) return "battery_full";
-        if (percent >= 80) return "battery_6_bar";
-        if (percent >= 60) return "battery_5_bar";
-        if (percent >= 40) return "battery_4_bar";
-        if (percent >= 25) return "battery_3_bar";
-        if (percent >= 10) return "battery_2_bar";
-        return "battery_1_bar";
+        if (percent >= 99) return "battery_full";
+        if (percent >= 90) return "battery_6_bar";
+        if (percent >= 80) return "battery_5_bar";
+        if (percent >= 60) return "battery_4_bar";
+        if (percent >= 50) return "battery_3_bar";
+        if (percent >= 30) return "battery_2_bar";
+        if (percent >= 20) return "battery_1_bar";
+        return "battery_0_bar";
     }
 
     readonly property color iconColor: {
