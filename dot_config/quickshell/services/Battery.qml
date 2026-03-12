@@ -43,10 +43,8 @@ Singleton {
 
     readonly property color iconColor: {
         if (charging) return Utils.Theme.green;
-        if (percent < 10) return Utils.Theme.red;
-        if (percent < 25) return Utils.Theme.peach;
+        if (percent < 20) return Utils.Theme.red;
         if (percent < 50) return Utils.Theme.yellow;
-        if (percent < 75) return Utils.Theme.teal;
         return Utils.Theme.green;
     }
 

@@ -40,15 +40,7 @@ Rectangle {
                 }
                 fill: Services.Audio.muted ? 0 : 1
                 font.pixelSize: Utils.Theme.iconSize
-                color: {
-                    const v = Services.Audio.volumePercent;
-                    if (Services.Audio.muted || v === 0) return Utils.Theme.disabledText;
-                    if (v <= 15) return Utils.Theme.subtext0;
-                    if (v <= 35) return Utils.Theme.lavender;
-                    if (v <= 60) return Utils.Theme.blue;
-                    if (v <= 85) return Utils.Theme.teal;
-                    return Utils.Theme.green;
-                }
+                color: Utils.Theme.subtleText
 
                 Behavior on color {
                     ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -94,13 +86,7 @@ Rectangle {
                 }
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize
-                color: {
-                    const p = Services.Brightness.percent;
-                    if (p <= 15) return Utils.Theme.subtext0;
-                    if (p <= 40) return Utils.Theme.lavender;
-                    if (p <= 70) return Utils.Theme.blue;
-                    return Utils.Theme.yellow;
-                }
+                color: Utils.Theme.subtleText
 
                 Behavior on color {
                     ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -140,7 +126,7 @@ Rectangle {
                 }
                 font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.iconSize
-                color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.disabledText
+                color: Utils.Theme.subtleText
 
                 Behavior on color {
                     ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -180,11 +166,8 @@ Rectangle {
                 }
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize
-                color: {
-                    if (!Services.Bluetooth.powered) return Utils.Theme.disabledText;
-                    if (Services.Bluetooth.connectedDevice) return Utils.Theme.blue;
-                    return Utils.Theme.subtleText;
-                }
+                color: Services.Bluetooth.connectedDevice
+                    ? Utils.Theme.blue : Utils.Theme.subtleText
 
                 Behavior on color {
                     ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }

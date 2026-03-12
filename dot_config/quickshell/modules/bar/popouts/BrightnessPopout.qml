@@ -31,15 +31,15 @@ ColumnLayout {
             fill: 1
             font.pixelSize: Utils.Theme.headerIconSize
             color: {
-                const p = Services.Brightness.percent;
-                if (p <= 15) return Utils.Theme.subtext0;
-                if (p <= 40) return Utils.Theme.lavender;
-                if (p <= 70) return Utils.Theme.blue;
-                return Utils.Theme.yellow;
-            }
-
-            Behavior on color {
-                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                const t = Math.min(1, Services.Brightness.percent / 100);
+                if (t <= 0.5) {
+                    const s = t / 0.5;
+                    return Qt.tint(Utils.Theme.lavender, Qt.rgba(
+                        Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, s));
+                }
+                const s = (t - 0.5) / 0.5;
+                return Qt.tint(Utils.Theme.blue, Qt.rgba(
+                    Utils.Theme.yellow.r, Utils.Theme.yellow.g, Utils.Theme.yellow.b, s));
             }
         }
 
@@ -84,10 +84,15 @@ ColumnLayout {
                 color: sliderColor
 
                 readonly property color sliderColor: {
-                    const p = Services.Brightness.percent;
-                    if (p <= 25) return Utils.Theme.lavender;
-                    if (p <= 55) return Utils.Theme.blue;
-                    return Utils.Theme.yellow;
+                    const t = Math.min(1, Services.Brightness.percent / 100);
+                    if (t <= 0.5) {
+                        const s = t / 0.5;
+                        return Qt.tint(Utils.Theme.lavender, Qt.rgba(
+                            Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, s));
+                    }
+                    const s = (t - 0.5) / 0.5;
+                    return Qt.tint(Utils.Theme.blue, Qt.rgba(
+                        Utils.Theme.yellow.r, Utils.Theme.yellow.g, Utils.Theme.yellow.b, s));
                 }
 
                 Behavior on width {
@@ -159,6 +164,6 @@ ColumnLayout {
         text: "scroll or drag to adjust"
         font.family: Utils.Theme.fontFamily
         font.pixelSize: Utils.Theme.fontSizeSmall
-        color: Utils.Theme.disabledText
+        color: Utils.Theme.subtleText
     }
 }

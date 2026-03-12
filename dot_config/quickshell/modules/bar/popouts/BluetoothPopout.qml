@@ -31,7 +31,7 @@ ColumnLayout {
         Utils.MaterialIcon {
             text: headerRow.isConnected ? "bluetooth_connected" : "bluetooth"
             font.pixelSize: Utils.Theme.headerIconSize
-            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.disabledText
+            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.subtleText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -188,8 +188,8 @@ ColumnLayout {
             font.pixelSize: Utils.Theme.headerActionIconSize
             color: {
                 if (powerMouse.containsMouse)
-                    return Services.Bluetooth.powered ? Utils.Theme.red : Utils.Theme.green;
-                return Services.Bluetooth.powered ? Utils.Theme.green : Utils.Theme.disabledText;
+                    return Services.Bluetooth.powered ? Utils.Theme.red : Utils.Theme.blue;
+                return Services.Bluetooth.powered ? Utils.Theme.blue : Utils.Theme.subtleText;
             }
 
             Behavior on color {
@@ -345,7 +345,7 @@ ColumnLayout {
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             font.italic: true
-            color: Utils.Theme.disabledText
+            color: Utils.Theme.subtleText
         }
     }
 

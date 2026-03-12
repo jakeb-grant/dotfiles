@@ -29,17 +29,11 @@ ColumnLayout {
             fill: Services.Audio.muted ? 0 : 1
             font.pixelSize: Utils.Theme.headerIconSize
             color: {
-                const v = Services.Audio.volumePercent;
-                if (Services.Audio.muted || v === 0) return Utils.Theme.disabledText;
-                if (v <= 15) return Utils.Theme.subtext0;
-                if (v <= 35) return Utils.Theme.lavender;
-                if (v <= 60) return Utils.Theme.blue;
-                if (v <= 85) return Utils.Theme.teal;
-                return Utils.Theme.green;
-            }
-
-            Behavior on color {
-                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                if (Services.Audio.muted || Services.Audio.volumePercent === 0)
+                    return Utils.Theme.subtleText;
+                const t = Math.min(1, Services.Audio.volumePercent / 100);
+                return Qt.tint(Utils.Theme.lavender, Qt.rgba(
+                    Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, t));
             }
 
             MouseArea {
@@ -87,14 +81,12 @@ ColumnLayout {
                 width: parent.width * Services.Audio.volume
                 height: parent.height
                 radius: height / 2
-                color: Services.Audio.muted ? Utils.Theme.disabledText : sliderColor
+                color: Services.Audio.muted ? Utils.Theme.subtleText : sliderColor
 
                 readonly property color sliderColor: {
-                    const v = Services.Audio.volumePercent;
-                    if (v <= 35) return Utils.Theme.lavender;
-                    if (v <= 60) return Utils.Theme.blue;
-                    if (v <= 85) return Utils.Theme.teal;
-                    return Utils.Theme.green;
+                    const t = Math.min(1, Services.Audio.volumePercent / 100);
+                    return Qt.tint(Utils.Theme.lavender, Qt.rgba(
+                        Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, t));
                 }
 
                 Behavior on width {
@@ -167,7 +159,7 @@ ColumnLayout {
         text: Services.Audio.muted ? "click icon to unmute" : "scroll or drag to adjust"
         font.family: Utils.Theme.fontFamily
         font.pixelSize: Utils.Theme.fontSizeSmall
-        color: Utils.Theme.disabledText
+        color: Utils.Theme.subtleText
     }
 
     // --- Separator ---

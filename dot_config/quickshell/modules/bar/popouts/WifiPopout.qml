@@ -37,7 +37,7 @@ ColumnLayout {
             }
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.headerIconSize
-            color: headerRow.isConnected ? Utils.Theme.green : Utils.Theme.disabledText
+            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.subtleText
             Layout.alignment: Qt.AlignVCenter
 
             Behavior on color {
@@ -244,7 +244,7 @@ ColumnLayout {
                         }
                         font.family: Utils.Theme.fontFamily
                         font.pixelSize: Utils.Theme.iconSizeSmall
-                        color: networkDelegate.connected ? Utils.Theme.green : Utils.Theme.subtleText
+                        color: networkDelegate.connected ? Utils.Theme.blue : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -299,7 +299,7 @@ ColumnLayout {
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             font.italic: true
-            color: Utils.Theme.disabledText
+            color: Utils.Theme.subtleText
         }
     }
 
