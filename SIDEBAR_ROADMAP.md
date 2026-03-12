@@ -23,7 +23,7 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 - [x] Click interaction — menu items receive clicks correctly
 - [x] Submenu navigation — StackView with back button for entries with `hasChildren`
 - [x] Menu entry icons — icon theme cache with graceful fallback (hide all if any fail per menu)
-- [ ] Polish: checkbox/radio state display for menu entries
+- [x] Polish: checkbox/radio state display for menu entries
 
 ### --- gap ---
 
@@ -60,6 +60,6 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 
 ## Remaining Work
 
-1. [ ] Polish: tray menu checkbox/radio state display
+1. [x] Polish: tray menu checkbox/radio state display
 2. [ ] Calendar events integration (khal/pimsync)
 3. [ ] MPRIS media widget + popout (now-playing, controls, album art)

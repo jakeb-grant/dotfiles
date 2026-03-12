@@ -194,6 +194,7 @@ ColumnLayout {
         }
 
         Repeater {
+            id: menuRepeater
             model: menuOpener.children
 
             Rectangle {
@@ -201,6 +202,9 @@ ColumnLayout {
 
                 required property QsMenuEntry modelData
                 required property int index
+
+                // Optimistic local check state for immediate visual feedback
+                property int _localCheckState: modelData.checkState
 
                 Layout.fillWidth: true
                 Layout.preferredHeight: modelData.isSeparator ? separatorRect.height : 26
@@ -279,6 +283,23 @@ ColumnLayout {
                         }
                     }
 
+                    // Checkbox / radio indicator
+                    // buttonType: 0=None, 1=CheckBox, 2=RadioButton
+                    // checkState: 0=Unchecked, 2=Checked
+                    Utils.MaterialIcon {
+                        visible: menuItem.modelData.buttonType !== 0
+                        text: {
+                            if (menuItem.modelData.buttonType === 1)
+                                return menuItem._localCheckState === 2 ? "check_box" : "check_box_outline_blank";
+                            if (menuItem.modelData.buttonType === 2)
+                                return menuItem._localCheckState === 2 ? "radio_button_checked" : "radio_button_unchecked";
+                            return "";
+                        }
+                        font.pixelSize: 16
+                        color: menuItem._localCheckState === 2 ? Utils.Theme.blue : Utils.Theme.overlay1
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
                     // Menu item text
                     Text {
                         text: menuItem.modelData.text
@@ -312,6 +333,18 @@ ColumnLayout {
                         if (menuItem.modelData.hasChildren) {
                             root.pushSubmenu(menuItem.modelData);
                         } else {
+                            // Optimistic toggle for checkbox/radio
+                            if (menuItem.modelData.buttonType === 1) {
+                                menuItem._localCheckState = menuItem._localCheckState === 2 ? 0 : 2;
+                            } else if (menuItem.modelData.buttonType === 2) {
+                                // Uncheck sibling radios via Repeater delegates
+                                for (let i = 0; i < menuRepeater.count; i++) {
+                                    const item = menuRepeater.itemAt(i);
+                                    if (item && item !== menuItem && item.modelData.buttonType === 2)
+                                        item._localCheckState = 0;
+                                }
+                                menuItem._localCheckState = 2;
+                            }
                             menuItem.modelData.triggered();
                         }
                     }
