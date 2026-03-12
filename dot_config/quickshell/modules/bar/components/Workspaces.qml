@@ -68,7 +68,11 @@ Rectangle {
         return y;
     }
 
-    readonly property real indicatorHeight: activeIndex >= 0 ? (slotHeights[activeIndex] ?? 28) : 28
+    readonly property real indicatorHeight: {
+        const base = activeIndex >= 0 ? (slotHeights[activeIndex] ?? 28) : 28;
+        const icons = activeIndex >= 0 ? (windowIcons[configuredIds[activeIndex]] ?? []) : [];
+        return base + (icons.length > 0 ? 3 : 0);
+    }
 
     implicitWidth: Utils.Theme.barInnerWidth
     implicitHeight: layout.implicitHeight + Utils.Theme.spacingNormal * 2
