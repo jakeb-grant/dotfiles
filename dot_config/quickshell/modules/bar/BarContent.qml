@@ -29,7 +29,7 @@ ColumnLayout {
             text: "\uf303"
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.blue
+            color: Utils.Theme.subtleText
         }
 
         MouseArea {
@@ -39,6 +39,37 @@ ColumnLayout {
             onEntered: {
                 const globalPos = archLogo.mapToGlobal(0, archLogo.height / 2);
                 Services.Popout.show("system", globalPos.y, root.screen);
+            }
+            onExited: {
+                Services.Popout.barItemHovered = false;
+                Services.Popout.requestClose();
+            }
+        }
+    }
+
+    // ── Theme Selector ──
+    Item {
+        id: themeItem
+
+        Layout.alignment: Qt.AlignHCenter
+        implicitWidth: themeIcon.implicitWidth
+        implicitHeight: themeIcon.implicitHeight
+
+        Utils.MaterialIcon {
+            id: themeIcon
+            anchors.centerIn: parent
+            text: "palette"
+            font.pixelSize: Utils.Theme.iconSize
+            color: Utils.Theme.subtleText
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+
+            onEntered: {
+                const globalPos = themeItem.mapToGlobal(0, themeItem.height / 2);
+                Services.Popout.show("theme", globalPos.y, root.screen);
             }
             onExited: {
                 Services.Popout.barItemHovered = false;
@@ -76,42 +107,42 @@ ColumnLayout {
         Column {
             id: calendarClockCol
             anchors.centerIn: parent
-            spacing: 2
+            spacing: Utils.Theme.spacingTiny
 
             Utils.MaterialIcon {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: "calendar_today"
                 fill: 0
                 font.pixelSize: Utils.Theme.iconSize
-                color: Utils.Theme.overlay1
+                color: Utils.Theme.subtleText
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Services.Clock.hours
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: Utils.Theme.fontSize + 2
+                font.pixelSize: Utils.Theme.headerFontSize
                 font.bold: true
-                color: Utils.Theme.teal
+                color: Utils.Theme.text
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Services.Clock.minutes
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: Utils.Theme.fontSize + 2
+                font.pixelSize: Utils.Theme.headerFontSize
                 font.bold: true
-                color: Utils.Theme.subtext0
+                color: Utils.Theme.subtext1
             }
 
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Services.Clock.ampm
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 9
+                font.pixelSize: Utils.Theme.fontSizeXSmall
                 font.weight: Font.Medium
                 font.letterSpacing: 2
-                color: Utils.Theme.overlay0
+                color: Utils.Theme.disabledText
             }
         }
 

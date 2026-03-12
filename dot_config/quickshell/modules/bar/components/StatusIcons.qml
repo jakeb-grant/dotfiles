@@ -12,7 +12,7 @@ Rectangle {
     implicitWidth: Utils.Theme.barInnerWidth
     implicitHeight: col.implicitHeight + Utils.Theme.spacingNormal * 2
     radius: Utils.Theme.roundingNormal
-    color: Utils.Theme.surface0
+    color: Utils.Theme.pillBg
 
     ColumnLayout {
         id: col
@@ -42,7 +42,7 @@ Rectangle {
                 font.pixelSize: Utils.Theme.iconSize
                 color: {
                     const v = Services.Audio.volumePercent;
-                    if (Services.Audio.muted || v === 0) return Utils.Theme.overlay0;
+                    if (Services.Audio.muted || v === 0) return Utils.Theme.disabledText;
                     if (v <= 15) return Utils.Theme.subtext0;
                     if (v <= 35) return Utils.Theme.lavender;
                     if (v <= 60) return Utils.Theme.blue;
@@ -88,7 +88,7 @@ Rectangle {
                 }
                 font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.iconSize
-                color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.overlay0
+                color: Services.Network.state === "connected" ? Utils.Theme.green : Utils.Theme.disabledText
 
                 Behavior on color {
                     ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -129,9 +129,9 @@ Rectangle {
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize
                 color: {
-                    if (!Services.Bluetooth.powered) return Utils.Theme.overlay0;
+                    if (!Services.Bluetooth.powered) return Utils.Theme.disabledText;
                     if (Services.Bluetooth.connectedDevice) return Utils.Theme.blue;
-                    return Utils.Theme.overlay1;
+                    return Utils.Theme.subtleText;
                 }
 
                 Behavior on color {

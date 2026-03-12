@@ -13,11 +13,21 @@ Rectangle {
     color: "transparent"
 
     Image {
+        id: trayIcon
         anchors.centerIn: parent
         source: root.modelData.icon
         width: Utils.Theme.iconSize
         height: Utils.Theme.iconSize
         fillMode: Image.PreserveAspectFit
+        visible: status === Image.Ready
+    }
+
+    Utils.MaterialIcon {
+        anchors.centerIn: parent
+        text: "apps"
+        font.pixelSize: Utils.Theme.iconSize
+        color: Utils.Theme.subtleText
+        visible: !trayIcon.visible
     }
 
     MouseArea {

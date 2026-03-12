@@ -23,6 +23,7 @@ Item {
         }
     }
 
+
     Item {
         id: mask
 

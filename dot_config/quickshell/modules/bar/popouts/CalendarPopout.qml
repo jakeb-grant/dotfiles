@@ -10,7 +10,7 @@ ColumnLayout {
 
     // Width spacer
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -61,8 +61,8 @@ ColumnLayout {
 
         Utils.MaterialIcon {
             text: "chevron_left"
-            font.pixelSize: 18
-            color: navLeftMouse.containsMouse ? Utils.Theme.text : Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.headerActionIconSize
+            color: navLeftMouse.containsMouse ? Utils.Theme.text : Utils.Theme.subtleText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -82,7 +82,7 @@ ColumnLayout {
         Text {
             text: Qt.formatDate(root.firstOfMonth, "MMMM yyyy")
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 13
+            font.pixelSize: Utils.Theme.listFontSize
             font.weight: Font.DemiBold
             color: Utils.Theme.text
 
@@ -98,8 +98,8 @@ ColumnLayout {
 
         Utils.MaterialIcon {
             text: "chevron_right"
-            font.pixelSize: 18
-            color: navRightMouse.containsMouse ? Utils.Theme.text : Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.headerActionIconSize
+            color: navRightMouse.containsMouse ? Utils.Theme.text : Utils.Theme.subtleText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -130,9 +130,9 @@ ColumnLayout {
                 horizontalAlignment: Text.AlignHCenter
                 text: modelData
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 10
+                font.pixelSize: Utils.Theme.calendarHeaderFontSize
                 font.weight: Font.Medium
-                color: Utils.Theme.overlay0
+                color: Utils.Theme.disabledText
             }
         }
     }
@@ -168,7 +168,7 @@ ColumnLayout {
                     color: dayCell.isToday
                         ? Utils.Theme.blue
                         : dayCellMouse.containsMouse && dayCell.inMonth
-                            ? Utils.Theme.surface1
+                            ? Utils.Theme.hoverBg
                             : "transparent"
 
                     Behavior on color {
@@ -179,11 +179,11 @@ ColumnLayout {
                         anchors.centerIn: parent
                         text: dayCell.inMonth ? dayCell.dayNum : ""
                         font.family: Utils.Theme.fontFamily
-                        font.pixelSize: 12
+                        font.pixelSize: Utils.Theme.calendarDayFontSize
                         font.weight: dayCell.isToday ? Font.Bold : Font.Normal
                         color: dayCell.isToday
                             ? Utils.Theme.crust
-                            : Utils.Theme.subtext0
+                            : Utils.Theme.subtext1
                     }
                 }
 
@@ -201,8 +201,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface0
-        opacity: 0.6
+        color: Utils.Theme.separator
     }
 
     // Current time
@@ -213,8 +212,8 @@ ColumnLayout {
         Text {
             text: Services.Clock.format("dddd")
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 11
-            color: Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.fontSizeSmall
+            color: Utils.Theme.subtleText
         }
 
         Item { Layout.fillWidth: true }
@@ -222,9 +221,9 @@ ColumnLayout {
         Text {
             text: Services.Clock.format("h:mm AP")
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 11
+            font.pixelSize: Utils.Theme.fontSizeSmall
             font.weight: Font.Medium
-            color: Utils.Theme.teal
+            color: Utils.Theme.subtext1
         }
     }
 }

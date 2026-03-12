@@ -69,7 +69,7 @@ ColumnLayout {
             target: stack
             property: "opacity"
             from: 1; to: 0
-            duration: 120
+            duration: Utils.Theme.animDurationFast
             easing.type: Easing.InCubic
         }
 
@@ -95,13 +95,13 @@ ColumnLayout {
         target: stack
         property: "opacity"
         from: 0; to: 1
-        duration: 150
+        duration: Utils.Theme.animDurationFast
         easing.type: Easing.OutCubic
     }
 
     Timer {
         id: graceTimer
-        interval: 800
+        interval: Utils.Theme.animDurationSpin
         onTriggered: {
             Services.Popout.graceActive = false;
             if (!Services.Popout.popoutHovered && !Services.Popout.barItemHovered)
@@ -110,7 +110,7 @@ ColumnLayout {
     }
 
     spacing: Utils.Theme.spacingSmall
-    implicitWidth: Math.min(Math.max(stack.implicitWidth, 200), 400)
+    implicitWidth: Math.min(Math.max(stack.implicitWidth, Utils.Theme.trayMenuMinWidth), Utils.Theme.trayMenuMaxWidth)
 
     RowLayout {
         spacing: Utils.Theme.spacingNormal
@@ -124,10 +124,10 @@ ColumnLayout {
                     return "image://icon/" + root.trayItem.id;
                 return icon;
             }
-            sourceSize.width: 18
-            sourceSize.height: 18
-            width: 18
-            height: 18
+            sourceSize.width: Utils.Theme.popoutTitleSize
+            sourceSize.height: Utils.Theme.popoutTitleSize
+            width: Utils.Theme.popoutTitleSize
+            height: Utils.Theme.popoutTitleSize
             fillMode: Image.PreserveAspectFit
             Layout.alignment: Qt.AlignVCenter
         }
@@ -142,9 +142,9 @@ ColumnLayout {
                 return title;
             }
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 16
+            font.pixelSize: Utils.Theme.headerFontSize
             font.bold: true
-            color: Utils.Theme.blue
+            color: Utils.Theme.text
             elide: Text.ElideRight
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
@@ -154,8 +154,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface0
-        opacity: 0.6
+        color: Utils.Theme.separator
     }
 
     StackView {
@@ -186,7 +185,7 @@ ColumnLayout {
         // Whether any entry in this menu has a resolvable icon
         property bool hasAnyIcon: false
 
-        spacing: 1
+        spacing: Utils.Theme.spacingTiny
 
         QsMenuOpener {
             id: menuOpener
@@ -207,11 +206,11 @@ ColumnLayout {
                 property int _localCheckState: modelData.checkState
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: modelData.isSeparator ? separatorRect.height : 26
+                Layout.preferredHeight: modelData.isSeparator ? separatorRect.height : Utils.Theme.trayMenuItemHeight
                 Layout.topMargin: modelData.isSeparator ? 2 : 0
                 Layout.bottomMargin: modelData.isSeparator ? 2 : 0
                 implicitWidth: menuRow.implicitWidth + 20
-                radius: 6
+                radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
                 // Separator
@@ -220,21 +219,20 @@ ColumnLayout {
                     visible: menuItem.modelData.isSeparator
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Utils.Theme.listItemMargin
+                    anchors.rightMargin: Utils.Theme.listItemMargin
                     height: 1
-                    color: Utils.Theme.surface0
-                    opacity: 0.5
+                    color: Utils.Theme.separator
                 }
 
                 // Hover background (animated opacity)
                 Rectangle {
                     visible: !menuItem.modelData.isSeparator
                     anchors.fill: parent
-                    anchors.leftMargin: 2
-                    anchors.rightMargin: 2
-                    radius: 6
-                    color: Utils.Theme.surface1
+                    anchors.leftMargin: Utils.Theme.spacingTiny
+                    anchors.rightMargin: Utils.Theme.spacingTiny
+                    radius: Utils.Theme.listItemRadius
+                    color: Utils.Theme.hoverBg
                     opacity: (itemMouse.containsMouse && menuItem.modelData.enabled) ? 1 : 0
 
                     Behavior on opacity {
@@ -247,8 +245,8 @@ ColumnLayout {
                     visible: !menuItem.modelData.isSeparator
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
+                    anchors.leftMargin: Utils.Theme.listItemMargin
+                    anchors.rightMargin: Utils.Theme.listItemMargin
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Utils.Theme.spacingNormal
 
@@ -295,8 +293,8 @@ ColumnLayout {
                                 return menuItem._localCheckState === 2 ? "radio_button_checked" : "radio_button_unchecked";
                             return "";
                         }
-                        font.pixelSize: 16
-                        color: menuItem._localCheckState === 2 ? Utils.Theme.blue : Utils.Theme.overlay1
+                        font.pixelSize: Utils.Theme.headerFontSize
+                        color: menuItem._localCheckState === 2 ? Utils.Theme.blue : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -304,9 +302,8 @@ ColumnLayout {
                     Text {
                         text: menuItem.modelData.text
                         font.family: Utils.Theme.fontFamily
-                        font.pixelSize: 13
-                        color: menuItem.modelData.enabled ? Utils.Theme.text : Utils.Theme.overlay0
-                        opacity: menuItem.modelData.enabled ? 1.0 : 0.5
+                        font.pixelSize: Utils.Theme.listFontSize
+                        color: menuItem.modelData.enabled ? Utils.Theme.text : Utils.Theme.disabledText
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
@@ -316,8 +313,8 @@ ColumnLayout {
                     Utils.MaterialIcon {
                         visible: menuItem.modelData.hasChildren
                         text: "chevron_right"
-                        font.pixelSize: 16
-                        color: Utils.Theme.overlay1
+                        font.pixelSize: Utils.Theme.headerFontSize
+                        color: Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }
@@ -357,7 +354,7 @@ ColumnLayout {
             text: "No items"
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
-            color: Utils.Theme.overlay0
+            color: Utils.Theme.disabledText
             font.italic: true
             Layout.alignment: Qt.AlignHCenter
             Layout.topMargin: Utils.Theme.spacingSmall
@@ -369,10 +366,10 @@ ColumnLayout {
     Rectangle {
         visible: stack.depth > 1
         Layout.fillWidth: true
-        Layout.topMargin: 4
-        implicitHeight: 30
+        Layout.topMargin: Utils.Theme.spacingSmall
+        implicitHeight: Utils.Theme.pillHeight
         radius: Utils.Theme.roundingFull
-        color: Utils.Theme.surface0
+        color: Utils.Theme.pillBg
         border.width: 1
         border.color: backPillMouse.containsMouse ? Utils.Theme.surface2 : Utils.Theme.surface1
 
@@ -384,7 +381,7 @@ ColumnLayout {
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: Utils.Theme.surface1
+            color: Utils.Theme.hoverBg
             opacity: backPillMouse.containsMouse ? 1 : 0
 
             Behavior on opacity {
@@ -395,11 +392,11 @@ ColumnLayout {
         Row {
             id: backPillRow
             anchors.centerIn: parent
-            spacing: 4
+            spacing: Utils.Theme.pillSpacing
 
             Utils.MaterialIcon {
                 text: "arrow_back"
-                font.pixelSize: 14
+                font.pixelSize: Utils.Theme.iconSizeSmall
                 color: Utils.Theme.subtext1
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -407,7 +404,7 @@ ColumnLayout {
             Text {
                 text: "Back"
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 12
+                font.pixelSize: Utils.Theme.pillFontSize
                 font.weight: Font.Medium
                 color: Utils.Theme.subtext1
                 anchors.verticalCenter: parent.verticalCenter
@@ -433,7 +430,7 @@ ColumnLayout {
         text: "No menu available"
         font.family: Utils.Theme.fontFamily
         font.pixelSize: Utils.Theme.fontSizeSmall
-        color: Utils.Theme.overlay0
+        color: Utils.Theme.disabledText
         font.italic: true
     }
 }

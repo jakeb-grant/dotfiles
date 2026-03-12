@@ -63,7 +63,7 @@ Item {
                     anchors.centerIn: parent
                     text: "apps"
                     font.pixelSize: Utils.Theme.iconSize
-                    color: Utils.Theme.overlay1
+                    color: Utils.Theme.subtleText
                     visible: !trayIcon.visible
                 }
 

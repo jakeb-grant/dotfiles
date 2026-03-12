@@ -11,7 +11,7 @@ ColumnLayout {
 
     // Width spacer
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -20,9 +20,9 @@ ColumnLayout {
         Layout.alignment: Qt.AlignLeft
         text: "Arch Linux"
         font.family: Utils.Theme.fontFamily
-        font.pixelSize: 18
+        font.pixelSize: Utils.Theme.popoutTitleSize
         font.bold: true
-        color: Utils.Theme.blue
+        color: Utils.Theme.text
     }
 
     Text {
@@ -47,7 +47,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // Uptime
@@ -57,7 +57,7 @@ ColumnLayout {
         Utils.MaterialIcon {
             text: "schedule"
             font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.teal
+            color: Utils.Theme.subtext0
         }
 
         Text {
@@ -86,7 +86,7 @@ ColumnLayout {
         Utils.MaterialIcon {
             text: "computer"
             font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.mauve
+            color: Utils.Theme.subtext0
         }
 
         Text {
@@ -115,7 +115,7 @@ ColumnLayout {
         Utils.MaterialIcon {
             text: "terminal"
             font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.green
+            color: Utils.Theme.subtext0
         }
 
         Text {
@@ -144,7 +144,7 @@ ColumnLayout {
         Utils.MaterialIcon {
             text: "inventory_2"
             font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.peach
+            color: Utils.Theme.subtext0
         }
 
         Text {

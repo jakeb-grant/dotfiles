@@ -54,121 +54,111 @@ Variants {
                 windows: [win]
             }
 
-            // Composited frame layer with shadow — border only (static, composites once)
+            // Composited frame + popout layer — single shadow for combined silhouette
             Item {
                 anchors.fill: parent
                 layer.enabled: true
                 layer.effect: MultiEffect {
                     shadowEnabled: true
-                    blurMax: 15
-                    shadowColor: Qt.alpha(Utils.Theme.crust, 0.7)
+                    shadowBlur: 1.0
+                    shadowOpacity: Utils.Theme.frameShadowOpacity
+                    blurMax: Utils.Theme.frameShadowBlur
+                    shadowColor: Utils.Theme.frameShadow
+                    autoPaddingEnabled: true
                 }
 
                 Border {
                     bar: bar
                 }
-            }
 
-            // Popout background — concave curves where popout meets bar and frame
-            Shape {
-                id: popoutBg
+                // Popout background — concave curves where popout meets bar and frame
+                Shape {
+                    id: popoutBg
 
-                readonly property real r: Utils.Theme.popoutRounding
-                readonly property real pw: popoutWrapper.popoutWidth
-                readonly property real ph: popoutWrapper.popoutHeight
-                readonly property bool ft: popoutWrapper.flushTop
-                readonly property bool fb: popoutWrapper.flushBottom
-                // Left-side tab extensions (concave into bar)
-                readonly property real topExt: ft ? 0 : r
-                readonly property real btmExt: fb ? 0 : r
-                // Right-side extension (concave fillet into frame when flush)
-                readonly property real rightExt: (ft || fb) ? concaveR : 0
-                // Concave curvature flattens as width shrinks
-                readonly property real concaveR: Math.min(pw, r)
-                // Convex rounding for normal corners
-                readonly property real convexR: Math.min(pw / 2, r)
+                    readonly property real r: Utils.Theme.popoutRounding
+                    readonly property real pw: popoutWrapper.popoutWidth
+                    readonly property real ph: popoutWrapper.popoutHeight
+                    readonly property bool ft: popoutWrapper.flushTop
+                    readonly property bool fb: popoutWrapper.flushBottom
+                    readonly property real topExt: ft ? 0 : r
+                    readonly property real btmExt: fb ? 0 : r
+                    readonly property real rightExt: (ft || fb) ? concaveR : 0
+                    readonly property real concaveR: Math.min(pw, r)
+                    readonly property real convexR: Math.min(pw / 2, r)
 
-                x: popoutWrapper.popoutX
-                y: popoutWrapper.popoutY - topExt
-                width: pw + rightExt
-                height: ph + topExt + btmExt
-                visible: pw > 1
-                preferredRendererType: Shape.CurveRenderer
+                    x: popoutWrapper.popoutX
+                    y: popoutWrapper.popoutY - topExt
+                    width: pw + rightExt
+                    height: ph + topExt + btmExt
+                    visible: pw > 1
+                    preferredRendererType: Shape.CurveRenderer
 
-                ShapePath {
-                    strokeWidth: -1
-                    fillColor: Utils.Theme.mantle
+                    ShapePath {
+                        strokeWidth: -1
+                        fillColor: Utils.Theme.mantle
 
-                    startX: 0
-                    startY: 0
+                        startX: 0
+                        startY: 0
 
-                    // Top-left: concave into bar, or square when flush top
-                    PathArc {
-                        x: popoutBg.ft ? 0 : popoutBg.concaveR
-                        y: popoutBg.topExt
-                        radiusX: popoutBg.concaveR
-                        radiusY: popoutBg.r
-                        direction: PathArc.Counterclockwise
+                        PathArc {
+                            x: popoutBg.ft ? 0 : popoutBg.concaveR
+                            y: popoutBg.topExt
+                            radiusX: popoutBg.concaveR
+                            radiusY: popoutBg.r
+                            direction: PathArc.Counterclockwise
+                        }
+
+                        PathLine {
+                            x: popoutBg.ft
+                                ? popoutBg.pw + popoutBg.concaveR
+                                : popoutBg.pw - popoutBg.convexR
+                            y: popoutBg.topExt
+                        }
+
+                        PathArc {
+                            x: popoutBg.pw
+                            y: popoutBg.topExt + (popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR)
+                            radiusX: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
+                            radiusY: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
+                            direction: popoutBg.ft
+                                ? PathArc.Counterclockwise
+                                : PathArc.Clockwise
+                        }
+
+                        PathLine {
+                            x: popoutBg.pw
+                            y: popoutBg.fb
+                                ? popoutBg.topExt + popoutBg.ph - popoutBg.concaveR
+                                : popoutBg.topExt + popoutBg.ph - popoutBg.convexR
+                        }
+
+                        PathArc {
+                            x: popoutBg.fb
+                                ? popoutBg.pw + popoutBg.concaveR
+                                : popoutBg.pw - popoutBg.convexR
+                            y: popoutBg.topExt + popoutBg.ph
+                            radiusX: popoutBg.fb ? popoutBg.concaveR : popoutBg.convexR
+                            radiusY: popoutBg.fb ? popoutBg.concaveR : popoutBg.convexR
+                            direction: popoutBg.fb
+                                ? PathArc.Counterclockwise
+                                : PathArc.Clockwise
+                        }
+
+                        PathLine {
+                            x: popoutBg.fb ? 0 : popoutBg.concaveR
+                            y: popoutBg.topExt + popoutBg.ph
+                        }
+
+                        PathArc {
+                            x: 0
+                            y: popoutBg.fb
+                                ? popoutBg.topExt + popoutBg.ph
+                                : popoutBg.height
+                            radiusX: popoutBg.concaveR
+                            radiusY: popoutBg.r
+                            direction: PathArc.Counterclockwise
+                        }
                     }
-
-                    // Top edge — extend to right fillet or convex corner
-                    PathLine {
-                        x: popoutBg.ft
-                            ? popoutBg.pw + popoutBg.concaveR
-                            : popoutBg.pw - popoutBg.convexR
-                        y: popoutBg.topExt
-                    }
-
-                    // Top-right: concave fillet into frame (flush top) or convex (normal)
-                    PathArc {
-                        x: popoutBg.pw
-                        y: popoutBg.topExt + (popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR)
-                        radiusX: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
-                        radiusY: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
-                        direction: popoutBg.ft
-                            ? PathArc.Counterclockwise
-                            : PathArc.Clockwise
-                    }
-
-                    // Right edge — stop short when flush bottom for concave fillet
-                    PathLine {
-                        x: popoutBg.pw
-                        y: popoutBg.fb
-                            ? popoutBg.topExt + popoutBg.ph - popoutBg.concaveR
-                            : popoutBg.topExt + popoutBg.ph - popoutBg.convexR
-                    }
-
-                    // Bottom-right: concave fillet into frame (flush) or convex (normal)
-                    PathArc {
-                        x: popoutBg.fb
-                            ? popoutBg.pw + popoutBg.concaveR
-                            : popoutBg.pw - popoutBg.convexR
-                        y: popoutBg.topExt + popoutBg.ph
-                        radiusX: popoutBg.fb ? popoutBg.concaveR : popoutBg.convexR
-                        radiusY: popoutBg.fb ? popoutBg.concaveR : popoutBg.convexR
-                        direction: popoutBg.fb
-                            ? PathArc.Counterclockwise
-                            : PathArc.Clockwise
-                    }
-
-                    // Bottom edge
-                    PathLine {
-                        x: popoutBg.fb ? 0 : popoutBg.concaveR
-                        y: popoutBg.topExt + popoutBg.ph
-                    }
-
-                    // Bottom-left: concave into bar, or square when flush bottom
-                    PathArc {
-                        x: 0
-                        y: popoutBg.fb
-                            ? popoutBg.topExt + popoutBg.ph
-                            : popoutBg.height
-                        radiusX: popoutBg.concaveR
-                        radiusY: popoutBg.r
-                        direction: PathArc.Counterclockwise
-                    }
-
-                    // Implicit close: left edge back to start
                 }
             }
 

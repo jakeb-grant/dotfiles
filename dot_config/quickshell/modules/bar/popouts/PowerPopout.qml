@@ -10,7 +10,7 @@ ColumnLayout {
 
     // Width spacer
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -20,14 +20,14 @@ ColumnLayout {
 
         Utils.MaterialIcon {
             text: "power_settings_new"
-            font.pixelSize: 24
+            font.pixelSize: Utils.Theme.headerIconSize
             color: Utils.Theme.red
         }
 
         Text {
             text: "Power"
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 18
+            font.pixelSize: Utils.Theme.popoutTitleSize
             font.bold: true
             color: Utils.Theme.text
         }
@@ -36,21 +36,21 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // Action buttons
     Column {
         Layout.fillWidth: true
-        spacing: 2
+        spacing: Utils.Theme.spacingTiny
 
         Repeater {
             model: [
                 { label: "Shut Down", icon: "power_settings_new", accent: "red", cmd: "systemctl poweroff" },
-                { label: "Restart", icon: "restart_alt", accent: "peach", cmd: "systemctl reboot" },
-                { label: "Sleep", icon: "bedtime", accent: "mauve", cmd: "systemctl suspend" },
-                { label: "Lock Screen", icon: "lock", accent: "blue", cmd: "loginctl lock-session" },
-                { label: "Log Out", icon: "logout", accent: "yellow", cmd: "hyprctl dispatch exit" },
+                { label: "Restart", icon: "restart_alt", accent: "red", cmd: "systemctl reboot" },
+                { label: "Sleep", icon: "bedtime", accent: "subtleText", cmd: "systemctl suspend" },
+                { label: "Lock Screen", icon: "lock", accent: "subtleText", cmd: "loginctl lock-session" },
+                { label: "Log Out", icon: "logout", accent: "red", cmd: "hyprctl dispatch exit" },
             ]
 
             Rectangle {
@@ -59,14 +59,14 @@ ColumnLayout {
                 required property var modelData
 
                 width: parent?.width ?? 0
-                height: 36
-                radius: 6
+                height: Utils.Theme.actionItemHeight
+                radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 6
-                    color: Utils.Theme.surface1
+                    radius: Utils.Theme.listItemRadius
+                    color: Utils.Theme.hoverBg
                     opacity: actionMouse.containsMouse ? 1 : 0
 
                     Behavior on opacity {
@@ -76,13 +76,13 @@ ColumnLayout {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Utils.Theme.listItemMargin
+                    anchors.rightMargin: Utils.Theme.listItemMargin
                     spacing: Utils.Theme.spacingNormal
 
                     Utils.MaterialIcon {
                         text: actionItem.modelData.icon
-                        font.pixelSize: 18
+                        font.pixelSize: Utils.Theme.headerFontSize
                         color: Utils.Theme[actionItem.modelData.accent]
                         Layout.alignment: Qt.AlignVCenter
                     }

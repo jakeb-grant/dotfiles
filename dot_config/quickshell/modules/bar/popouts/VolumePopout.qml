@@ -11,7 +11,7 @@ ColumnLayout {
 
     // Width spacer
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -27,8 +27,8 @@ ColumnLayout {
                 return "volume_up";
             }
             fill: Services.Audio.muted ? 0 : 1
-            font.pixelSize: 24
-            color: Services.Audio.muted ? Utils.Theme.overlay0 : Utils.Theme.blue
+            font.pixelSize: Utils.Theme.headerIconSize
+            color: Services.Audio.muted ? Utils.Theme.disabledText : Utils.Theme.subtleText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -44,7 +44,7 @@ ColumnLayout {
         Text {
             text: Services.Audio.muted ? "Muted" : Services.Audio.volumePercent + "%"
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 18
+            font.pixelSize: Utils.Theme.popoutTitleSize
             font.bold: true
             color: Utils.Theme.text
             Layout.fillWidth: true
@@ -72,14 +72,14 @@ ColumnLayout {
             anchors.rightMargin: slider.thumbSize / 2
             height: slider.trackHeight
             radius: height / 2
-            color: Utils.Theme.surface0
+            color: Utils.Theme.pillBg
 
             // Fill
             Rectangle {
                 width: parent.width * Services.Audio.volume
                 height: parent.height
                 radius: height / 2
-                color: Services.Audio.muted ? Utils.Theme.overlay0 : sliderColor
+                color: Services.Audio.muted ? Utils.Theme.disabledText : sliderColor
 
                 readonly property color sliderColor: {
                     const v = Services.Audio.volumePercent;
@@ -159,14 +159,14 @@ ColumnLayout {
         text: Services.Audio.muted ? "click icon to unmute" : "scroll or drag to adjust"
         font.family: Utils.Theme.fontFamily
         font.pixelSize: Utils.Theme.fontSizeSmall
-        color: Utils.Theme.overlay0
+        color: Utils.Theme.disabledText
     }
 
     // --- Separator ---
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
         visible: sinkRepeater.count > 0
     }
 
@@ -183,7 +183,7 @@ ColumnLayout {
     // --- Device list ---
     Column {
         Layout.fillWidth: true
-        spacing: 2
+        spacing: Utils.Theme.spacingTiny
         visible: sinkRepeater.count > 0
 
         Repeater {
@@ -198,15 +198,15 @@ ColumnLayout {
                 readonly property bool isDefault: modelData === Pipewire.defaultAudioSink
 
                 width: parent?.width ?? 0
-                height: 32
-                radius: 6
+                height: Utils.Theme.listItemHeight
+                radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
                 // Hover background
                 Rectangle {
                     anchors.fill: parent
-                    radius: 6
-                    color: Utils.Theme.surface1
+                    radius: Utils.Theme.listItemRadius
+                    color: Utils.Theme.hoverBg
                     opacity: !sinkDelegate.isDefault && sinkMouse.containsMouse ? 1 : 0
 
                     Behavior on opacity {
@@ -216,8 +216,8 @@ ColumnLayout {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Utils.Theme.listItemMargin
+                    anchors.rightMargin: Utils.Theme.listItemMargin
                     spacing: Utils.Theme.spacingNormal
 
                     // Device type icon
@@ -229,8 +229,8 @@ ColumnLayout {
                             if (desc.includes("bluetooth") || desc.includes("a2dp")) return "bluetooth";
                             return "volume_up";
                         }
-                        font.pixelSize: 14
-                        color: sinkDelegate.isDefault ? Utils.Theme.blue : Utils.Theme.overlay1
+                        font.pixelSize: Utils.Theme.iconSizeSmall
+                        color: sinkDelegate.isDefault ? Utils.Theme.blue : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -238,7 +238,7 @@ ColumnLayout {
                     Text {
                         text: sinkDelegate.modelData.description || sinkDelegate.modelData.nickname || sinkDelegate.modelData.name || "Unknown"
                         font.family: Utils.Theme.fontFamily
-                        font.pixelSize: 13
+                        font.pixelSize: Utils.Theme.listFontSize
                         color: Utils.Theme.text
                         elide: Text.ElideRight
                         Layout.fillWidth: true
@@ -249,7 +249,7 @@ ColumnLayout {
                     Utils.MaterialIcon {
                         visible: sinkDelegate.isDefault
                         text: "check"
-                        font.pixelSize: 16
+                        font.pixelSize: Utils.Theme.headerFontSize
                         color: Utils.Theme.blue
                         Layout.alignment: Qt.AlignVCenter
                     }

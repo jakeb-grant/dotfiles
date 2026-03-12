@@ -16,10 +16,20 @@ Item {
     // currentPopout checks currentName — stays valid during close retraction
     readonly property var currentPopout: contentArea.children.find(c => c.shouldBeActive) ?? null
 
-    // Non-animated target sizes
+    // Track raw content size — falls back to last valid value during Loader activation frame
+    readonly property real _contentWidth: currentPopout?.implicitWidth ?? 0
+    readonly property real _contentHeight: currentPopout?.implicitHeight ?? 0
+    property real _lastContentWidth: 0
+    property real _lastContentHeight: 0
+
+    on_ContentWidthChanged: if (_contentWidth > 0) _lastContentWidth = _contentWidth
+    on_ContentHeightChanged: if (_contentHeight > 0) _lastContentHeight = _contentHeight
+
+    // Non-animated target sizes (use cached height during switch to prevent flush detection flicker)
     readonly property real nonAnimWidth: active
-        ? (currentPopout?.implicitWidth ?? 0) + Utils.Theme.spacingLarge * 2 : 0
-    readonly property real nonAnimHeight: (currentPopout?.implicitHeight ?? 0) + Utils.Theme.spacingLarge * 2
+        ? (_contentWidth > 0 ? _contentWidth : _lastContentWidth) + Utils.Theme.spacingLarge * 2 : 0
+    readonly property real nonAnimHeight:
+        (_contentHeight > 0 ? _contentHeight : (active ? _lastContentHeight : 0)) + Utils.Theme.spacingLarge * 2
 
     // Target Y — non-animated, used for flush detection and as base for positioning
     readonly property real targetY: {
@@ -175,6 +185,11 @@ Item {
                 sourceComponent: powerComponent
             }
 
+            Popout {
+                name: "theme"
+                sourceComponent: themeComponent
+            }
+
             // Per-tray-item popout menus (one per SystemTray item)
             Repeater {
                 model: SystemTray.items
@@ -321,6 +336,11 @@ Item {
     Component {
         id: powerComponent
         PowerPopout {}
+    }
+
+    Component {
+        id: themeComponent
+        ThemePopout {}
     }
 
     // Click-outside-to-close overlay

@@ -16,7 +16,7 @@ ColumnLayout {
 
     // Width spacer
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -30,8 +30,8 @@ ColumnLayout {
 
         Utils.MaterialIcon {
             text: headerRow.isConnected ? "bluetooth_connected" : "bluetooth"
-            font.pixelSize: 24
-            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.overlay0
+            font.pixelSize: Utils.Theme.headerIconSize
+            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.disabledText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -42,7 +42,7 @@ ColumnLayout {
         ColumnLayout {
             id: connectedHeader
             visible: headerRow.isConnected
-            spacing: 2
+            spacing: Utils.Theme.spacingTiny
             Layout.fillWidth: true
             opacity: 0
 
@@ -56,7 +56,7 @@ ColumnLayout {
             Text {
                 text: Services.Bluetooth.connectedDevice?.name ?? ""
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 16
+                font.pixelSize: Utils.Theme.headerFontSize
                 font.bold: true
                 color: Utils.Theme.text
                 elide: Text.ElideRight
@@ -84,7 +84,7 @@ ColumnLayout {
             visible: !headerRow.isConnected
             text: Services.Bluetooth.powered ? "No device" : "Bluetooth off"
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 16
+            font.pixelSize: Utils.Theme.headerFontSize
             font.bold: true
             color: Utils.Theme.text
             Layout.fillWidth: true
@@ -104,8 +104,8 @@ ColumnLayout {
             visible: opacity > 0
             opacity: headerRow.isConnected ? 1 : 0
             text: "link_off"
-            font.pixelSize: 18
-            color: disconnectMouse.containsMouse ? Utils.Theme.red : Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.headerActionIconSize
+            color: disconnectMouse.containsMouse ? Utils.Theme.red : Utils.Theme.subtleText
 
             Behavior on opacity {
                 NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -132,7 +132,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // --- Section header: "Devices" + scan button + power toggle ---
@@ -151,8 +151,8 @@ ColumnLayout {
         Utils.MaterialIcon {
             id: refreshIcon
             text: "refresh"
-            font.pixelSize: 18
-            color: refreshMouse.containsMouse ? Utils.Theme.text : Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.headerActionIconSize
+            color: refreshMouse.containsMouse ? Utils.Theme.text : Utils.Theme.subtleText
             visible: Services.Bluetooth.powered
 
             Behavior on color {
@@ -163,7 +163,7 @@ ColumnLayout {
                 running: Services.Bluetooth.scanning
                 from: 0
                 to: 360
-                duration: 800
+                duration: Utils.Theme.animDurationSpin
                 loops: Animation.Infinite
             }
 
@@ -184,12 +184,12 @@ ColumnLayout {
         }
 
         Utils.MaterialIcon {
-            text: "power_settings_new"
-            font.pixelSize: 18
+            text: Services.Bluetooth.powered ? "toggle_on" : "toggle_off"
+            font.pixelSize: Utils.Theme.headerActionIconSize
             color: {
                 if (powerMouse.containsMouse)
                     return Services.Bluetooth.powered ? Utils.Theme.red : Utils.Theme.green;
-                return Services.Bluetooth.powered ? Utils.Theme.green : Utils.Theme.overlay0;
+                return Services.Bluetooth.powered ? Utils.Theme.green : Utils.Theme.disabledText;
             }
 
             Behavior on color {
@@ -209,14 +209,14 @@ ColumnLayout {
     // --- Device list ---
     Item {
         Layout.fillWidth: true
-        implicitHeight: 180
+        implicitHeight: Utils.Theme.popoutListHeight
         clip: true
 
         ListView {
             id: deviceList
             anchors.fill: parent
             model: Services.Bluetooth.devices
-            spacing: 2
+            spacing: Utils.Theme.spacingTiny
 
             delegate: Rectangle {
                 id: deviceDelegate
@@ -239,15 +239,15 @@ ColumnLayout {
                 readonly property bool clickable: !connected && !isConnecting && !isPairing
 
                 width: deviceList.width
-                height: 32
-                radius: 6
+                height: Utils.Theme.listItemHeight
+                radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
                 // Hover background
                 Rectangle {
                     anchors.fill: parent
-                    radius: 6
-                    color: Utils.Theme.surface1
+                    radius: Utils.Theme.listItemRadius
+                    color: Utils.Theme.hoverBg
                     opacity: deviceDelegate.clickable && delegateMouse.containsMouse ? 1 : 0
 
                     Behavior on opacity {
@@ -257,8 +257,8 @@ ColumnLayout {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Utils.Theme.listItemMargin
+                    anchors.rightMargin: Utils.Theme.listItemMargin
                     spacing: Utils.Theme.spacingNormal
 
                     // Device type icon
@@ -273,8 +273,8 @@ ColumnLayout {
                             if (ic.includes("mouse")) return "mouse";
                             return "bluetooth";
                         }
-                        font.pixelSize: 14
-                        color: deviceDelegate.connected ? Utils.Theme.blue : Utils.Theme.overlay1
+                        font.pixelSize: Utils.Theme.iconSizeSmall
+                        color: deviceDelegate.connected ? Utils.Theme.blue : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -282,7 +282,7 @@ ColumnLayout {
                     Text {
                         text: deviceDelegate.name
                         font.family: Utils.Theme.fontFamily
-                        font.pixelSize: 13
+                        font.pixelSize: Utils.Theme.listFontSize
                         color: Utils.Theme.text
                         elide: Text.ElideRight
                         Layout.fillWidth: true
@@ -306,7 +306,7 @@ ColumnLayout {
                         font.family: Utils.Theme.fontFamily
                         font.pixelSize: Utils.Theme.fontSizeSmall
                         font.italic: true
-                        color: Utils.Theme.overlay1
+                        color: Utils.Theme.subtext0
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -314,7 +314,7 @@ ColumnLayout {
                     Utils.MaterialIcon {
                         visible: deviceDelegate.connected && !deviceDelegate.isDisconnecting
                         text: "check"
-                        font.pixelSize: 16
+                        font.pixelSize: Utils.Theme.headerFontSize
                         color: Utils.Theme.blue
                         Layout.alignment: Qt.AlignVCenter
                     }
@@ -345,7 +345,7 @@ ColumnLayout {
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             font.italic: true
-            color: Utils.Theme.overlay0
+            color: Utils.Theme.disabledText
         }
     }
 
@@ -353,15 +353,15 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // --- Open bluetui pill button ---
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: 30
+        implicitHeight: Utils.Theme.pillHeight
         radius: Utils.Theme.roundingFull
-        color: Utils.Theme.surface0
+        color: Utils.Theme.pillBg
         border.width: 1
         border.color: bluetuiMouse.containsMouse ? Utils.Theme.surface2 : Utils.Theme.surface1
 
@@ -372,7 +372,7 @@ ColumnLayout {
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: Utils.Theme.surface1
+            color: Utils.Theme.hoverBg
             opacity: bluetuiMouse.containsMouse ? 1 : 0
 
             Behavior on opacity {
@@ -382,11 +382,11 @@ ColumnLayout {
 
         Row {
             anchors.centerIn: parent
-            spacing: 4
+            spacing: Utils.Theme.pillSpacing
 
             Utils.MaterialIcon {
                 text: "terminal"
-                font.pixelSize: 14
+                font.pixelSize: Utils.Theme.iconSizeSmall
                 color: Utils.Theme.subtext1
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -394,7 +394,7 @@ ColumnLayout {
             Text {
                 text: "Open bluetui"
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 12
+                font.pixelSize: Utils.Theme.pillFontSize
                 font.weight: Font.Medium
                 color: Utils.Theme.subtext1
                 anchors.verticalCenter: parent.verticalCenter

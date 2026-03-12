@@ -11,7 +11,7 @@ Rectangle {
     implicitWidth: Utils.Theme.barInnerWidth
     implicitHeight: col.implicitHeight + Utils.Theme.spacingNormal * 2
     radius: Utils.Theme.roundingNormal
-    color: Utils.Theme.surface0
+    color: Utils.Theme.pillBg
     visible: SystemTray.items.count > 0
 
     ColumnLayout {

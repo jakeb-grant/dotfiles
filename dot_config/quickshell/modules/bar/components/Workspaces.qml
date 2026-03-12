@@ -73,7 +73,7 @@ Rectangle {
     implicitWidth: Utils.Theme.barInnerWidth
     implicitHeight: layout.implicitHeight + Utils.Theme.spacingNormal * 2
     radius: Utils.Theme.roundingNormal
-    color: Utils.Theme.surface0
+    color: Utils.Theme.pillBg
 
     Behavior on implicitHeight {
         Utils.Anim {}
@@ -135,7 +135,7 @@ Rectangle {
 
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: parent.top
-                    spacing: 2
+                    spacing: Utils.Theme.spacingTiny
 
                     // Workspace state icon
                     Item {
@@ -163,7 +163,7 @@ Rectangle {
                                 Utils.Anim {}
                             }
                             Behavior on color {
-                                ColorAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                ColorAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
                             }
                         }
                     }
@@ -177,14 +177,14 @@ Rectangle {
 
                             text: modelData
                             font.pixelSize: Utils.Theme.iconSize
-                            color: wsSlot.active ? Utils.Theme.crust : Utils.Theme.overlay1
+                            color: wsSlot.active ? Utils.Theme.crust : Utils.Theme.subtleText
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                             width: 28
                             height: 22
 
                             Behavior on color {
-                                ColorAnimation { duration: 250; easing.type: Easing.OutCubic }
+                                ColorAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
                             }
                         }
                     }

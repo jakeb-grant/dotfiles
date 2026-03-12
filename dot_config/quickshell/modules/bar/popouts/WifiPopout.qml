@@ -16,7 +16,7 @@ ColumnLayout {
 
     // Width spacer — forces ColumnLayout's implicitWidth
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -36,8 +36,8 @@ ColumnLayout {
                 return icons[Services.Network.signalLevel];
             }
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 24
-            color: headerRow.isConnected ? Utils.Theme.green : Utils.Theme.overlay0
+            font.pixelSize: Utils.Theme.headerIconSize
+            color: headerRow.isConnected ? Utils.Theme.green : Utils.Theme.disabledText
             Layout.alignment: Qt.AlignVCenter
 
             Behavior on color {
@@ -49,7 +49,7 @@ ColumnLayout {
         ColumnLayout {
             id: connectedHeader
             visible: headerRow.isConnected && Services.Network.ssid !== ""
-            spacing: 2
+            spacing: Utils.Theme.spacingTiny
             Layout.fillWidth: true
             opacity: 0
 
@@ -63,7 +63,7 @@ ColumnLayout {
             Text {
                 text: Services.Network.ssid
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 16
+                font.pixelSize: Utils.Theme.headerFontSize
                 font.bold: true
                 color: Utils.Theme.text
                 elide: Text.ElideRight
@@ -91,7 +91,7 @@ ColumnLayout {
             visible: !headerRow.isConnected || Services.Network.ssid === ""
             text: Services.Network.disconnecting ? "Disconnecting…" : "Disconnected"
             font.family: Utils.Theme.fontFamily
-            font.pixelSize: 16
+            font.pixelSize: Utils.Theme.headerFontSize
             font.bold: true
             color: Utils.Theme.text
             Layout.fillWidth: true
@@ -111,8 +111,8 @@ ColumnLayout {
             visible: opacity > 0
             opacity: headerRow.isConnected ? 1 : 0
             text: "link_off"
-            font.pixelSize: 18
-            color: disconnectMouse.containsMouse ? Utils.Theme.red : Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.headerActionIconSize
+            color: disconnectMouse.containsMouse ? Utils.Theme.red : Utils.Theme.subtleText
 
             Behavior on opacity {
                 NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -136,7 +136,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // --- Section header: "Networks" + scan button ---
@@ -155,8 +155,8 @@ ColumnLayout {
         Utils.MaterialIcon {
             id: refreshIcon
             text: "refresh"
-            font.pixelSize: 18
-            color: refreshMouse.containsMouse ? Utils.Theme.text : Utils.Theme.overlay1
+            font.pixelSize: Utils.Theme.headerActionIconSize
+            color: refreshMouse.containsMouse ? Utils.Theme.text : Utils.Theme.subtleText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -166,7 +166,7 @@ ColumnLayout {
                 running: Services.Network.scanning
                 from: 0
                 to: 360
-                duration: 800
+                duration: Utils.Theme.animDurationSpin
                 loops: Animation.Infinite
             }
 
@@ -191,14 +191,14 @@ ColumnLayout {
     // --- Network list ---
     Item {
         Layout.fillWidth: true
-        implicitHeight: 180
+        implicitHeight: Utils.Theme.popoutListHeight
         clip: true
 
         ListView {
             id: networkList
             anchors.fill: parent
             model: Services.Network.networks
-            spacing: 2
+            spacing: Utils.Theme.spacingTiny
 
             delegate: Rectangle {
                 id: networkDelegate
@@ -214,15 +214,15 @@ ColumnLayout {
                 readonly property bool clickable: known && !connected && !isConnecting
 
                 width: networkList.width
-                height: 32
-                radius: 6
+                height: Utils.Theme.listItemHeight
+                radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
                 // Hover background
                 Rectangle {
                     anchors.fill: parent
-                    radius: 6
-                    color: Utils.Theme.surface1
+                    radius: Utils.Theme.listItemRadius
+                    color: Utils.Theme.hoverBg
                     opacity: networkDelegate.clickable && delegateMouse.containsMouse ? 1 : 0
 
                     Behavior on opacity {
@@ -232,8 +232,8 @@ ColumnLayout {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
+                    anchors.leftMargin: Utils.Theme.listItemMargin
+                    anchors.rightMargin: Utils.Theme.listItemMargin
                     spacing: Utils.Theme.spacingNormal
 
                     // Signal strength icon
@@ -243,8 +243,8 @@ ColumnLayout {
                             return icons[Math.min(networkDelegate.signal, 4)];
                         }
                         font.family: Utils.Theme.fontFamily
-                        font.pixelSize: 14
-                        color: networkDelegate.connected ? Utils.Theme.green : Utils.Theme.overlay1
+                        font.pixelSize: Utils.Theme.iconSizeSmall
+                        color: networkDelegate.connected ? Utils.Theme.green : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -252,8 +252,8 @@ ColumnLayout {
                     Text {
                         text: networkDelegate.ssid
                         font.family: Utils.Theme.fontFamily
-                        font.pixelSize: 13
-                        color: Utils.Theme.text
+                        font.pixelSize: Utils.Theme.listFontSize
+                        color: networkDelegate.known || networkDelegate.connected ? Utils.Theme.text : Utils.Theme.subtleText
                         elide: Text.ElideRight
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
@@ -266,7 +266,7 @@ ColumnLayout {
                         font.family: Utils.Theme.fontFamily
                         font.pixelSize: Utils.Theme.fontSizeSmall
                         font.italic: true
-                        color: Utils.Theme.overlay1
+                        color: Utils.Theme.subtext0
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -274,14 +274,11 @@ ColumnLayout {
                     Utils.MaterialIcon {
                         visible: networkDelegate.connected && !networkDelegate.isConnecting
                         text: "check"
-                        font.pixelSize: 16
-                        color: Utils.Theme.green
+                        font.pixelSize: Utils.Theme.headerFontSize
+                        color: Utils.Theme.blue
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }
-
-                // Dim unknown networks
-                opacity: networkDelegate.known || networkDelegate.connected ? 1.0 : 0.6
 
                 MouseArea {
                     id: delegateMouse
@@ -302,7 +299,7 @@ ColumnLayout {
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             font.italic: true
-            color: Utils.Theme.overlay0
+            color: Utils.Theme.disabledText
         }
     }
 
@@ -310,15 +307,15 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // --- Open Impala pill button ---
     Rectangle {
         Layout.fillWidth: true
-        implicitHeight: 30
+        implicitHeight: Utils.Theme.pillHeight
         radius: Utils.Theme.roundingFull
-        color: Utils.Theme.surface0
+        color: Utils.Theme.pillBg
         border.width: 1
         border.color: impalaMouse.containsMouse ? Utils.Theme.surface2 : Utils.Theme.surface1
 
@@ -329,7 +326,7 @@ ColumnLayout {
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: Utils.Theme.surface1
+            color: Utils.Theme.hoverBg
             opacity: impalaMouse.containsMouse ? 1 : 0
 
             Behavior on opacity {
@@ -339,11 +336,11 @@ ColumnLayout {
 
         Row {
             anchors.centerIn: parent
-            spacing: 4
+            spacing: Utils.Theme.pillSpacing
 
             Utils.MaterialIcon {
                 text: "terminal"
-                font.pixelSize: 14
+                font.pixelSize: Utils.Theme.iconSizeSmall
                 color: Utils.Theme.subtext1
                 anchors.verticalCenter: parent.verticalCenter
             }
@@ -351,7 +348,7 @@ ColumnLayout {
             Text {
                 text: "Open Impala"
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 12
+                font.pixelSize: Utils.Theme.pillFontSize
                 font.weight: Font.Medium
                 color: Utils.Theme.subtext1
                 anchors.verticalCenter: parent.verticalCenter

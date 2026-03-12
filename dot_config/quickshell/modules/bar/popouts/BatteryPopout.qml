@@ -10,7 +10,7 @@ ColumnLayout {
 
     // Width spacer
     Item {
-        implicitWidth: 280
+        implicitWidth: Utils.Theme.popoutWidth
         implicitHeight: 0
     }
 
@@ -20,7 +20,7 @@ ColumnLayout {
 
         Utils.MaterialIcon {
             text: Services.Battery.icon
-            font.pixelSize: 28
+            font.pixelSize: Utils.Theme.headerIconSizeLarge
             color: Services.Battery.iconColor
 
             Behavior on color {
@@ -29,12 +29,12 @@ ColumnLayout {
         }
 
         ColumnLayout {
-            spacing: 2
+            spacing: Utils.Theme.spacingTiny
 
             Text {
                 text: Services.Battery.percent + "%"
                 font.family: Utils.Theme.fontFamily
-                font.pixelSize: 18
+                font.pixelSize: Utils.Theme.popoutTitleSize
                 font.bold: true
                 color: Utils.Theme.text
             }
@@ -51,7 +51,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // Battery bar
@@ -69,7 +69,7 @@ ColumnLayout {
             Layout.fillWidth: true
             height: 8
             radius: 4
-            color: Utils.Theme.surface0
+            color: Utils.Theme.pillBg
 
             Rectangle {
                 width: parent.width * Services.Battery.percentage
@@ -91,7 +91,7 @@ ColumnLayout {
     Rectangle {
         Layout.fillWidth: true
         height: 1
-        color: Utils.Theme.surface1
+        color: Utils.Theme.separator
     }
 
     // Power profile
@@ -124,7 +124,7 @@ ColumnLayout {
             Layout.fillWidth: true
             height: 38
             radius: height / 2
-            color: Utils.Theme.surface0
+            color: Utils.Theme.pillBg
 
             // Sliding highlight
             Rectangle {
@@ -162,8 +162,8 @@ ColumnLayout {
                         Utils.MaterialIcon {
                             anchors.centerIn: parent
                             text: modelData.icon
-                            font.pixelSize: 20
-                            color: active ? accent : Utils.Theme.overlay1
+                            font.pixelSize: Utils.Theme.iconSize
+                            color: active ? accent : Utils.Theme.subtleText
 
                             Behavior on color {
                                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
