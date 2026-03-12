@@ -46,7 +46,6 @@ dot_config/quickshell/
             components/
                 Workspaces.qml     # Workspace switcher with per-workspace window icons
                 ActiveWindow.qml   # Rotated active window title
-                ClockWidget.qml    # Hours/minutes display with popout trigger
                 StatusIcons.qml    # Volume, network, battery icons with popout triggers
                 Tray.qml           # System tray container
                 TrayItem.qml       # Individual tray icon
@@ -61,6 +60,7 @@ dot_config/quickshell/
                 BluetoothPopout.qml # Bluetooth device list, connect/disconnect
                 PowerPopout.qml    # Shutdown, restart, sleep, lock, logout
                 TrayMenuPopout.qml # Dynamic tray app menus with submenu navigation
+                ThemePopout.qml    # Palette file list with click-to-switch theme
 
         osd/                       # TODO
         session/                   # TODO
@@ -281,7 +281,11 @@ Query examples:
 - [x] Bar: PowerPopout — click actions for shutdown, restart, sleep, lock, logout
 - [x] Bar: SystemPopout — distro, kernel, uptime, hostname, shell, native/AUR package counts
 - [x] Standardized popout widths — all popouts use 280px Item spacer pattern
-- [ ] Theme integration — read active.json via FileView instead of hardcoded colors
+- [x] Theme integration — palette JSON via FileView, _quickshell semantic roles for variant-aware contrast
+- [x] Bar: ThemePopout — palette file list with click-to-switch, active highlight
+- [x] UI polish — three-pass design review: color consistency, tokenization, tray icon fallbacks
+- [x] Composited frame shadow — single MultiEffect layer for unified frame + popout silhouette shadow
+- [x] Flush popout fix — cached content height prevents top-flush detection flicker during Loader activation
 - [ ] Bar: MediaWidget — MPRIS now-playing icon + popout with controls
 - [ ] Startup animations — bar slide-in, workspace pill cascade
 - [x] Hover effects on bar items — color transitions on status icons, scale/opacity on workspace indicators

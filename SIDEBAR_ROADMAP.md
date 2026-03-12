@@ -8,6 +8,10 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 - [x] Icon: `\uf303` nerd font
 - [x] Popout: SystemPopout (distro, kernel, uptime, hostname, shell, native/AUR package counts)
 
+### Theme Selector (standalone)
+- [x] Icon: `palette` (Material Symbol)
+- [x] Popout: ThemePopout (palette file list, click to switch, active highlight)
+
 ### Workspaces (pill + sliding indicator)
 - [x] Per-workspace window icons
 - [x] Active indicator pill
@@ -23,7 +27,7 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 - [x] Click interaction — menu items receive clicks correctly
 - [x] Submenu navigation — StackView with back button for entries with `hasChildren`
 - [x] Menu entry icons — icon theme cache with graceful fallback (hide all if any fail per menu)
-- [x] Polish: checkbox/radio state display for menu entries
+- [x] Checkbox/radio state display for menu entries
 
 ### --- gap ---
 
@@ -60,6 +64,5 @@ Layout and popout plan for the Quickshell vertical bar (left edge).
 
 ## Remaining Work
 
-1. [x] Polish: tray menu checkbox/radio state display
-2. [ ] Calendar events integration (khal/pimsync)
-3. [ ] MPRIS media widget + popout (now-playing, controls, album art)
+1. [ ] Calendar events integration (khal/pimsync)
+2. [ ] MPRIS media widget + popout (now-playing, controls, album art)
