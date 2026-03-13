@@ -1,0 +1,46 @@
+{
+  "_name": "Everforest",
+  "_variant": "dark",
+  "_wallpaper": "",
+  "_blur_opacity": 0.9,
+  "_zed_theme_dark": "",
+  "_zed_theme_light": "",
+  "_gtk_color_scheme": "prefer-dark",
+
+  "crust":     "#232A2E",
+  "mantle":    "#2D353B",
+  "base":      "#343F44",
+  "surface0":  "#3D484D",
+  "surface1":  "#475258",
+  "surface2":  "#4F585E",
+  "overlay0":  "#7A8478",
+  "overlay1":  "#859289",
+  "overlay2":  "#9DA9A0",
+  "subtext0":  "#B8C4B8",
+  "subtext1":  "#C5C8BB",
+  "text":      "#D3C6AA",
+
+  "rosewater": "#E69875",
+  "flamingo":  "#E69875",
+  "pink":      "#D699B6",
+  "mauve":     "#D699B6",
+  "red":       "#E67E80",
+  "maroon":    "#C96A6C",
+  "peach":     "#E69875",
+  "yellow":    "#DBBC7F",
+  "green":     "#A7C080",
+  "teal":      "#83C092",
+  "sky":       "#7FBBB3",
+  "sapphire":  "#7FBBB3",
+  "blue":      "#7FBBB3",
+  "lavender":  "#D699B6",
+
+  "_quickshell": {
+    "accent":       "#A7C080",
+    "disabledText": "#7A8478",
+    "subtleText":   "#859289",
+    "separator":    "#475258",
+    "pillBg":       "#232A2E",
+    "hoverBg":      "#475258"
+  }
+}

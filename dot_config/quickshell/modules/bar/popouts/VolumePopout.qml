@@ -32,7 +32,7 @@ ColumnLayout {
                 if (Services.Audio.muted || Services.Audio.volumePercent === 0)
                     return Utils.Theme.subtleText;
                 const t = Math.min(1, Services.Audio.volumePercent / 100);
-                return Qt.tint(Utils.Theme.lavender, Qt.rgba(
+                return Qt.tint(Utils.Theme.subtleText, Qt.rgba(
                     Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, t));
             }
 

@@ -1,0 +1,46 @@
+{
+  "_name": "Rosé Pine Moon",
+  "_variant": "dark",
+  "_wallpaper": "",
+  "_blur_opacity": 0.9,
+  "_zed_theme_dark": "",
+  "_zed_theme_light": "",
+  "_gtk_color_scheme": "prefer-dark",
+
+  "crust":     "#232136",
+  "mantle":    "#2a273f",
+  "base":      "#393552",
+  "surface0":  "#2a283e",
+  "surface1":  "#44415a",
+  "surface2":  "#56526e",
+  "overlay0":  "#6e6a86",
+  "overlay1":  "#908caa",
+  "overlay2":  "#a4a1bd",
+  "subtext0":  "#b8b5cf",
+  "subtext1":  "#cccae2",
+  "text":      "#e0def4",
+
+  "rosewater": "#ea9a97",
+  "flamingo":  "#ea9a97",
+  "pink":      "#eb6f92",
+  "mauve":     "#c4a7e7",
+  "red":       "#eb6f92",
+  "maroon":    "#d4607f",
+  "peach":     "#f6c177",
+  "yellow":    "#f6c177",
+  "green":     "#9ccfd8",
+  "teal":      "#9ccfd8",
+  "sky":       "#9ccfd8",
+  "sapphire":  "#3e8fb0",
+  "blue":      "#3e8fb0",
+  "lavender":  "#c4a7e7",
+
+  "_quickshell": {
+    "accent":       "#c4a7e7",
+    "disabledText": "#6e6a86",
+    "subtleText":   "#908caa",
+    "separator":    "#44415a",
+    "pillBg":       "#232136",
+    "hoverBg":      "#44415a"
+  }
+}

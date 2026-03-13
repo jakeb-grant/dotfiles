@@ -1,0 +1,47 @@
+{
+  "_name": "Rosé Pine Dawn",
+  "_variant": "light",
+  "_wallpaper": "",
+  "_blur_opacity": 0.9,
+  "_zed_theme_dark": "",
+  "_zed_theme_light": "",
+  "_gtk_color_scheme": "prefer-light",
+
+  "crust":     "#f2e9e1",
+  "mantle":    "#faf4ed",
+  "base":      "#fffaf3",
+  "surface0":  "#f4ede8",
+  "surface1":  "#dfdad9",
+  "surface2":  "#cecacd",
+  "overlay0":  "#9893a5",
+  "overlay1":  "#797593",
+  "overlay2":  "#716c8d",
+  "subtext0":  "#686486",
+  "subtext1":  "#605b80",
+  "text":      "#575279",
+
+  "rosewater": "#d7827e",
+  "flamingo":  "#d7827e",
+  "pink":      "#b4637a",
+  "mauve":     "#907aa9",
+  "red":       "#b4637a",
+  "maroon":    "#9c5468",
+  "peach":     "#ea9d34",
+  "yellow":    "#ea9d34",
+  "green":     "#56949f",
+  "teal":      "#56949f",
+  "sky":       "#56949f",
+  "sapphire":  "#286983",
+  "blue":      "#286983",
+  "lavender":  "#907aa9",
+
+  "_quickshell": {
+    "accent":       "#907aa9",
+    "disabledText": "#9893a5",
+    "subtleText":   "#797593",
+    "separator":    "#cecacd",
+    "pillBg":       "#f2e9e1",
+    "hoverBg":      "#dfdad9",
+    "frameShadow":  "#9893a5"
+  }
+}

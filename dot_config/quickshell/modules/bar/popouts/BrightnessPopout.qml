@@ -87,7 +87,7 @@ ColumnLayout {
                     const t = Math.min(1, Services.Brightness.percent / 100);
                     if (t <= 0.5) {
                         const s = t / 0.5;
-                        return Qt.tint(Utils.Theme.lavender, Qt.rgba(
+                        return Qt.tint(Utils.Theme.subtleText, Qt.rgba(
                             Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, s));
                     }
                     const s = (t - 0.5) / 0.5;

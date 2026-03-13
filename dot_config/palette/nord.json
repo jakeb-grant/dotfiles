@@ -1,0 +1,46 @@
+{
+  "_name": "Nord",
+  "_variant": "dark",
+  "_wallpaper": "",
+  "_blur_opacity": 0.9,
+  "_zed_theme_dark": "",
+  "_zed_theme_light": "",
+  "_gtk_color_scheme": "prefer-dark",
+
+  "crust":     "#2e3440",
+  "mantle":    "#3b4252",
+  "base":      "#434c5e",
+  "surface0":  "#4c566a",
+  "surface1":  "#59657a",
+  "surface2":  "#67748a",
+  "overlay0":  "#78849a",
+  "overlay1":  "#8d96a8",
+  "overlay2":  "#a3aab8",
+  "subtext0":  "#b9bfc8",
+  "subtext1":  "#c8ced8",
+  "text":      "#d8dee9",
+
+  "rosewater": "#d08770",
+  "flamingo":  "#d08770",
+  "pink":      "#b48ead",
+  "mauve":     "#b48ead",
+  "red":       "#bf616a",
+  "maroon":    "#a8545c",
+  "peach":     "#d08770",
+  "yellow":    "#ebcb8b",
+  "green":     "#a3be8c",
+  "teal":      "#8fbcbb",
+  "sky":       "#88c0d0",
+  "sapphire":  "#81a1c1",
+  "blue":      "#5e81ac",
+  "lavender":  "#81a1c1",
+
+  "_quickshell": {
+    "accent":       "#88c0d0",
+    "disabledText": "#78849a",
+    "subtleText":   "#8d96a8",
+    "separator":    "#59657a",
+    "pillBg":       "#2e3440",
+    "hoverBg":      "#4c566a"
+  }
+}
