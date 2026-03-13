@@ -46,6 +46,7 @@ Singleton {
 
     // ── Semantic Roles (app-specific overrides from palette JSON) ──
     readonly property var _qs: _p._quickshell ?? {}
+    readonly property color accent:       _qs.accent       ?? blue
     readonly property color disabledText: _qs.disabledText ?? overlay0
     readonly property color subtleText:   _qs.subtleText   ?? overlay1
     readonly property color separator:    _qs.separator    ?? surface1

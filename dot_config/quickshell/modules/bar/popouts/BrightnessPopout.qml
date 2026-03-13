@@ -35,10 +35,10 @@ ColumnLayout {
                 if (t <= 0.5) {
                     const s = t / 0.5;
                     return Qt.tint(Utils.Theme.lavender, Qt.rgba(
-                        Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, s));
+                        Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, s));
                 }
                 const s = (t - 0.5) / 0.5;
-                return Qt.tint(Utils.Theme.blue, Qt.rgba(
+                return Qt.tint(Utils.Theme.accent, Qt.rgba(
                     Utils.Theme.yellow.r, Utils.Theme.yellow.g, Utils.Theme.yellow.b, s));
             }
         }
@@ -88,10 +88,10 @@ ColumnLayout {
                     if (t <= 0.5) {
                         const s = t / 0.5;
                         return Qt.tint(Utils.Theme.lavender, Qt.rgba(
-                            Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, s));
+                            Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, s));
                     }
                     const s = (t - 0.5) / 0.5;
-                    return Qt.tint(Utils.Theme.blue, Qt.rgba(
+                    return Qt.tint(Utils.Theme.accent, Qt.rgba(
                         Utils.Theme.yellow.r, Utils.Theme.yellow.g, Utils.Theme.yellow.b, s));
                 }
 

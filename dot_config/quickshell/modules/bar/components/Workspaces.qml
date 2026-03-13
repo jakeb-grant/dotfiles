@@ -104,7 +104,7 @@ Rectangle {
         width: 28
         height: root.indicatorHeight
         radius: Utils.Theme.roundingFull
-        color: Utils.Theme.blue
+        color: Utils.Theme.accent
         visible: root.activeIndex >= 0
 
         Behavior on y {

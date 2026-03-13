@@ -31,7 +31,7 @@ ColumnLayout {
         Utils.MaterialIcon {
             text: headerRow.isConnected ? "bluetooth_connected" : "bluetooth"
             font.pixelSize: Utils.Theme.headerIconSize
-            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.subtleText
+            color: headerRow.isConnected ? Utils.Theme.accent : Utils.Theme.subtleText
 
             Behavior on color {
                 ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -188,8 +188,8 @@ ColumnLayout {
             font.pixelSize: Utils.Theme.headerActionIconSize
             color: {
                 if (powerMouse.containsMouse)
-                    return Services.Bluetooth.powered ? Utils.Theme.red : Utils.Theme.blue;
-                return Services.Bluetooth.powered ? Utils.Theme.blue : Utils.Theme.subtleText;
+                    return Services.Bluetooth.powered ? Utils.Theme.red : Utils.Theme.accent;
+                return Services.Bluetooth.powered ? Utils.Theme.accent : Utils.Theme.subtleText;
             }
 
             Behavior on color {
@@ -274,7 +274,7 @@ ColumnLayout {
                             return "bluetooth";
                         }
                         font.pixelSize: Utils.Theme.iconSizeSmall
-                        color: deviceDelegate.connected ? Utils.Theme.blue : Utils.Theme.subtleText
+                        color: deviceDelegate.connected ? Utils.Theme.accent : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -315,7 +315,7 @@ ColumnLayout {
                         visible: deviceDelegate.connected && !deviceDelegate.isDisconnecting
                         text: "check"
                         font.pixelSize: Utils.Theme.headerFontSize
-                        color: Utils.Theme.blue
+                        color: Utils.Theme.accent
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }

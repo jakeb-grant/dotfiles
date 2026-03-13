@@ -166,7 +166,7 @@ ColumnLayout {
                     height: root.cellSize - 2
                     radius: root.cellSize / 2
                     color: dayCell.isToday
-                        ? Utils.Theme.blue
+                        ? Utils.Theme.accent
                         : dayCellMouse.containsMouse && dayCell.inMonth
                             ? Utils.Theme.hoverBg
                             : "transparent"

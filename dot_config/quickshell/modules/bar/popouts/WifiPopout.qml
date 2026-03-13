@@ -37,7 +37,7 @@ ColumnLayout {
             }
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.headerIconSize
-            color: headerRow.isConnected ? Utils.Theme.blue : Utils.Theme.subtleText
+            color: headerRow.isConnected ? Utils.Theme.accent : Utils.Theme.subtleText
             Layout.alignment: Qt.AlignVCenter
 
             Behavior on color {
@@ -244,7 +244,7 @@ ColumnLayout {
                         }
                         font.family: Utils.Theme.fontFamily
                         font.pixelSize: Utils.Theme.iconSizeSmall
-                        color: networkDelegate.connected ? Utils.Theme.blue : Utils.Theme.subtleText
+                        color: networkDelegate.connected ? Utils.Theme.accent : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -275,7 +275,7 @@ ColumnLayout {
                         visible: networkDelegate.connected && !networkDelegate.isConnecting
                         text: "check"
                         font.pixelSize: Utils.Theme.headerFontSize
-                        color: Utils.Theme.blue
+                        color: Utils.Theme.accent
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }

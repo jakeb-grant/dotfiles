@@ -167,7 +167,7 @@ Rectangle {
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize
                 color: Services.Bluetooth.connectedDevice
-                    ? Utils.Theme.blue : Utils.Theme.subtleText
+                    ? Utils.Theme.accent : Utils.Theme.subtleText
 
                 Behavior on color {
                     ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }

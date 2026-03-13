@@ -294,7 +294,7 @@ ColumnLayout {
                             return "";
                         }
                         font.pixelSize: Utils.Theme.headerFontSize
-                        color: menuItem._localCheckState === 2 ? Utils.Theme.blue : Utils.Theme.subtleText
+                        color: menuItem._localCheckState === 2 ? Utils.Theme.accent : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 

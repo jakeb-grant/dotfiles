@@ -33,7 +33,7 @@ ColumnLayout {
                     return Utils.Theme.subtleText;
                 const t = Math.min(1, Services.Audio.volumePercent / 100);
                 return Qt.tint(Utils.Theme.lavender, Qt.rgba(
-                    Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, t));
+                    Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, t));
             }
 
             MouseArea {
@@ -86,7 +86,7 @@ ColumnLayout {
                 readonly property color sliderColor: {
                     const t = Math.min(1, Services.Audio.volumePercent / 100);
                     return Qt.tint(Utils.Theme.lavender, Qt.rgba(
-                        Utils.Theme.blue.r, Utils.Theme.blue.g, Utils.Theme.blue.b, t));
+                        Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, t));
                 }
 
                 Behavior on width {
@@ -230,7 +230,7 @@ ColumnLayout {
                             return "volume_up";
                         }
                         font.pixelSize: Utils.Theme.iconSizeSmall
-                        color: sinkDelegate.isDefault ? Utils.Theme.blue : Utils.Theme.subtleText
+                        color: sinkDelegate.isDefault ? Utils.Theme.accent : Utils.Theme.subtleText
                         Layout.alignment: Qt.AlignVCenter
                     }
 
@@ -250,7 +250,7 @@ ColumnLayout {
                         visible: sinkDelegate.isDefault
                         text: "check"
                         font.pixelSize: Utils.Theme.headerFontSize
-                        color: Utils.Theme.blue
+                        color: Utils.Theme.accent
                         Layout.alignment: Qt.AlignVCenter
                     }
                 }
