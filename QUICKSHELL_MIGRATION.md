@@ -30,7 +30,7 @@ dot_config/quickshell/
         Hypr.qml                  # Singleton: Quickshell.Hyprland + workspace rules
         Network.qml               # Singleton: iwd via Process polling
         Popout.qml                # Singleton: popout state machine (show/close/cleanup + graceActive)
-        Brightness.qml            # TODO: brightnessctl via Process
+        Brightness.qml            # Singleton: brightnessctl + sysfs FileView watching
         Players.qml               # Singleton: Quickshell.Services.Mpris
         Calendar.qml              # TODO: khal event polling via Process
 
@@ -45,8 +45,7 @@ dot_config/quickshell/
             BarContent.qml         # Vertical ColumnLayout with all bar components
             components/
                 Workspaces.qml     # Workspace switcher with per-workspace window icons
-                ActiveWindow.qml   # Rotated active window title
-                StatusIcons.qml    # Volume, network, battery icons with popout triggers
+                StatusIcons.qml    # Volume, brightness, network, battery icons with popout triggers
                 Tray.qml           # System tray container
                 TrayItem.qml       # Individual tray icon
                 TrayOverflow.qml   # Tray icons with hover-to-open popout menus
@@ -60,7 +59,9 @@ dot_config/quickshell/
                 BluetoothPopout.qml # Bluetooth device list, connect/disconnect
                 PowerPopout.qml    # Shutdown, restart, sleep, lock, logout
                 TrayMenuPopout.qml # Dynamic tray app menus with submenu navigation
+                BrightnessPopout.qml # Brightness slider popout
                 ThemePopout.qml    # Palette file list with click-to-switch theme
+                PlaceholderPopout.qml # Stub popout for unimplemented features
 
         osd/                       # TODO
         session/                   # TODO
@@ -204,7 +205,7 @@ Timer { interval: 5000; running: true; repeat: true; onTriggered: proc.running =
 
 // Theme-reactive colors
 FileView {
-    path: Quickshell.env("HOME") + "/.config/themes/active.json"
+    path: Quickshell.env("HOME") + "/.config/palette/active.json"
     watchChanges: true
     onLoaded: { root.colors = JSON.parse(text()) }
 }
@@ -266,7 +267,6 @@ Query examples:
 - [x] Bar: Clock — 12-hour AM/PM display with calendar+clock hover group
 - [x] Bar: StatusIcons — volume, network, battery with hover popouts
 - [x] Bar: Tray — system tray icons
-- [x] Bar: ActiveWindow — rotated focused window title
 - [x] Popout system — hover-triggered shelf with concave protrusion, flush-edge pinning, MD3 curves
 
 ### Phase 1.5: Bar Polish
@@ -289,10 +289,14 @@ Query examples:
 - [x] `services/Players.qml` — MPRIS singleton (media controls for dashboard/future use, not bar)
 - [x] Startup animations — bar slide-in, workspace pill cascade
 - [x] Hover effects on bar items — color transitions on status icons, scale/opacity on workspace indicators
+- [x] Theme-overridable accent token — `_quickshell.accent` per palette, defaults to `blue`
+- [x] Slider gradient fix — subtleText as low-end blend (not lavender) for semantic consistency
+- [x] Multi-palette support — Rose Pine (base/moon/dawn), Nord, Everforest (dark/light)
+- [x] Bar: BrightnessPopout — brightness slider, visible only when backlight hardware present
 
-### Phase 2: OSD
-- [ ] `services/Brightness.qml` — brightnessctl wrapper
-- [ ] `modules/osd/OsdPopup.qml` — volume/brightness overlay (auto-show on change, auto-hide)
+### Phase 2: OSD — skipped, covered by bar popouts
+- [x] `services/Brightness.qml` — brightnessctl + sysfs FileView (no polling)
+- [~] `modules/osd/OsdPopup.qml` — skipped, VolumePopout + BrightnessPopout already provide feedback
 
 ### Phase 3: Sidebar (Notifications)
 - [ ] `Quickshell.Services.Notifications` as notification server (replaces swaync)
