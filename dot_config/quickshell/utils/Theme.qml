@@ -107,6 +107,10 @@ Singleton {
     readonly property int popoutWidthNarrow: 180
     readonly property int popoutListHeight: 180
 
+    // ── Notifications ──
+    readonly property int notificationWidth: 360
+    readonly property int notificationCenterMaxHeight: 480
+
     // ── Sliders ──
     readonly property int sliderHeight: 24
     readonly property int sliderTrackHeight: 6
