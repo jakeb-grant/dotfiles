@@ -41,10 +41,11 @@ Variants {
             mask: Region {
                 // When popout is open on this screen: full window receives input
                 // When closed: border + bar area receives input, rest is click-through
+                readonly property int bt: Utils.Theme.borderThickness
                 x: popoutWrapper.active ? 0 : bar.implicitWidth
-                y: popoutWrapper.active ? 0 : Utils.Theme.borderThickness
-                width: popoutWrapper.active ? 0 : (win.width - bar.implicitWidth - Utils.Theme.borderThickness)
-                height: popoutWrapper.active ? 0 : (win.height - Utils.Theme.borderThickness * 2)
+                y: popoutWrapper.active ? 0 : bt
+                width: popoutWrapper.active ? 0 : (win.width - bar.implicitWidth - bt)
+                height: popoutWrapper.active ? 0 : (win.height - bt * 2)
                 intersection: Intersection.Xor
             }
 

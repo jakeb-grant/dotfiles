@@ -89,10 +89,12 @@ Singleton {
     readonly property int spacingLarge: 12
 
     // ── Border (screen frame) ──
-    readonly property int borderThickness: 10
-    readonly property int borderRounding: 8
-    readonly property int frameShadowBlur: 24
-    readonly property real frameShadowOpacity: 1.0
+    // bezelIntensity: 0 = none, 1 = subtle, 2 = normal, 3 = heavy
+    readonly property int bezelIntensity: Math.max(0, Math.min(3, _qs.bezelIntensity ?? 2))
+    readonly property int borderThickness: [0, 4, 10, 16][bezelIntensity]
+    readonly property int borderRounding: [0, 4, 8, 12][bezelIntensity]
+    readonly property int frameShadowBlur: [0, 12, 24, 32][bezelIntensity]
+    readonly property real frameShadowOpacity: [0, 0.5, 1.0, 1.0][bezelIntensity]
 
     // ── Rounding ──
     readonly property int roundingSmall: 10

@@ -18,16 +18,22 @@ Scope {
     // Top edge: border thickness
     ExclusionZone {
         anchors.top: true
+        visible: Utils.Theme.borderThickness > 0
+        exclusiveZone: Utils.Theme.borderThickness > 0 ? Utils.Theme.borderThickness : 0
     }
 
     // Right edge: border thickness
     ExclusionZone {
         anchors.right: true
+        visible: Utils.Theme.borderThickness > 0
+        exclusiveZone: Utils.Theme.borderThickness > 0 ? Utils.Theme.borderThickness : 0
     }
 
     // Bottom edge: border thickness
     ExclusionZone {
         anchors.bottom: true
+        visible: Utils.Theme.borderThickness > 0
+        exclusiveZone: Utils.Theme.borderThickness > 0 ? Utils.Theme.borderThickness : 0
     }
 
     component ExclusionZone: PanelWindow {

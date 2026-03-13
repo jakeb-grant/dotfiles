@@ -8,6 +8,7 @@ Item {
     required property Item bar
 
     anchors.fill: parent
+    visible: Utils.Theme.borderThickness > 0
 
     Rectangle {
         anchors.fill: parent
