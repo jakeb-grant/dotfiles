@@ -58,10 +58,10 @@ ColumnLayout {
         id: slider
 
         Layout.fillWidth: true
-        height: 24
+        height: Utils.Theme.sliderHeight
 
-        readonly property real trackHeight: 6
-        readonly property real thumbSize: 16
+        readonly property real trackHeight: Utils.Theme.sliderTrackHeight
+        readonly property real thumbSize: Utils.Theme.sliderThumbSize
         readonly property real effectiveWidth: width - thumbSize
         readonly property bool dragging: sliderMouse.pressed
 
@@ -160,6 +160,189 @@ ColumnLayout {
         font.family: Utils.Theme.fontFamily
         font.pixelSize: Utils.Theme.fontSizeSmall
         color: Utils.Theme.subtleText
+    }
+
+    // ── Now Playing ──
+    Rectangle {
+        Layout.fillWidth: true
+        height: 1
+        color: Utils.Theme.separator
+        visible: Services.Players.hasPlayer
+    }
+
+    ColumnLayout {
+        Layout.fillWidth: true
+        spacing: Utils.Theme.spacingNormal
+        visible: Services.Players.hasPlayer
+
+        // Album art + track info
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: Utils.Theme.spacingNormal
+
+            Rectangle {
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+                radius: Utils.Theme.listItemRadius
+                color: Utils.Theme.surface0
+                clip: true
+
+                Image {
+                    id: albumArt
+                    anchors.fill: parent
+                    source: Services.Players.trackArtUrl
+                    fillMode: Image.PreserveAspectCrop
+                    visible: status === Image.Ready
+                }
+
+                Utils.MaterialIcon {
+                    anchors.centerIn: parent
+                    text: "music_note"
+                    font.pixelSize: Utils.Theme.headerIconSize
+                    color: Utils.Theme.overlay0
+                    visible: !albumArt.visible
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: Utils.Theme.spacingTiny
+
+                Text {
+                    Layout.fillWidth: true
+                    text: Services.Players.trackTitle || "Unknown"
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: Utils.Theme.listFontSize
+                    font.bold: true
+                    color: Utils.Theme.text
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: Services.Players.trackArtist || "\u2014"
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: Utils.Theme.fontSizeSmall
+                    color: Utils.Theme.subtleText
+                    elide: Text.ElideRight
+                    maximumLineCount: 1
+                }
+            }
+        }
+
+        // Seek bar
+        Item {
+            id: seekBar
+
+            Layout.fillWidth: true
+            height: 14
+
+            readonly property real trackH: 4
+            readonly property real thumbSize: 10
+            readonly property real effectiveWidth: width - thumbSize
+            readonly property bool dragging: seekMouse.pressed
+            readonly property real ratio: Services.Players.length > 0
+                ? Services.Players.livePosition / Services.Players.length : 0
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: seekBar.thumbSize / 2
+                anchors.rightMargin: seekBar.thumbSize / 2
+                height: seekBar.trackH
+                radius: height / 2
+                color: Utils.Theme.pillBg
+
+                Rectangle {
+                    width: parent.width * seekBar.ratio
+                    height: parent.height
+                    radius: height / 2
+                    color: Utils.Theme.accent
+
+                    Behavior on width {
+                        enabled: !seekBar.dragging
+                        NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                    }
+                }
+            }
+
+            Rectangle {
+                x: seekBar.thumbSize / 2 + seekBar.effectiveWidth * seekBar.ratio - width / 2
+                anchors.verticalCenter: parent.verticalCenter
+                width: seekBar.thumbSize
+                height: seekBar.thumbSize
+                radius: width / 2
+                color: seekMouse.containsMouse || seekMouse.pressed
+                    ? Utils.Theme.text : Utils.Theme.subtext0
+                visible: Services.Players.canSeek
+
+                Behavior on x {
+                    enabled: !seekBar.dragging
+                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                }
+            }
+
+            MouseArea {
+                id: seekMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Services.Players.canSeek ? Qt.PointingHandCursor : Qt.ArrowCursor
+                enabled: Services.Players.canSeek && Services.Players.length > 0
+
+                function seekFromX(mouseX: real): void {
+                    const clamped = Math.max(seekBar.thumbSize / 2,
+                        Math.min(mouseX, seekBar.width - seekBar.thumbSize / 2));
+                    const pos = (clamped - seekBar.thumbSize / 2) / seekBar.effectiveWidth * Services.Players.length;
+                    Services.Players.setPosition(pos);
+                }
+
+                onPressed: (mouse) => seekFromX(mouse.x)
+                onPositionChanged: (mouse) => { if (pressed) seekFromX(mouse.x); }
+            }
+        }
+
+        // Time + transport controls
+        RowLayout {
+            Layout.fillWidth: true
+
+            Text {
+                text: root._formatTime(Services.Players.livePosition) + " / " + root._formatTime(Services.Players.length)
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: Utils.Theme.fontSizeXSmall
+                color: Utils.Theme.disabledText
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Row {
+                spacing: Utils.Theme.spacingLarge
+
+                TransportButton {
+                    icon: "skip_previous"
+                    enabled: Services.Players.canGoPrevious
+                    onClicked: Services.Players.previous()
+                }
+
+                TransportButton {
+                    icon: Services.Players.isPlaying ? "pause" : "play_arrow"
+                    enabled: Services.Players.hasPlayer
+                    alwaysActive: true
+                    onClicked: Services.Players.togglePlaying()
+                }
+
+                TransportButton {
+                    icon: "skip_next"
+                    enabled: Services.Players.canGoNext
+                    onClicked: Services.Players.next()
+                }
+            }
+        }
     }
 
     // --- Separator ---
@@ -265,5 +448,52 @@ ColumnLayout {
                 }
             }
         }
+    }
+
+    component TransportButton: Item {
+        id: btn
+
+        required property string icon
+        property bool alwaysActive: false
+
+        signal clicked()
+
+        width: Utils.Theme.headerIconSize
+        height: Utils.Theme.headerIconSize
+
+        Utils.MaterialIcon {
+            anchors.centerIn: parent
+            text: btn.icon
+            font.pixelSize: Utils.Theme.headerIconSize
+            color: btn.enabled
+                ? (btnMouse.containsMouse ? Utils.Theme.accent : Utils.Theme.text)
+                : Utils.Theme.disabledText
+            fill: 1
+            scale: btnMouse.pressed ? 0.85 : btnMouse.containsMouse ? 1.1 : 1
+
+            Behavior on color {
+                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+            }
+
+            Behavior on scale {
+                NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+            }
+        }
+
+        MouseArea {
+            id: btnMouse
+            anchors.fill: parent
+            anchors.margins: -4
+            hoverEnabled: true
+            cursorShape: btn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: btn.clicked()
+        }
+    }
+
+    function _formatTime(seconds: real): string {
+        if (seconds <= 0) return "0:00";
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return m + ":" + (s < 10 ? "0" : "") + s;
     }
 }

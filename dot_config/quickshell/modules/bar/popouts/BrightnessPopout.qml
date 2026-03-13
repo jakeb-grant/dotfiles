@@ -58,10 +58,10 @@ ColumnLayout {
         id: slider
 
         Layout.fillWidth: true
-        height: 24
+        height: Utils.Theme.sliderHeight
 
-        readonly property real trackHeight: 6
-        readonly property real thumbSize: 16
+        readonly property real trackHeight: Utils.Theme.sliderTrackHeight
+        readonly property real thumbSize: Utils.Theme.sliderThumbSize
         readonly property real effectiveWidth: width - thumbSize
         readonly property bool dragging: sliderMouse.pressed
 

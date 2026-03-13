@@ -105,6 +105,11 @@ Singleton {
     readonly property int popoutWidthNarrow: 180
     readonly property int popoutListHeight: 180
 
+    // ── Sliders ──
+    readonly property int sliderHeight: 24
+    readonly property int sliderTrackHeight: 6
+    readonly property int sliderThumbSize: 16
+
     // ── List Items ──
     readonly property int listItemHeight: 32
     readonly property int listItemRadius: 6

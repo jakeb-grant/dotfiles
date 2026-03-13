@@ -25,6 +25,33 @@ Singleton {
     readonly property real position: active?.position ?? 0
     readonly property real volume: active?.volume ?? 0
 
+    // ── Live position (interpolated between MPRIS updates) ──
+    property real livePosition: 0
+
+    onPositionChanged: livePosition = position
+    onIsPlayingChanged: {
+        livePosition = position;
+        _lastTimestamp = Date.now();
+    }
+    onActiveChanged: {
+        livePosition = position;
+        _lastTimestamp = Date.now();
+    }
+
+    property real _lastTimestamp: 0
+
+    Timer {
+        interval: 250
+        running: root.isPlaying
+        repeat: true
+        onTriggered: {
+            const now = Date.now();
+            const dt = (now - root._lastTimestamp) / 1000;
+            root._lastTimestamp = now;
+            root.livePosition = Math.min(root.livePosition + dt, root.length);
+        }
+    }
+
     // ── Capabilities ──
     readonly property bool canGoNext: active?.canGoNext ?? false
     readonly property bool canGoPrevious: active?.canGoPrevious ?? false
