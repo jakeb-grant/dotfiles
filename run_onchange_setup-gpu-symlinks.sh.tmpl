@@ -1,0 +1,37 @@
+#!/bin/bash
+# Create stable /dev/dri/ symlinks for GPU devices via udev rules.
+# Re-runs when GPU PCI IDs change in chezmoi config.
+#
+# Config hash: {{ .igpu_pci | default "" }}:{{ .dgpu_pci | default "" }}
+
+{{ if and (eq (.graphics | default "") "prime") (ne (.igpu_pci | default "") "") -}}
+set -e
+
+RULE_FILE="/etc/udev/rules.d/99-gpu-symlinks.rules"
+
+echo "Setting up stable GPU device symlinks..."
+echo "This requires sudo access."
+
+RULES=""
+
+{{ if ne (.igpu_pci | default "") "" -}}
+# Integrated GPU: {{ .igpu_pci }}
+RULES+='KERNEL=="card*", KERNELS=="{{ .igpu_pci }}", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/igpu"
+'
+{{ end -}}
+
+{{ if ne (.dgpu_pci | default "") "" -}}
+# Discrete GPU: {{ .dgpu_pci }}
+RULES+='KERNEL=="card*", KERNELS=="{{ .dgpu_pci }}", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/dgpu"
+'
+{{ end -}}
+
+echo "$RULES" | sudo tee "$RULE_FILE" > /dev/null
+sudo udevadm control --reload
+sudo udevadm trigger
+
+echo "GPU symlinks created:"
+ls -la /dev/dri/igpu /dev/dri/dgpu 2>/dev/null || echo "(symlinks will appear after next boot or device re-plug)"
+{{ else -}}
+echo "No discrete GPU configured, skipping GPU symlink setup."
+{{ end -}}

@@ -33,8 +33,8 @@ env = __GLX_VENDOR_LIBRARY_NAME,nvidia
 env = NVD_BACKEND,direct
 env = ELECTRON_OZONE_PLATFORM_HINT,auto
 {{ if eq .graphics "prime" -}}
-# Multi-monitor support for hybrid graphics
-env = AQ_DRM_DEVICES,/dev/dri/card1:/dev/dri/card0
+# Multi-monitor support for hybrid graphics (stable udev symlinks)
+env = AQ_DRM_DEVICES,/dev/dri/igpu:/dev/dri/dgpu
 {{ end -}}
 {{ end -}}
 
