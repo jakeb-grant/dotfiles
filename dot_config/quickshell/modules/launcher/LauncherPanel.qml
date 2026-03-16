@@ -189,7 +189,7 @@ ColumnLayout {
             text: "No results"
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
-            color: Utils.Theme.overlay0
+            color: Utils.Theme.disabledText
         }
     }
 

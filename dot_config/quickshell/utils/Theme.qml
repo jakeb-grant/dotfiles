@@ -117,6 +117,10 @@ Singleton {
     readonly property int launcherInputHeight: 40
     readonly property int launcherMaxHeight: 420
 
+    // ── Wallpaper Picker ──
+    readonly property int wallpaperPickerWidth: 640
+    readonly property int wallpaperPickerMaxHeight: 400
+
     // ── Sliders ──
     readonly property int sliderHeight: 24
     readonly property int sliderTrackHeight: 6

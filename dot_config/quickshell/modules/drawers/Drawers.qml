@@ -4,6 +4,7 @@ import qs.modules.bar
 import qs.modules.bar.popouts
 import qs.modules.launcher
 import qs.modules.notifications
+import qs.modules.wallpaper
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -35,8 +36,10 @@ Variants {
             WlrLayershell.namespace: "quickshell-drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
-            WlrLayershell.keyboardFocus: Services.Launcher.visible
-                && Services.Launcher.activeScreen === scope.modelData.name
+            WlrLayershell.keyboardFocus: (Services.Launcher.visible
+                    && Services.Launcher.activeScreen === scope.modelData.name)
+                || (Services.Wallpaper.visible
+                    && Services.Wallpaper.activeScreen === scope.modelData.name)
                 ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
@@ -53,6 +56,7 @@ Variants {
                 readonly property bool passthrough: !popoutWrapper.active
                     && !Services.Notifications.expanded
                     && !Services.Launcher.visible
+                    && !Services.Wallpaper.visible
                 x: passthrough ? bar.implicitWidth : 0
                 y: passthrough ? bt : 0
                 width: passthrough ? (win.width - bar.implicitWidth - bt) : 0
@@ -74,6 +78,15 @@ Variants {
                     y: launcherBg.y
                     width: (launcherBg.visible && maskRegion.passthrough) ? launcherBg.width : 0
                     height: (launcherBg.visible && maskRegion.passthrough) ? launcherBg.height : 0
+                    intersection: Intersection.Subtract
+                }
+
+                // Cut wallpaper picker area out of the click-through zone
+                Region {
+                    x: wallpaperBg.x
+                    y: wallpaperBg.y
+                    width: (wallpaperBg.visible && maskRegion.passthrough) ? wallpaperBg.width : 0
+                    height: (wallpaperBg.visible && maskRegion.passthrough) ? wallpaperBg.height : 0
                     intersection: Intersection.Subtract
                 }
             }
@@ -323,6 +336,34 @@ Variants {
                     }
                 }
 
+                // Wallpaper picker background — centered floating panel
+                Rectangle {
+                    id: wallpaperBg
+
+                    readonly property int spacing: Utils.Theme.spacingLarge
+                    readonly property real wpw: Utils.Theme.wallpaperPickerWidth + spacing * 2
+
+                    property real animatedHeight: wallpaperPicker.visible
+                        ? wallpaperPicker.implicitHeight + spacing * 2 : 0
+                    Behavior on animatedHeight {
+                        NumberAnimation {
+                            duration: Utils.Theme.animDurationSmall
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Utils.Theme.animCurveStandard
+                        }
+                    }
+
+                    readonly property real wph: animatedHeight
+
+                    x: (win.width - wpw) / 2
+                    y: (win.height - wph) / 2
+                    width: wpw
+                    height: wph
+                    radius: Utils.Theme.popoutRounding
+                    color: Utils.Theme.mantle
+                    visible: wph > 1
+                }
+
                 // Launcher background — concave curves where launcher meets bottom bezel
                 Shape {
                     id: launcherBg
@@ -429,6 +470,42 @@ Variants {
                 width: Utils.Theme.launcherWidth
                 visible: Services.Launcher.visible
                     && Services.Launcher.activeScreen === scope.modelData.name
+            }
+
+            // Click-outside-to-close for wallpaper picker
+            MouseArea {
+                anchors.fill: parent
+                visible: Services.Wallpaper.visible && wpCloseGuard.ready
+                onClicked: Services.Wallpaper.visible = false
+                z: 0
+
+                Timer {
+                    id: wpCloseGuard
+                    property bool ready: false
+                    interval: 50
+                    onTriggered: ready = true
+                }
+                Connections {
+                    target: Services.Wallpaper
+                    function onVisibleChanged(): void {
+                        if (Services.Wallpaper.visible) {
+                            wpCloseGuard.ready = false;
+                            wpCloseGuard.restart();
+                        } else {
+                            wpCloseGuard.ready = false;
+                        }
+                    }
+                }
+            }
+
+            // Wallpaper picker — centered over the background
+            WallpaperPicker {
+                id: wallpaperPicker
+                x: wallpaperBg.x + Utils.Theme.spacingLarge
+                y: wallpaperBg.y + Utils.Theme.spacingLarge
+                width: Utils.Theme.wallpaperPickerWidth
+                visible: Services.Wallpaper.visible
+                    && Services.Wallpaper.activeScreen === scope.modelData.name
             }
 
             // Notification cards — positioned in top-right corner over the Shape

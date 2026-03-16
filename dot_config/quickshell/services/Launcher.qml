@@ -68,6 +68,7 @@ Singleton {
     readonly property var _mainItems: [
         { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds" },
         { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard" },
+        { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "" },
         { type: "action", name: "Upkeep", subtitle: "", icon: "", materialIcon: "system_update", score: 0, _data: "ghostty -e upkeep" },
         { type: "action", name: "Display", subtitle: "", icon: "", materialIcon: "monitor", score: 0, _data: "ghostty -e hyprpier mgr" },
         { type: "action", name: "About", subtitle: "", icon: "", materialIcon: "info", score: 0, _data: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" },
@@ -192,6 +193,11 @@ Singleton {
             _clipDecodeProc.command = ["sh", "-c", "cliphist decode \"$1\" | wl-copy", "sh", result._data];
             _clipDecodeProc.running = true;
             break;
+        case "wallpaper":
+            Wallpaper.activeScreen = activeScreen;
+            Wallpaper.visible = true;
+            visible = false;
+            return;
         case "keybind":
         case "action":
             // Close first so interactive tools (slurp, etc.) can grab the screen
