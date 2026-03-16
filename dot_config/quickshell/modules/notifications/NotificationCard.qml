@@ -131,7 +131,7 @@ Rectangle {
         anchors.margins: Utils.Theme.spacingLarge
         spacing: Utils.Theme.spacingNormal
 
-        // App icon
+        // App icon — prefer notification image, then appIcon, then fallback
         Rectangle {
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
@@ -141,12 +141,34 @@ Rectangle {
             clip: true
 
             Image {
-                id: iconImg
+                id: notifImage
                 anchors.fill: parent
-                source: root.notification.appIcon
-                    ? Quickshell.iconPath(root.notification.appIcon) : ""
+                anchors.margins: 4
+                source: {
+                    const img = root.notification.image;
+                    if (!img) return "";
+                    // File paths and data URIs work directly
+                    if (img.startsWith("/") || img.startsWith("file:") || img.startsWith("data:"))
+                        return img;
+                    // image://icon/ URIs: extract name and resolve via icon theme
+                    // (passing them through directly shows checkerboard for missing icons)
+                    const iconName = img.startsWith("image://icon/")
+                        ? img.substring(13) : img;
+                    return Quickshell.iconPath(iconName) ?? "";
+                }
                 fillMode: Image.PreserveAspectFit
                 visible: status === Image.Ready
+                asynchronous: true
+                sourceSize: Qt.size(48, 48)
+            }
+
+            Image {
+                id: iconImg
+                anchors.fill: parent
+                source: (!notifImage.visible && root.notification.appIcon)
+                    ? (Quickshell.iconPath(root.notification.appIcon) ?? "") : ""
+                fillMode: Image.PreserveAspectFit
+                visible: !notifImage.visible && status === Image.Ready
                 sourceSize: Qt.size(28, 28)
             }
 
@@ -155,7 +177,7 @@ Rectangle {
                 text: "notifications"
                 font.pixelSize: Utils.Theme.iconSize
                 color: Utils.Theme.subtext0
-                visible: !iconImg.visible
+                visible: !notifImage.visible && !iconImg.visible
             }
         }
 
@@ -216,26 +238,6 @@ Rectangle {
                 visible: text !== ""
             }
 
-            // Notification image (album art, screenshot, etc.)
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: width * 9 / 16
-                Layout.topMargin: Utils.Theme.spacingSmall
-                radius: Utils.Theme.listItemRadius
-                color: Utils.Theme.surface1
-                clip: true
-                visible: notifImage.status === Image.Ready
-                    && notifImage.source != iconImg.source
-
-                Image {
-                    id: notifImage
-                    anchors.fill: parent
-                    source: root.notification.image
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                }
-            }
-
             // Action buttons
             Row {
                 Layout.fillWidth: true
@@ -249,8 +251,9 @@ Rectangle {
                     delegate: Rectangle {
                         required property NotificationAction modelData
 
+                        visible: modelData.text.trim() !== ""
                         width: actionLabel.implicitWidth + Utils.Theme.spacingNormal * 2
-                        height: Utils.Theme.pillHeight
+                        height: visible ? Utils.Theme.pillHeight : 0
                         radius: Utils.Theme.roundingFull
                         color: actionMouse.containsMouse
                             ? Utils.Theme.hoverBg : Utils.Theme.surface1
