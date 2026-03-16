@@ -11,7 +11,7 @@ Replacing Waybar + swaync with a unified Quickshell desktop shell on Hyprland.
 | OSD | (none) | Quickshell OSD (volume/brightness overlay) |
 | Session menu | (none) | Quickshell session panel (slide-in from right) |
 | Dashboard | (none) | Quickshell dashboard (slide-down from top: calendar, media, stats) |
-| Launcher | Walker | Keep Walker |
+| Launcher | Walker | Quickshell launcher (unified search: apps, windows, keybinds, actions, clipboard, calc) |
 | Lock screen | hyprlock | Keep hyprlock |
 
 ## Architecture
@@ -29,6 +29,7 @@ dot_config/quickshell/
         Clock.qml                 # Singleton: SystemClock + format helpers
         Hypr.qml                  # Singleton: Quickshell.Hyprland + workspace rules
         Network.qml               # Singleton: iwd via Process polling
+        Launcher.qml              # Singleton: multi-mode launcher (apps, windows, keybinds, actions, clipboard, calc)
         Notifications.qml         # Singleton: NotificationServer, popup management, history, notification center state
         Popout.qml                # Singleton: popout state machine (show/close/cleanup + graceActive)
         Brightness.qml            # Singleton: brightnessctl + sysfs FileView watching
@@ -65,6 +66,9 @@ dot_config/quickshell/
                 ThemePopout.qml    # Palette file list with click-to-switch theme
                 PlaceholderPopout.qml # Stub popout for unimplemented features
 
+        launcher/
+            LauncherPanel.qml          # Launcher UI: search input, result list with generic delegate
+
         notifications/
             NotificationCard.qml       # Notification card: icon, text, actions, close, image, timestamp
         osd/                       # TODO
@@ -81,7 +85,7 @@ dot_config/quickshell/
 ### Dependencies
 
 ```bash
-sudo pacman -S ttf-material-symbols-variable
+sudo pacman -S ttf-material-symbols-variable cliphist wl-clipboard
 ```
 
 - **Material Symbols Rounded** — variable icon font used for all UI icons. Supports `FILL`, `GRAD`, `opsz`, `wght` axes for dynamic icon styling (e.g., outline→filled on state change). Named ligature icons (e.g., `"volume_up"`, `"wifi"`) instead of opaque codepoints.
@@ -311,7 +315,20 @@ Query examples:
 - [x] Popup notifications — bezel-integrated, top-right, auto-expire with hover pause, entrance/exit animations
 - [x] Notification API fixes — expire vs dismiss, lastGeneration filter, persistenceSupported, duplicate image suppression
 - [x] Notification center — expandable from popup stack, scrollable history, header with "Clear all", HyprlandFocusGrab
-- [ ] Keybind / launcher entry point for notification center (currently only accessible from popup stack)
+- [x] Keybind entry points — GlobalShortcuts for dismiss, dismiss-all, toggle panel (wired in shell.qml + hyprland.conf)
+
+### Phase 3.5: Launcher (replacing Walker) ✅
+- [x] `services/Launcher.qml` — unified search singleton with generic result objects
+- [x] `modules/launcher/LauncherPanel.qml` — search input + scrollable result list with generic delegate
+- [x] Apps — DesktopEntries search with terminal app detection (`runInTerminal`)
+- [x] Windows — Hyprland.toplevels live search, Enter to focus
+- [x] Keybinds — hardcoded array (~33 entries), searchable by name/shortcut/keywords
+- [x] Actions — system actions (Upkeep, Display, About, Windows VM)
+- [x] Clipboard — cliphist integration, loaded on open, decode+copy on select
+- [x] Calculator — `=` prefix, JS eval, copies result
+- [x] Main menu — default view with submenu navigation (Keybinds, Clipboard)
+- [x] Hyprland config — `$mod + Space` triggers `quickshell:launcher` GlobalShortcut
+- [x] Click-outside dismissal, Escape to close/go back
 
 ### Phase 4: Calendar Integration
 - [ ] Set up pimsync (vdirsyncer successor) with CalDAV sources + secret storage
