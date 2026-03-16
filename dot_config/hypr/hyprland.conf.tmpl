@@ -56,6 +56,7 @@ exec-once = hyprctl setcursor Bibata-Modern-Classic 24
 exec-once = elephant-wrapper
 exec-once = awww-daemon
 exec-once = walker --gapplication-service
+exec-once = wl-paste --watch cliphist store
 exec-once = hypridle
 
 # ------------------------------------------------------------------------------
@@ -63,7 +64,7 @@ exec-once = hypridle
 # ------------------------------------------------------------------------------
 
 # Applications
-bind = $mod, Space, exec, walker -s main -H
+bind = $mod, Space, global, quickshell:launcher
 bind = $mod, Return, exec, $terminal
 bind = $mod SHIFT, B, exec, xdg-open https://
 bind = $mod SHIFT, F, exec, $fileManager

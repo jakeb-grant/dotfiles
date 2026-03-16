@@ -111,6 +111,12 @@ Singleton {
     readonly property int notificationWidth: 360
     readonly property int notificationCenterMaxHeight: 480
 
+    // ── Launcher ──
+    readonly property int launcherWidth: 560
+    readonly property int launcherItemHeight: 40
+    readonly property int launcherInputHeight: 40
+    readonly property int launcherMaxHeight: 420
+
     // ── Sliders ──
     readonly property int sliderHeight: 24
     readonly property int sliderTrackHeight: 6

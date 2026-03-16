@@ -29,9 +29,11 @@ dot_config/quickshell/
         Clock.qml                 # Singleton: SystemClock + format helpers
         Hypr.qml                  # Singleton: Quickshell.Hyprland + workspace rules
         Network.qml               # Singleton: iwd via Process polling
+        Notifications.qml         # Singleton: NotificationServer, popup management, history, notification center state
         Popout.qml                # Singleton: popout state machine (show/close/cleanup + graceActive)
         Brightness.qml            # Singleton: brightnessctl + sysfs FileView watching
-        Players.qml               # Singleton: Quickshell.Services.Mpris
+        Players.qml               # Singleton: Quickshell.Services.Mpris (live position interpolation)
+        SystemStats.qml           # Singleton: CPU, RAM, temp, disk, GPU polling (nvidia-smi / AMD sysfs)
         Calendar.qml              # TODO: khal event polling via Process
 
     modules/
@@ -52,9 +54,9 @@ dot_config/quickshell/
             popouts/
                 PopoutWrapper.qml  # Master popout container with animations + flush-edge pinning
                 CalendarPopout.qml # Month grid with today highlight, nav, clock footer
-                SystemPopout.qml   # Distro, kernel, uptime, hostname, shell, package counts
+                SystemPopout.qml   # Distro, kernel, uptime, hostname, shell, packages + hardware/GPU stats
                 BatteryPopout.qml  # Battery %, capacity bar, power profile toggle
-                VolumePopout.qml   # Volume slider + output device switcher
+                VolumePopout.qml   # Volume slider + output device switcher + MPRIS now-playing controls
                 WifiPopout.qml     # Wi-Fi status, network list, connect/disconnect
                 BluetoothPopout.qml # Bluetooth device list, connect/disconnect
                 PowerPopout.qml    # Shutdown, restart, sleep, lock, logout
@@ -63,9 +65,10 @@ dot_config/quickshell/
                 ThemePopout.qml    # Palette file list with click-to-switch theme
                 PlaceholderPopout.qml # Stub popout for unimplemented features
 
+        notifications/
+            NotificationCard.qml       # Notification card: icon, text, actions, close, image, timestamp
         osd/                       # TODO
         session/                   # TODO
-        sidebar/                   # TODO
         dashboard/                 # TODO
 
     utils/
@@ -286,7 +289,11 @@ Query examples:
 - [x] UI polish — three-pass design review: color consistency, tokenization, tray icon fallbacks
 - [x] Composited frame shadow — single MultiEffect layer for unified frame + popout silhouette shadow
 - [x] Flush popout fix — cached content height prevents top-flush detection flicker during Loader activation
-- [x] `services/Players.qml` — MPRIS singleton (media controls for dashboard/future use, not bar)
+- [x] `services/Players.qml` — MPRIS singleton with live position interpolation (used in VolumePopout)
+- [x] `services/SystemStats.qml` — CPU, RAM, temp, disk, GPU stats (polls only when SystemPopout open)
+- [x] Bar: VolumePopout — MPRIS now-playing: album art, seek bar, transport controls
+- [x] Bar: SystemPopout — hardware stats (CPU, RAM, temp, disk) + conditional GPU section (NVIDIA/AMD)
+- [x] Parameterizable bezel intensity — `_quickshell.bezelIntensity` (0=none, 1=subtle, 2=normal, 3=heavy)
 - [x] Startup animations — bar slide-in, workspace pill cascade
 - [x] Hover effects on bar items — color transitions on status icons, scale/opacity on workspace indicators
 - [x] Theme-overridable accent token — `_quickshell.accent` per palette, defaults to `blue`
@@ -298,12 +305,13 @@ Query examples:
 - [x] `services/Brightness.qml` — brightnessctl + sysfs FileView (no polling)
 - [~] `modules/osd/OsdPopup.qml` — skipped, VolumePopout + BrightnessPopout already provide feedback
 
-### Phase 3: Sidebar (Notifications)
-- [ ] `Quickshell.Services.Notifications` as notification server (replaces swaync)
-- [ ] `modules/sidebar/Sidebar.qml` — slide-in from right, notification dock
-- [ ] Live notification list with dismiss/action
-- [ ] Notification history (scrollable)
-- [ ] Keybind to reveal sidebar
+### Phase 3: Notifications
+- [x] `services/Notifications.qml` — NotificationServer singleton, popup management, tracked history
+- [x] `modules/notifications/NotificationCard.qml` — card with icon, summary, body, image, actions, close button
+- [x] Popup notifications — bezel-integrated, top-right, auto-expire with hover pause, entrance/exit animations
+- [x] Notification API fixes — expire vs dismiss, lastGeneration filter, persistenceSupported, duplicate image suppression
+- [x] Notification center — expandable from popup stack, scrollable history, header with "Clear all", HyprlandFocusGrab
+- [ ] Keybind / launcher entry point for notification center (currently only accessible from popup stack)
 
 ### Phase 4: Calendar Integration
 - [ ] Set up pimsync (vdirsyncer successor) with CalDAV sources + secret storage
@@ -312,11 +320,10 @@ Query examples:
 - [ ] `CalendarPopout.qml` — integrate khal events below month grid (today + upcoming)
 - [ ] Event indicators on calendar days (dots for days with events)
 
-### Phase 5: Dashboard
-- [ ] `modules/dashboard/Dashboard.qml` — slide-down from top edge
-- [ ] Media player controls (MPRIS)
-- [ ] System stats (CPU/RAM/disk/temp via Process)
-- [ ] Keybind to reveal
+### Phase 5: Dashboard — redirected
+- [x] Media player controls — integrated into VolumePopout (Phase 1.5)
+- [x] System stats — integrated into SystemPopout (Phase 1.5)
+- [ ] `modules/dashboard/Dashboard.qml` — future use (app launcher or other)
 
 ### Phase 6: Polish + Cutover
 - [ ] Coordinated panel visibility (opening one closes others)

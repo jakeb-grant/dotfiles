@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import qs.modules.bar
 import qs.modules.bar.popouts
+import qs.modules.launcher
 import qs.modules.notifications
 import Quickshell
 import Quickshell.Wayland
@@ -34,6 +35,9 @@ Variants {
             WlrLayershell.namespace: "quickshell-drawers"
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
+            WlrLayershell.keyboardFocus: Services.Launcher.visible
+                && Services.Launcher.activeScreen === scope.modelData.name
+                ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
             anchors.top: true
@@ -48,6 +52,7 @@ Variants {
                 readonly property int bt: Utils.Theme.borderThickness
                 readonly property bool passthrough: !popoutWrapper.active
                     && !Services.Notifications.expanded
+                    && !Services.Launcher.visible
                 x: passthrough ? bar.implicitWidth : 0
                 y: passthrough ? bt : 0
                 width: passthrough ? (win.width - bar.implicitWidth - bt) : 0
@@ -62,6 +67,15 @@ Variants {
                     height: (notifBg.visible && maskRegion.passthrough) ? notifBg.height : 0
                     intersection: Intersection.Subtract
                 }
+
+                // Cut launcher area out of the click-through zone
+                Region {
+                    x: launcherBg.x
+                    y: launcherBg.y
+                    width: (launcherBg.visible && maskRegion.passthrough) ? launcherBg.width : 0
+                    height: (launcherBg.visible && maskRegion.passthrough) ? launcherBg.height : 0
+                    intersection: Intersection.Subtract
+                }
             }
 
             HyprlandFocusGrab {
@@ -70,6 +84,15 @@ Variants {
                 windows: [win]
                 onCleared: Services.Notifications.expanded = false
             }
+
+            // Click-outside-to-close for launcher
+            MouseArea {
+                anchors.fill: parent
+                visible: Services.Launcher.visible
+                onClicked: Services.Launcher.visible = false
+                z: 0
+            }
+
 
             // Composited frame + popout + notification layer — single shadow for
             // combined silhouette. NOTE: layer.enabled forces GPU offscreen rendering
@@ -272,6 +295,113 @@ Variants {
                         }
                     }
                 }
+
+                // Launcher background — concave curves where launcher meets bottom bezel
+                Shape {
+                    id: launcherBg
+
+                    readonly property real r: Utils.Theme.popoutRounding
+                    readonly property int bt: Utils.Theme.borderThickness
+                    readonly property int spacing: Utils.Theme.spacingNormal
+                    readonly property real lw: Utils.Theme.launcherWidth + spacing * 2
+                    readonly property real concaveR: Math.min(lw, r)
+                    readonly property real convexR: Math.min(lw / 2, r)
+
+                    property real animatedHeight: launcherPanel.visible
+                        ? launcherPanel.implicitHeight + spacing * 2 : 0
+                    Behavior on animatedHeight {
+                        NumberAnimation {
+                            duration: Utils.Theme.animDurationSmall
+                            easing.type: Easing.BezierSpline
+                            easing.bezierCurve: Utils.Theme.animCurveStandard
+                        }
+                    }
+
+                    readonly property real lh: animatedHeight
+                    readonly property real leftExt: Math.min(lh, r)
+                    readonly property real rightExt: Math.min(lh, r)
+                    readonly property real topExt: Math.min(lh, r)
+                    readonly property real cr: Math.min(concaveR, lh)
+                    readonly property real cvr: Math.min(convexR, lh / 3)
+
+                    x: (win.width - lw) / 2 - leftExt
+                    y: win.height - bt - lh - topExt
+                    width: lw + leftExt + rightExt
+                    height: lh + topExt
+                    visible: lh > 1
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        strokeWidth: -1
+                        fillColor: Utils.Theme.mantle
+
+                        // Start at top-left of the shape
+                        startX: launcherBg.leftExt
+                        startY: launcherBg.cvr
+
+                        // Top-left convex arc
+                        PathArc {
+                            x: launcherBg.leftExt + launcherBg.cvr
+                            y: 0
+                            radiusX: launcherBg.cvr
+                            radiusY: launcherBg.cvr
+                            direction: PathArc.Clockwise
+                        }
+
+                        // Along top
+                        PathLine {
+                            x: launcherBg.width - launcherBg.rightExt - launcherBg.cvr
+                            y: 0
+                        }
+
+                        // Top-right convex arc
+                        PathArc {
+                            x: launcherBg.width - launcherBg.rightExt
+                            y: launcherBg.cvr
+                            radiusX: launcherBg.cvr
+                            radiusY: launcherBg.cvr
+                            direction: PathArc.Clockwise
+                        }
+
+                        // Down right edge
+                        PathLine {
+                            x: launcherBg.width - launcherBg.rightExt
+                            y: launcherBg.topExt + launcherBg.lh - launcherBg.cr
+                        }
+
+                        // Bottom-right concave arc (into bottom bezel)
+                        PathArc {
+                            x: launcherBg.width
+                            y: launcherBg.height
+                            radiusX: launcherBg.rightExt
+                            radiusY: launcherBg.cr
+                            direction: PathArc.Counterclockwise
+                        }
+
+                        // Along bottom bezel
+                        PathLine { x: 0; y: launcherBg.height }
+
+                        // Bottom-left concave arc (from bezel up)
+                        PathArc {
+                            x: launcherBg.leftExt
+                            y: launcherBg.topExt + launcherBg.lh - launcherBg.cr
+                            radiusX: launcherBg.leftExt
+                            radiusY: launcherBg.cr
+                            direction: PathArc.Counterclockwise
+                        }
+                    }
+                }
+            }
+
+            // Launcher panel — positioned at bottom center over the Shape
+            LauncherPanel {
+                id: launcherPanel
+                x: (win.width - Utils.Theme.launcherWidth) / 2
+                y: win.height - Utils.Theme.borderThickness
+                    - Utils.Theme.spacingNormal - implicitHeight
+                width: Utils.Theme.launcherWidth
+                visible: Services.Launcher.visible
+                    && Services.Launcher.activeScreen === scope.modelData.name
             }
 
             // Notification cards — positioned in top-right corner over the Shape
