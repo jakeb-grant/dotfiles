@@ -85,6 +85,33 @@ Variants {
                 onCleared: Services.Notifications.expanded = false
             }
 
+            // Click-outside-to-close for notification panel
+            MouseArea {
+                anchors.fill: parent
+                visible: Services.Notifications.expanded && notifCloseGuard.ready
+                onClicked: Services.Notifications.expanded = false
+                z: 0
+
+                // Guard: don't catch the click that opened the panel
+                Timer {
+                    id: notifCloseGuard
+                    property bool ready: false
+                    interval: 50
+                    onTriggered: ready = true
+                }
+                Connections {
+                    target: Services.Notifications
+                    function onExpandedChanged(): void {
+                        if (Services.Notifications.expanded) {
+                            notifCloseGuard.ready = false;
+                            notifCloseGuard.restart();
+                        } else {
+                            notifCloseGuard.ready = false;
+                        }
+                    }
+                }
+            }
+
             // Click-outside-to-close for launcher
             MouseArea {
                 anchors.fill: parent

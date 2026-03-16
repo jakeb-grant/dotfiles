@@ -25,7 +25,7 @@ Singleton {
     readonly property var _keybinds: [
         { name: "Terminal", shortcut: "Super + Return", command: "ghostty", keywords: ["ghostty","shell"] },
         { name: "Browser", shortcut: "Super + Shift + B", command: "xdg-open https://", keywords: ["firefox","web"] },
-        { name: "File Manager", shortcut: "Super + Shift + F", command: "nautilus --new-window", keywords: ["nautilus","files"] },
+        { name: "File Manager", shortcut: "Super + Shift + F", command: "ghostty -e yazi", keywords: ["yazi","files"] },
         { name: "Editor", shortcut: "Super + Shift + Z", command: "zeditor", keywords: ["zed","code"] },
         { name: "Close Window", shortcut: "Super + W", command: "hyprctl dispatch killactive", keywords: ["kill","quit"] },
         { name: "Toggle Floating", shortcut: "Super + T", command: "hyprctl dispatch togglefloating", keywords: ["tile","float"] },
@@ -43,10 +43,9 @@ Singleton {
         { name: "Previous Workspace", shortcut: "Super + Shift + Tab", command: "hyprctl dispatch workspace e-1", keywords: ["switch"] },
         { name: "Last Workspace", shortcut: "Super + Ctrl + Tab", command: "hyprctl dispatch workspace previous", keywords: ["switch","previous","back"] },
         { name: "Scratchpad", shortcut: "Super + S", command: "hyprctl dispatch togglespecialworkspace magic", keywords: ["hidden","stash"] },
-        { name: "Dismiss Notification", shortcut: "Super + ,", command: "swaync-client -C", keywords: ["close","clear"] },
-        { name: "Dismiss All", shortcut: "Super + Shift + ,", command: "swaync-client --close-all", keywords: ["clear","close"] },
-        { name: "Toggle DND", shortcut: "Super + Ctrl + ,", command: "swaync-client -d -sw", keywords: ["mute","silent"] },
-        { name: "Notification Panel", shortcut: "Super + Alt + ,", command: "swaync-client -t -sw", keywords: ["center"] },
+        { name: "Dismiss Notification", shortcut: "Super + ,", command: "hyprctl dispatch global quickshell:notif-dismiss", keywords: ["close","clear"] },
+        { name: "Dismiss All", shortcut: "Super + Shift + ,", command: "hyprctl dispatch global quickshell:notif-dismiss-all", keywords: ["clear","close"] },
+        { name: "Notification Panel", shortcut: "Super + Alt + ,", command: "hyprctl dispatch global quickshell:notif-panel", keywords: ["center"] },
         { name: "Screenshot (Area)", shortcut: "Print", command: "grim -g \"$(slurp)\" - | wl-copy", keywords: ["capture","snip"] },
         { name: "Screenshot (Full)", shortcut: "Shift + Print", command: "grim - | wl-copy", keywords: ["capture","screen"] },
         { name: "Color Picker", shortcut: "Super + Print", command: "hyprpicker -a", keywords: ["pick","eyedropper"] },
@@ -174,7 +173,11 @@ Singleton {
             }
             return;
         case "app":
-            result._data.execute();
+            if (result._data.runInTerminal) {
+                Quickshell.execDetached(["ghostty", "-e", ...result._data.command]);
+            } else {
+                result._data.execute();
+            }
             break;
         case "window":
             Hyprland.dispatch("focuswindow address:" + result._data);

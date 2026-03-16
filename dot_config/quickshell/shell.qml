@@ -13,5 +13,26 @@ ShellRoot {
         onPressed: Services.Launcher.toggle()
     }
 
+    GlobalShortcut {
+        name: "notif-dismiss"
+        description: "Dismiss latest notification"
+        onPressed: {
+            if (Services.Notifications.popups.length > 0)
+                Services.Notifications.animatedDismiss(Services.Notifications.popups[0]);
+        }
+    }
+
+    GlobalShortcut {
+        name: "notif-dismiss-all"
+        description: "Dismiss all notifications"
+        onPressed: Services.Notifications.dismissAll()
+    }
+
+    GlobalShortcut {
+        name: "notif-panel"
+        description: "Toggle notification panel"
+        onPressed: Services.Notifications.toggleExpanded()
+    }
+
     Drawers {}
 }

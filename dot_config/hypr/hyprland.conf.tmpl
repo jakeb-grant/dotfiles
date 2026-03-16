@@ -85,10 +85,9 @@ bind = $mod, L, exec, hyprlock
 bind = $mod SHIFT, Space, exec, killall -SIGUSR1 waybar
 
 # Notifications
-bind = $mod, comma, exec, swaync-client -C
-bind = $mod SHIFT, comma, exec, swaync-client --close-all
-bind = $mod CTRL, comma, exec, swaync-client -d -sw
-bind = $mod ALT, comma, exec, swaync-client -t -sw
+bind = $mod, comma, global, quickshell:notif-dismiss
+bind = $mod SHIFT, comma, global, quickshell:notif-dismiss-all
+bind = $mod ALT, comma, global, quickshell:notif-panel
 
 # Move focus with arrow keys
 bind = $mod, left, movefocus, l
