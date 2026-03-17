@@ -190,11 +190,6 @@ Item {
                 sourceComponent: powerComponent
             }
 
-            Popout {
-                name: "theme"
-                sourceComponent: themeComponent
-            }
-
             // Per-tray-item popout menus (one per SystemTray item)
             Repeater {
                 model: SystemTray.items
@@ -346,11 +341,6 @@ Item {
     Component {
         id: powerComponent
         PowerPopout {}
-    }
-
-    Component {
-        id: themeComponent
-        ThemePopout {}
     }
 
     // Click-outside-to-close overlay

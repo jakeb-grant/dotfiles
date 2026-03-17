@@ -21,7 +21,7 @@ ColumnLayout {
         running: true
         onTriggered: {
             root._animStep++;
-            if (root._animStep >= 6)
+            if (root._animStep >= 5)
                 entranceTimer.stop();
         }
     }
@@ -73,9 +73,13 @@ ColumnLayout {
         }
     }
 
-    // ── Theme Selector — step 1 ──
-    Item {
-        id: themeItem
+    // ── Workspaces (pill + sliding indicator) — step 1 ──
+    Workspaces {
+        id: workspaces
+
+        Layout.alignment: Qt.AlignHCenter
+        screen: root.screen
+        entranceReady: root._animStep >= 1
 
         property real _yShift: root._animStep >= 1 ? 0 : 12
         Behavior on _yShift {
@@ -85,66 +89,21 @@ ColumnLayout {
         Behavior on opacity {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
-        transform: Translate { y: themeItem._yShift }
-
-        Layout.alignment: Qt.AlignHCenter
-        implicitWidth: themeIcon.implicitWidth
-        implicitHeight: themeIcon.implicitHeight
-
-        Utils.MaterialIcon {
-            id: themeIcon
-            anchors.centerIn: parent
-            text: "palette"
-            font.pixelSize: Utils.Theme.iconSize
-            color: Utils.Theme.subtleText
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-
-            onEntered: {
-                const globalPos = themeItem.mapToGlobal(0, themeItem.height / 2);
-                Services.Popout.show("theme", globalPos.y, root.screen);
-            }
-            onExited: {
-                Services.Popout.barItemHovered = false;
-                Services.Popout.requestClose();
-            }
-        }
-    }
-
-    // ── Workspaces (pill + sliding indicator) — step 2 ──
-    Workspaces {
-        id: workspaces
-
-        Layout.alignment: Qt.AlignHCenter
-        screen: root.screen
-        entranceReady: root._animStep >= 2
-
-        property real _yShift: root._animStep >= 2 ? 0 : 12
-        Behavior on _yShift {
-            NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
-        }
-        opacity: root._animStep >= 2 ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
-        }
         transform: Translate { y: workspaces._yShift }
     }
 
     // ── Spacer ──
     Item { Layout.fillHeight: true }
 
-    // ── System Tray Icons — step 3 ──
+    // ── System Tray Icons — step 2 ──
     TrayOverflow {
         id: trayOverflow
 
-        property real _yShift: root._animStep >= 3 ? 0 : 12
+        property real _yShift: root._animStep >= 2 ? 0 : 12
         Behavior on _yShift {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
-        opacity: root._animStep >= 3 ? 1 : 0
+        opacity: root._animStep >= 2 ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
@@ -157,15 +116,15 @@ ColumnLayout {
     // ── Gap ──
     Item { Layout.preferredHeight: Utils.Theme.spacingNormal }
 
-    // ── Calendar + Clock (single hover group) — step 4 ──
+    // ── Calendar + Clock (single hover group) — step 3 ──
     Item {
         id: calendarClockGroup
 
-        property real _yShift: root._animStep >= 4 ? 0 : 12
+        property real _yShift: root._animStep >= 3 ? 0 : 12
         Behavior on _yShift {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
-        opacity: root._animStep >= 4 ? 1 : 0
+        opacity: root._animStep >= 3 ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
@@ -235,15 +194,15 @@ ColumnLayout {
     // ── Gap ──
     Item { Layout.preferredHeight: Utils.Theme.spacingNormal }
 
-    // ── System Icons (pill grouping) — step 5 ──
+    // ── System Icons (pill grouping) — step 4 ──
     StatusIcons {
         id: statusIcons
 
-        property real _yShift: root._animStep >= 5 ? 0 : 12
+        property real _yShift: root._animStep >= 4 ? 0 : 12
         Behavior on _yShift {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
-        opacity: root._animStep >= 5 ? 1 : 0
+        opacity: root._animStep >= 4 ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
@@ -256,15 +215,15 @@ ColumnLayout {
     // ── Gap ──
     Item { Layout.preferredHeight: Utils.Theme.spacingNormal }
 
-    // ── Power (prominent, standalone) — step 6 ──
+    // ── Power (prominent, standalone) — step 5 ──
     Item {
         id: powerItem
 
-        property real _yShift: root._animStep >= 6 ? 0 : 12
+        property real _yShift: root._animStep >= 5 ? 0 : 12
         Behavior on _yShift {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
-        opacity: root._animStep >= 6 ? 1 : 0
+        opacity: root._animStep >= 5 ? 1 : 0
         Behavior on opacity {
             NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }

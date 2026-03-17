@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import QtQuick
+import qs.utils as Utils
 
 Singleton {
     id: root
@@ -19,6 +20,8 @@ Singleton {
 
     property string _submenu: ""
     property var _clipboardEntries: []
+    property var _themes: []
+    property var _themeBuffer: []
 
     // ── Static data ──
 
@@ -68,6 +71,7 @@ Singleton {
     readonly property var _mainItems: [
         { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds" },
         { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard" },
+        { type: "submenu", name: "Themes", subtitle: "", icon: "", materialIcon: "palette", score: 0, _data: "themes" },
         { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "" },
         { type: "action", name: "Upkeep", subtitle: "", icon: "", materialIcon: "system_update", score: 0, _data: "ghostty -e upkeep" },
         { type: "action", name: "Display", subtitle: "", icon: "", materialIcon: "monitor", score: 0, _data: "ghostty -e hyprpier mgr" },
@@ -122,6 +126,68 @@ Singleton {
         }
     }
 
+    Process {
+        id: _themeScanProc
+        onRunningChanged: {
+            if (running) {
+                root._themeBuffer = [];
+            } else {
+                root._themes = root._themeBuffer;
+                root._themeBuffer = [];
+                if (root._submenu === "themes")
+                    root.results = root._themesToResults();
+            }
+        }
+        stdout: SplitParser {
+            onRead: data => {
+                const parts = data.trim().split("|");
+                if (parts.length >= 2)
+                    root._themeBuffer.push({
+                        file: parts[0],
+                        name: parts[1],
+                        swatches: parts.slice(2),
+                    });
+            }
+        }
+    }
+
+    function _scanThemes(): void {
+        _themeScanProc.running = false;
+        _themeScanProc.command = ["python3", "-c",
+            "import json, os\n" +
+            "d = '" + Utils.Theme.palettePath + "'\n" +
+            "for f in sorted(os.listdir(d)):\n" +
+            "    if f == 'active.json' or not f.endswith('.json'): continue\n" +
+            "    try:\n" +
+            "        p = json.load(open(os.path.join(d, f)))\n" +
+            "        name = p.get('_name','')\n" +
+            "        if not name: continue\n" +
+            "        qs = p.get('_quickshell', {})\n" +
+            "        accent = qs.get('accent', p.get('blue',''))\n" +
+            "        sw = '|'.join([p.get('base',''), accent, p.get('red',''), p.get('green',''), p.get('yellow',''), p.get('mauve','')])\n" +
+            "        print(f'{f}|{name}|{sw}')\n" +
+            "    except: pass\n"];
+        _themeScanProc.running = true;
+    }
+
+    Process {
+        id: _themeSwitchProc
+    }
+
+    function _switchTheme(file: string): void {
+        _themeSwitchProc.running = false;
+        _themeSwitchProc.command = ["cp", Utils.Theme.palettePath + "/" + file, Utils.Theme.palettePath + "/active.json"];
+        _themeSwitchProc.running = true;
+    }
+
+    Connections {
+        target: Utils.Theme
+        function onThemeNameChanged(): void {
+            if (root._submenu === "themes")
+                root.results = root._themesToResults();
+        }
+    }
+
     onVisibleChanged: {
         if (visible) {
             query = "";
@@ -171,6 +237,10 @@ Singleton {
             } else if (result._data === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
                 selectedIndex = 0;
+            } else if (result._data === "themes") {
+                _scanThemes();
+                results = _themesToResults();
+                selectedIndex = 0;
             }
             return;
         case "app":
@@ -193,6 +263,9 @@ Singleton {
             _clipDecodeProc.command = ["sh", "-c", "cliphist decode \"$1\" | wl-copy", "sh", result._data];
             _clipDecodeProc.running = true;
             break;
+        case "theme":
+            _switchTheme(result._data);
+            return;
         case "wallpaper":
             _debounce.stop();
             _submenu = "wallpaper";
@@ -343,6 +416,23 @@ Singleton {
         return out;
     }
 
+    function _themesToResults(): var {
+        const out = [];
+        for (const t of _themes) {
+            out.push({
+                type: "theme",
+                name: t.name,
+                subtitle: t.name === Utils.Theme.themeName ? "Active" : "",
+                icon: "",
+                materialIcon: t.name === Utils.Theme.themeName ? "radio_button_checked" : "radio_button_unchecked",
+                score: 0,
+                _data: t.file,
+                swatches: t.swatches ?? [],
+            });
+        }
+        return out;
+    }
+
     function _filterClipboard(terms): var {
         const out = [];
         for (const entry of _clipboardEntries) {
@@ -399,6 +489,8 @@ Singleton {
                 results = _allKeybindItems;
             } else if (_submenu === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
+            } else if (_submenu === "themes") {
+                results = _themesToResults();
             } else {
                 results = _mainItems;
             }
@@ -422,6 +514,11 @@ Singleton {
         }
         if (_submenu === "clipboard") {
             results = _filterClipboard(terms);
+            selectedIndex = 0;
+            return;
+        }
+        if (_submenu === "themes") {
+            results = _themesToResults().filter(t => terms.every(term => t.name.toLowerCase().includes(term)));
             selectedIndex = 0;
             return;
         }

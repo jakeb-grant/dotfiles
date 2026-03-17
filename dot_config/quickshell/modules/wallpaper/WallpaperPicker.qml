@@ -45,7 +45,6 @@ ColumnLayout {
         case Qt.Key_Enter:
             const idx = Math.min(Services.Wallpaper.selectedIndex, count - 1);
             Services.Wallpaper.setWallpaper(Services.Wallpaper.wallpapers[idx]);
-            Services.Launcher.visible = false;
             event.accepted = true;
             break;
         }
@@ -267,7 +266,6 @@ ColumnLayout {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 Services.Wallpaper.setWallpaper(cell.modelData);
-                                Services.Launcher.visible = false;
                             }
                             onContainsMouseChanged: {
                                 if (containsMouse)

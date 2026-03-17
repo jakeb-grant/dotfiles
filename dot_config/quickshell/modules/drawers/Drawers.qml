@@ -123,21 +123,11 @@ Variants {
             }
 
 
-            // Composited frame + popout + notification layer — single shadow for
-            // combined silhouette. NOTE: layer.enabled forces GPU offscreen rendering
-            // every frame during animation. If sluggish on older GPUs, try reducing
-            // frameShadowBlur or disabling shadowEnabled.
+            // Composited frame + popout + notification + launcher layer.
             Item {
+                id: compositedShapes
                 anchors.fill: parent
                 layer.enabled: true
-                layer.effect: MultiEffect {
-                    shadowEnabled: true
-                    shadowBlur: 1.0
-                    shadowOpacity: Utils.Theme.frameShadowOpacity
-                    blurMax: Utils.Theme.frameShadowBlur
-                    shadowColor: Utils.Theme.frameShadow
-                    autoPaddingEnabled: true
-                }
 
                 Border {
                     bar: bar
@@ -419,6 +409,61 @@ Variants {
                             radiusX: launcherBg.leftExt
                             radiusY: launcherBg.cr
                             direction: PathArc.Counterclockwise
+                        }
+                    }
+                }
+            }
+
+            // ── Inner Glow ──
+            // Renders a soft colored glow on the content-facing edges of the
+            // combined border + popout + launcher + notification silhouette.
+            //
+            // How it works (three layers):
+            //   1. Inner rectangle is masked to the INVERSE of the shapes
+            //      (visible only in the content area cutout).
+            //   2. A shadow is applied to that inverse — the shadow bleeds
+            //      outward from content edges INTO the shape areas.
+            //   3. The outer mask clips everything to the shape areas, so only
+            //      the shadow spillover (the inner glow) is visible.
+            Item {
+                id: innerGlow
+                anchors.fill: parent
+                visible: Utils.Theme.frameGlowEnabled
+                z: 1
+
+                // Layer 3: clip result to shape areas only
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskSource: compositedShapes
+                    maskEnabled: true
+                    maskThresholdMin: 0.5
+                    maskSpreadAtMin: 1.0
+                }
+
+                // Layer 2: shadow extends from content edges into shapes
+                Item {
+                    anchors.fill: parent
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        shadowEnabled: true
+                        shadowColor: Utils.Theme.frameGlow
+                        shadowBlur: Utils.Theme.frameGlowSpread
+                        blurMax: Utils.Theme.frameGlowBlur
+                        shadowOpacity: Utils.Theme.frameGlowOpacity
+                        autoPaddingEnabled: true
+                    }
+
+                    // Layer 1: opaque where shapes are NOT (content area)
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "white"
+                        layer.enabled: true
+                        layer.effect: MultiEffect {
+                            maskSource: compositedShapes
+                            maskEnabled: true
+                            maskInverted: true
+                            maskThresholdMin: 0.5
+                            maskSpreadAtMin: 1.0
                         }
                     }
                 }

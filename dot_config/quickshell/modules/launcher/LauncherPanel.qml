@@ -172,6 +172,37 @@ ColumnLayout {
                             Layout.fillWidth: true
                         }
 
+                        // "Active" label for themes (fixed width so swatches align)
+                        Text {
+                            text: (item.modelData.subtitle ?? "").length > 0
+                                ? item.modelData.subtitle : ""
+                            font.family: Utils.Theme.fontFamily
+                            font.pixelSize: Utils.Theme.fontSizeSmall
+                            color: Utils.Theme.accent
+                            Layout.preferredWidth: 36
+                            horizontalAlignment: Text.AlignRight
+                            visible: (item.modelData.swatches ?? []).length > 0
+                        }
+
+                        // Color swatches (theme entries)
+                        Row {
+                            spacing: 3
+                            visible: (item.modelData.swatches ?? []).length > 0
+                            Layout.alignment: Qt.AlignVCenter
+
+                            Repeater {
+                                model: item.modelData.swatches ?? []
+
+                                Rectangle {
+                                    required property string modelData
+                                    width: 12
+                                    height: 12
+                                    radius: 6
+                                    color: modelData
+                                }
+                            }
+                        }
+
                         // Subtitle (comment, shortcut, calc result, etc.)
                         Text {
                             text: item.modelData.subtitle ?? ""
@@ -182,7 +213,7 @@ ColumnLayout {
                                 ? Utils.Theme.accent : Utils.Theme.subtext0
                             elide: Text.ElideRight
                             Layout.maximumWidth: root.width * 0.35
-                            visible: text.length > 0
+                            visible: text.length > 0 && (item.modelData.swatches ?? []).length === 0
                         }
                     }
 

@@ -41,7 +41,11 @@
     "separator": "#acb0be",
     "pillBg": "#dce0e8",
     "hoverBg": "#ccd0da",
-    "frameShadow": "#9ca0b0",
+    "frameGlowEnabled": true,
+    "frameGlow": "#6c6f85",
+    "frameGlowBlur": 16,
+    "frameGlowSpread": 0.6,
+    "frameGlowOpacity": 1.0,
     "bezelIntensity": 1
   }
 }
