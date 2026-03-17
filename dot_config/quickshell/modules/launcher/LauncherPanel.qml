@@ -6,11 +6,15 @@ import QtQuick.Layouts
 import Quickshell
 import qs.services as Services
 import qs.utils as Utils
+import qs.modules.wallpaper
 
 ColumnLayout {
     id: root
 
     spacing: Utils.Theme.spacingNormal
+    clip: true
+
+    readonly property bool wallpaperMode: Services.Launcher._submenu === "wallpaper"
 
     // #6: Open/close animation (opacity + scale from bottom)
     opacity: 0
@@ -33,6 +37,23 @@ ColumnLayout {
         }
     }
 
+    // ── Wallpaper picker (embedded in launcher) ──
+    WallpaperPicker {
+        id: wallpaperPicker
+        Layout.fillWidth: true
+        visible: root.wallpaperMode
+        focus: root.wallpaperMode
+        opacity: root.wallpaperMode ? 1 : 0
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: Utils.Theme.animDurationSmall
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: Utils.Theme.animCurveStandard
+            }
+        }
+    }
+
     // ── Results list ──
     Flickable {
         id: resultsFlick
@@ -40,7 +61,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: Math.min(resultsColumn.implicitHeight,
             Utils.Theme.launcherMaxHeight)
-        visible: Services.Launcher.results.length > 0
+        visible: Services.Launcher.results.length > 0 && !root.wallpaperMode
         clip: true
         contentHeight: resultsColumn.implicitHeight
         boundsBehavior: Flickable.StopAtBounds
@@ -183,6 +204,7 @@ ColumnLayout {
         Layout.preferredHeight: Utils.Theme.launcherItemHeight
         visible: Services.Launcher.query.length > 0
             && Services.Launcher.results.length === 0
+            && !root.wallpaperMode
 
         Text {
             anchors.centerIn: parent
@@ -201,6 +223,7 @@ ColumnLayout {
         height: Utils.Theme.launcherInputHeight
         radius: Utils.Theme.roundingSmall
         color: Utils.Theme.surface0
+        visible: !root.wallpaperMode
 
         // #7: Focus indicator
         border.width: searchInput.activeFocus ? 1 : 0
@@ -313,6 +336,10 @@ ColumnLayout {
                 root.opacity = 0;
                 root.scale = 0.92;
             }
+        }
+        function on_SubmenuChanged(): void {
+            if (Services.Launcher._submenu !== "wallpaper")
+                searchInput.forceActiveFocus();
         }
     }
 }

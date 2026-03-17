@@ -8,11 +8,9 @@ import qs.utils as Utils
 Singleton {
     id: root
 
-    property bool visible: false
     property var wallpapers: []
     property string currentWallpaper: ""
     property int selectedIndex: 0
-    property var activeScreen: null
 
     property string paletteSlug: ""
     readonly property string wallpaperDir: Quickshell.env("HOME") + "/.config/wallpapers/" + paletteSlug
@@ -36,8 +34,7 @@ Singleton {
             root.paletteSlug = newSlug;
             root.wallpapers = [];
             root.selectedIndex = 0;
-            if (root.visible)
-                root._refreshList();
+            root._refreshList();
         }
     }
 
@@ -78,15 +75,9 @@ Singleton {
         _listProc.running = true;
     }
 
-    onVisibleChanged: {
-        if (visible) {
-            selectedIndex = 0;
-            _refreshList();
-        }
-    }
-
-    function toggle(): void {
-        visible = !visible;
+    function refreshForLauncher(): void {
+        selectedIndex = 0;
+        _refreshList();
     }
 
     function setWallpaper(filename: string): void {

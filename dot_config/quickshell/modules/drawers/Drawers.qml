@@ -4,7 +4,6 @@ import qs.modules.bar
 import qs.modules.bar.popouts
 import qs.modules.launcher
 import qs.modules.notifications
-import qs.modules.wallpaper
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -38,8 +37,6 @@ Variants {
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: (Services.Launcher.visible
                     && Services.Launcher.activeScreen === scope.modelData.name)
-                || (Services.Wallpaper.visible
-                    && Services.Wallpaper.activeScreen === scope.modelData.name)
                 ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
@@ -56,7 +53,6 @@ Variants {
                 readonly property bool passthrough: !popoutWrapper.active
                     && !Services.Notifications.expanded
                     && !Services.Launcher.visible
-                    && !Services.Wallpaper.visible
                 x: passthrough ? bar.implicitWidth : 0
                 y: passthrough ? bt : 0
                 width: passthrough ? (win.width - bar.implicitWidth - bt) : 0
@@ -81,14 +77,7 @@ Variants {
                     intersection: Intersection.Subtract
                 }
 
-                // Cut wallpaper picker area out of the click-through zone
-                Region {
-                    x: wallpaperBg.x
-                    y: wallpaperBg.y
-                    width: (wallpaperBg.visible && maskRegion.passthrough) ? wallpaperBg.width : 0
-                    height: (wallpaperBg.visible && maskRegion.passthrough) ? wallpaperBg.height : 0
-                    intersection: Intersection.Subtract
-                }
+
             }
 
             HyprlandFocusGrab {
@@ -336,34 +325,6 @@ Variants {
                     }
                 }
 
-                // Wallpaper picker background — centered floating panel
-                Rectangle {
-                    id: wallpaperBg
-
-                    readonly property int spacing: Utils.Theme.spacingLarge
-                    readonly property real wpw: Utils.Theme.wallpaperPickerWidth + spacing * 2
-
-                    property real animatedHeight: wallpaperPicker.visible
-                        ? wallpaperPicker.implicitHeight + spacing * 2 : 0
-                    Behavior on animatedHeight {
-                        NumberAnimation {
-                            duration: Utils.Theme.animDurationSmall
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Utils.Theme.animCurveStandard
-                        }
-                    }
-
-                    readonly property real wph: animatedHeight
-
-                    x: (win.width - wpw) / 2
-                    y: (win.height - wph) / 2
-                    width: wpw
-                    height: wph
-                    radius: Utils.Theme.popoutRounding
-                    color: Utils.Theme.mantle
-                    visible: wph > 1
-                }
-
                 // Launcher background — concave curves where launcher meets bottom bezel
                 Shape {
                     id: launcherBg
@@ -371,7 +332,9 @@ Variants {
                     readonly property real r: Utils.Theme.popoutRounding
                     readonly property int bt: Utils.Theme.borderThickness
                     readonly property int spacing: Utils.Theme.spacingNormal
-                    readonly property real lw: Utils.Theme.launcherWidth + spacing * 2
+                    readonly property real launcherActiveWidth: Services.Launcher._submenu === "wallpaper"
+                        ? Utils.Theme.wallpaperPickerWidth : Utils.Theme.launcherWidth
+                    readonly property real lw: launcherActiveWidth + spacing * 2
                     readonly property real concaveR: Math.min(lw, r)
                     readonly property real convexR: Math.min(lw / 2, r)
 
@@ -464,48 +427,12 @@ Variants {
             // Launcher panel — positioned at bottom center over the Shape
             LauncherPanel {
                 id: launcherPanel
-                x: (win.width - Utils.Theme.launcherWidth) / 2
+                x: (win.width - launcherBg.launcherActiveWidth) / 2
                 y: win.height - Utils.Theme.borderThickness
                     - Utils.Theme.spacingNormal - implicitHeight
-                width: Utils.Theme.launcherWidth
+                width: launcherBg.launcherActiveWidth
                 visible: Services.Launcher.visible
                     && Services.Launcher.activeScreen === scope.modelData.name
-            }
-
-            // Click-outside-to-close for wallpaper picker
-            MouseArea {
-                anchors.fill: parent
-                visible: Services.Wallpaper.visible && wpCloseGuard.ready
-                onClicked: Services.Wallpaper.visible = false
-                z: 0
-
-                Timer {
-                    id: wpCloseGuard
-                    property bool ready: false
-                    interval: 50
-                    onTriggered: ready = true
-                }
-                Connections {
-                    target: Services.Wallpaper
-                    function onVisibleChanged(): void {
-                        if (Services.Wallpaper.visible) {
-                            wpCloseGuard.ready = false;
-                            wpCloseGuard.restart();
-                        } else {
-                            wpCloseGuard.ready = false;
-                        }
-                    }
-                }
-            }
-
-            // Wallpaper picker — centered over the background
-            WallpaperPicker {
-                id: wallpaperPicker
-                x: wallpaperBg.x + Utils.Theme.spacingLarge
-                y: wallpaperBg.y + Utils.Theme.spacingLarge
-                width: Utils.Theme.wallpaperPickerWidth
-                visible: Services.Wallpaper.visible
-                    && Services.Wallpaper.activeScreen === scope.modelData.name
             }
 
             // Notification cards — positioned in top-right corner over the Shape

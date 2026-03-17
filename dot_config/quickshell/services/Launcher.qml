@@ -194,9 +194,10 @@ Singleton {
             _clipDecodeProc.running = true;
             break;
         case "wallpaper":
-            Wallpaper.activeScreen = activeScreen;
-            Wallpaper.visible = true;
-            visible = false;
+            _debounce.stop();
+            _submenu = "wallpaper";
+            query = "";
+            Wallpaper.refreshForLauncher();
             return;
         case "keybind":
         case "action":
