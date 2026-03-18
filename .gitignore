@@ -32,3 +32,6 @@ dot_config/hypr/hyprlock.conf.tmpl
 dot_config/phylax/style.css.tmpl
 dot_config/yazi/theme.toml.tmpl
 dot_config/zed/settings.json.tmpl
+
+# Active palette (changes on every theme switch)
+dot_config/palette/active.json

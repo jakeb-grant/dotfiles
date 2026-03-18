@@ -15,7 +15,8 @@ Palette JSON          theme-switch          Theme Template           Chezmoi Tem
 
 Some apps use built-in themes instead of templating:
 - **Ghostty**: `_ghostty_theme` in palette → `theme-switch` writes `theme = ...` to config
-- **Zed**: Hand-crafted theme files per palette (planned)
+- **Zed**: Hand-crafted theme files in `dot_config/zed/themes/` per palette; `_zed_theme_dark`/`_zed_theme_light` in palette → `theme-switch` writes active theme to Zed settings
+- **btop**: `_btop_theme` in palette → `theme-switch` writes `color_theme = ...` to config
 
 ### Palette Definitions (`dot_config/palette/`)
 
@@ -25,7 +26,7 @@ Catppuccin-style JSON files with named color roles:
 
 ### Theme Templates (`dot_config/theme-templates/`)
 
-Jinja2 templates with custom delimiters `{< >}` for apps where color substitution is appropriate (hyprland, hyprlock, gtk, phylax, yazi, btop):
+Jinja2 templates with custom delimiters `{< >}` for apps where color substitution is appropriate (hyprland, hyprlock, gtk, phylax, yazi, zed settings):
 ```css
 background: {< background | rgba(0.9) >};
 ```
