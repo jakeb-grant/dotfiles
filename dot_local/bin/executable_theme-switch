@@ -197,6 +197,42 @@ def update_ghostty(palette_data: dict) -> None:
     print(f"    Ghostty theme: {theme_name}, opacity: {opacity}")
 
 
+ZED_SETTINGS = Path.home() / ".config/zed/settings.json"
+
+
+def update_zed(palette_data: dict) -> None:
+    theme_dark = palette_data.get("_zed_theme_dark", "")
+    theme_light = palette_data.get("_zed_theme_light", "")
+    if not theme_dark and not theme_light:
+        print("    Warning: No _zed_theme in palette, skipping Zed")
+        return
+
+    if not ZED_SETTINGS.exists():
+        print("    Warning: Zed settings not found, skipping")
+        return
+
+    with open(ZED_SETTINGS) as f:
+        settings = json.load(f)
+
+    if "theme" not in settings:
+        settings["theme"] = {}
+
+    if theme_dark:
+        settings["theme"]["dark"] = theme_dark
+    if theme_light:
+        settings["theme"]["light"] = theme_light
+
+    variant = palette_data.get("_variant", "dark")
+    settings["theme"]["mode"] = variant
+
+    with open(ZED_SETTINGS, "w") as f:
+        json.dump(settings, f, indent=2)
+        f.write("\n")
+
+    active = theme_dark if variant == "dark" else theme_light
+    print(f"    Zed theme: {active} ({variant})")
+
+
 BTOP_CONFIG = Path.home() / ".config/btop/btop.conf"
 
 
@@ -275,7 +311,6 @@ async def set_gtk_theme(palette_data: dict) -> None:
 async def send_notification(theme_name: str) -> None:
     await run_async([
         "notify-send",
-        "-i", "preferences-desktop-theme",
         f"Theme: {theme_name.replace('-', ' ').title()}",
         "Some apps may need a restart to apply changes.",
     ])
@@ -325,6 +360,7 @@ async def main() -> None:
     print("==> Updating app configs...")
     update_ghostty(palette_data)
     update_btop(palette_data)
+    update_zed(palette_data)
 
     # 6. Reload apps in parallel
     await reload_all(palette_data)

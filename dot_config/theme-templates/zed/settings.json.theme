@@ -26,8 +26,5 @@
   "edit_predictions": {
     "mode": "subtle"
   },
-  "features": {
-    "edit_prediction_provider": "zed"
-  },
   "load_direnv": "shell_hook"
 }
