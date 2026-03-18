@@ -52,6 +52,7 @@ exec-once = hyprctl setcursor Bibata-Modern-Classic 24
 exec-once = awww-daemon
 exec-once = quickshell
 exec-once = hypridle
+exec-once = hyprpier daemon
 
 # ------------------------------------------------------------------------------
 # Keybindings
