@@ -10,12 +10,14 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 ## Features
 
 - **Window Manager**: Hyprland
-- **Desktop Shell**: Quickshell (bar, launcher, notifications)
-- **Terminal**: Ghostty with built-in theme support
-- **Editor**: Zed with theme integration
-- **File Manager**: Nautilus (GTK themed), Yazi (terminal)
-- **Theme System**: Palette-based runtime theme switching
+- **Desktop Shell**: Quickshell (bar, launcher, notifications — replaces waybar + swaync)
+- **Terminal**: Ghostty
+- **Editor**: Zed with hand-crafted themes per palette
+- **File Manager**: Yazi (terminal, themed)
+- **System Monitor**: btop
+- **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
+- **Boot Theming**: GRUB and SDDM login screen
 
 ## Getting Started
 
@@ -61,16 +63,20 @@ These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant
 
 ```
 dot_config/
-├── hypr/               # Hyprland window manager
+├── hypr/               # Hyprland window manager + hyprlock
 ├── quickshell/         # Desktop shell (bar, launcher, notifications)
 ├── ghostty/            # Terminal emulator
-├── zed/                # Zed editor settings
+├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
+├── btop/               # System monitor theme
+├── phylax/             # Desktop widget styling
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
+├── grub/               # GRUB bootloader theme
+├── sddm-theme/         # SDDM login screen theme
 ├── palette/            # Theme palette definitions (JSON)
 ├── theme-templates/    # Jinja2 theme templates
-└── wallpapers/         # Theme-specific wallpapers
+└── wallpapers/         # Per-theme wallpapers
 dot_local/bin/
 ├── theme-switch        # Theme switching utility
 └── win-vm              # Windows VM management
@@ -78,22 +84,46 @@ dot_local/bin/
 
 ## Theme System
 
-Palette JSONs are the single source of truth. `theme-switch` applies them across all apps:
+Palette JSONs are the single source of truth. `theme-switch` applies them across all apps via two methods:
 
+**Templated apps** (Jinja2 → chezmoi pipeline):
 ```
 Palette JSON              Theme Template                  Chezmoi Template           Final Config
 (everforest.json) --->   (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
                           theme-switch                    chezmoi apply
 ```
+Used by: Hyprland, hyprlock, GTK3/4, Phylax, Yazi, Zed settings
 
-Some apps use built-in themes instead of templating (e.g. Ghostty, Zed).
+**Direct-write apps** (built-in theme selection):
+```
+Palette JSON              theme-switch                    Final Config
+(everforest.json) --->   reads _ghostty_theme   --->    writes theme = Everforest Dark Hard
+```
+Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`), btop (`_btop_theme`)
+
+**Quickshell** watches `active.json` directly for live animated transitions — no restart needed.
 
 ### How It Works
 
 1. **Palette files** (`dot_config/palette/*.json`) define color roles using Catppuccin-style naming
-2. **Theme templates** (`dot_config/theme-templates/`) use `{< variable >}` syntax
-3. **`theme-switch`** copies active palette, processes templates, reloads apps
-4. **`chezmoi apply`** processes machine-specific variables
+2. **`theme-switch`** copies active palette, processes Jinja2 templates, updates direct-write apps
+3. **`chezmoi apply`** processes machine-specific variables (GPU config, hostname)
+4. **Quickshell** detects `active.json` change and animates to new colors instantly
+
+### Available Palettes
+
+| Palette | Variant |
+|---------|---------|
+| Catppuccin Mocha | dark |
+| Catppuccin Frappé | dark |
+| Catppuccin Macchiato | dark |
+| Catppuccin Latte | light |
+| Rosé Pine | dark |
+| Rosé Pine Moon | dark |
+| Rosé Pine Dawn | light |
+| Everforest | dark |
+| Everforest Light | light |
+| Nord | dark |
 
 ### Template Syntax
 
@@ -137,6 +167,8 @@ On first run, chezmoi prompts for machine-specific settings stored in `~/.config
 | Variable | Options | Description |
 |----------|---------|-------------|
 | `graphics` | `amd`, `prime`, `nvidia` | GPU driver configuration |
+| `igpu_pci` | PCI ID (auto-detected) | Integrated GPU — only prompted for `prime` |
+| `dgpu_pci` | PCI ID (auto-detected) | Discrete GPU — only prompted for `prime` |
 
 To change settings:
 ```bash
