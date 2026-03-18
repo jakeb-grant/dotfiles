@@ -1,7 +1,5 @@
 # Ghostty Configuration
-
-# Theme (generated from active theme palette)
-theme = theme
+# theme line is managed by theme-switch
 
 # Disable close confirmation dialog
 confirm-close-surface = false

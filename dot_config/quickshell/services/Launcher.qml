@@ -52,7 +52,6 @@ Singleton {
         { name: "Screenshot (Area)", shortcut: "Print", command: "grim -g \"$(slurp)\" - | wl-copy", keywords: ["capture","snip"] },
         { name: "Screenshot (Full)", shortcut: "Shift + Print", command: "grim - | wl-copy", keywords: ["capture","screen"] },
         { name: "Color Picker", shortcut: "Super + Print", command: "hyprpicker -a", keywords: ["pick","eyedropper"] },
-        { name: "Toggle Waybar", shortcut: "Super + Shift + Space", command: "killall -SIGUSR1 waybar", keywords: ["bar","hide"] },
         { name: "Lock Screen", shortcut: "Super + L", command: "hyprlock", keywords: ["lock"] },
         { name: "Logout", shortcut: "", command: "hyprctl dispatch exit", keywords: ["exit"] },
         { name: "Suspend", shortcut: "", command: "systemctl suspend", keywords: ["sleep"] },
@@ -176,7 +175,7 @@ Singleton {
 
     function _switchTheme(file: string): void {
         _themeSwitchProc.running = false;
-        _themeSwitchProc.command = ["cp", Utils.Theme.palettePath + "/" + file, Utils.Theme.palettePath + "/active.json"];
+        _themeSwitchProc.command = ["theme-switch", file.replace(".json", "")];
         _themeSwitchProc.running = true;
     }
 

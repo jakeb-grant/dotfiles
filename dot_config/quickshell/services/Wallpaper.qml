@@ -34,13 +34,18 @@ Singleton {
             root.paletteSlug = newSlug;
             root.wallpapers = [];
             root.selectedIndex = 0;
+            root._autoSetOnRefresh = true;
             root._refreshList();
         }
     }
 
     Component.onCompleted: {
         paletteSlug = _deriveSlug();
+        _autoSetOnRefresh = true;
+        _refreshList();
     }
+
+    property bool _autoSetOnRefresh: false
 
     Process {
         id: _listProc
@@ -52,6 +57,11 @@ Singleton {
                 if (root._listingSlug === root.paletteSlug) {
                     root._buffer.sort();
                     root.wallpapers = root._buffer;
+                    if (root._autoSetOnRefresh && root.wallpapers.length > 0) {
+                        const idx = Math.floor(Math.random() * root.wallpapers.length);
+                        root.setWallpaper(root.wallpapers[idx]);
+                    }
+                    root._autoSetOnRefresh = false;
                 }
                 root._buffer = [];
             }

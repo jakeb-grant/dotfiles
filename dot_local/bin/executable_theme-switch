@@ -8,15 +8,15 @@
 """
 Theme Switching System
 
-Converts theme JSON files to application configs using Jinja2 templates.
-Outputs to chezmoi source directory (~/.local/share/chezmoi/dot_config)
+Reads palette JSON files and applies them across all apps.
+Palette JSONs are the single source of truth for all theme colors.
 
 Usage: theme-switch [THEME]
 """
 
 import asyncio
 import json
-import subprocess
+import shutil
 import sys
 from pathlib import Path
 
@@ -27,83 +27,70 @@ from jinja2 import BaseLoader, Environment
 # =============================================================================
 
 CHEZMOI_SOURCE_DIR = Path.home() / ".local/share/chezmoi/dot_config"
-THEME_DIR = CHEZMOI_SOURCE_DIR / "themes"
+PALETTE_DIR = CHEZMOI_SOURCE_DIR / "palette"
 TEMPLATE_DIR = CHEZMOI_SOURCE_DIR / "theme-templates"
-WALLPAPER_DIR = Path.home() / ".config/wallpapers"
-
-DEFAULT_THEME = "everforest"
+DEFAULT_THEME = "catppuccin-mocha"
 
 
 # =============================================================================
-# Color Conversion Filters
+# Color Helpers
 # =============================================================================
-
-
-def strip_hash(color: str) -> str:
-    """Remove # prefix from hex color."""
-    return color.lstrip("#")
 
 
 def hex_to_rgb(color: str) -> tuple[int, int, int]:
-    """Convert hex color to RGB tuple."""
-    h = strip_hash(color)
+    h = color.lstrip("#")
     return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
+def strip_hash(color: str) -> str:
+    return color.lstrip("#")
+
+
 def opacity_to_hex(opacity: float) -> str:
-    """Convert opacity (0.0-1.0) to hex alpha (00-ff)."""
     return f"{int(opacity * 255):02x}"
 
 
+# =============================================================================
 # Jinja2 Filters
+# =============================================================================
 
 
 def filter_hex(color: str) -> str:
-    """Return color as #rrggbb."""
     h = strip_hash(color)
     return f"#{h[:6]}"
 
 
 def filter_hex_alpha(color: str, opacity: float = 1.0) -> str:
-    """Return color as #rrggbbaa."""
     h = strip_hash(color)
-    alpha = opacity_to_hex(opacity)
-    return f"#{h[:6]}{alpha}"
+    return f"#{h[:6]}{opacity_to_hex(opacity)}"
 
 
 def filter_rgb(color: str) -> str:
-    """Return color as rgb(r, g, b)."""
     r, g, b = hex_to_rgb(color)
     return f"rgb({r}, {g}, {b})"
 
 
 def filter_rgba(color: str, opacity: float = 1.0) -> str:
-    """Return color as rgba(r, g, b, a)."""
     r, g, b = hex_to_rgb(color)
     return f"rgba({r}, {g}, {b}, {opacity:.2f})"
 
 
 def filter_rgb_values(color: str) -> str:
-    """Return just the RGB values: r, g, b."""
     r, g, b = hex_to_rgb(color)
     return f"{r}, {g}, {b}"
 
 
 def filter_hypr_rgb(color: str) -> str:
-    """Return color as rgb(rrggbb) for Hyprland."""
     h = strip_hash(color)
     return f"rgb({h[:6]})"
 
 
 def filter_hypr_rgba(color: str, opacity: float = 1.0) -> str:
-    """Return color as rgba(rrggbbaa) for Hyprland."""
     h = strip_hash(color)
-    alpha = opacity_to_hex(opacity)
-    return f"rgba({h[:6]}{alpha})"
+    return f"rgba({h[:6]}{opacity_to_hex(opacity)})"
 
 
 def filter_strip(color: str) -> str:
-    """Return raw hex without #."""
     return strip_hash(color)
 
 
@@ -113,7 +100,6 @@ def filter_strip(color: str) -> str:
 
 
 def create_jinja_env() -> Environment:
-    """Create Jinja2 environment with custom delimiters and filters."""
     env = Environment(
         loader=BaseLoader(),
         variable_start_string="{<",
@@ -125,7 +111,6 @@ def create_jinja_env() -> Environment:
         keep_trailing_newline=True,
     )
 
-    # Register filters
     env.filters["hex"] = filter_hex
     env.filters["hex_alpha"] = filter_hex_alpha
     env.filters["rgb"] = filter_rgb
@@ -138,51 +123,116 @@ def create_jinja_env() -> Environment:
     return env
 
 
-def load_theme(theme_name: str) -> dict:
-    """Load theme JSON file."""
-    theme_file = THEME_DIR / f"{theme_name}.json"
+def load_palette(theme_name: str) -> dict:
+    palette_file = PALETTE_DIR / f"{theme_name}.json"
 
-    if not theme_file.exists():
-        print(f"Error: Theme not found: {theme_name}")
-        print("Available themes:")
-        for f in THEME_DIR.glob("*.json"):
-            print(f"  {f.stem}")
+    if not palette_file.exists():
+        print(f"Error: Palette not found: {theme_name}")
+        print("Available palettes:")
+        for f in sorted(PALETTE_DIR.glob("*.json")):
+            if f.name != "active.json":
+                print(f"  {f.stem}")
         sys.exit(1)
 
-    with open(theme_file) as f:
+    with open(palette_file) as f:
         return json.load(f)
 
 
-def process_templates(env: Environment, theme_data: dict) -> None:
-    """Process all .theme template files."""
+def process_templates(env: Environment, palette_data: dict) -> None:
     for template_file in TEMPLATE_DIR.rglob("*.theme"):
-        # Calculate output path
-        # theme-templates/waybar/style.css.theme -> waybar/style.css.tmpl
         relative = template_file.relative_to(TEMPLATE_DIR)
         output_name = relative.with_suffix(".tmpl")
         output_path = CHEZMOI_SOURCE_DIR / output_name
 
         print(f"    {relative} -> {output_name}")
 
-        # Create output directory if needed
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Read and process template
         template_content = template_file.read_text()
         template = env.from_string(template_content)
-        result = template.render(**theme_data)
+        result = template.render(**palette_data)
 
-        # Write output
         output_path.write_text(result)
 
 
 # =============================================================================
-# Application Reloading (Async)
+# Direct Config Writers
+# =============================================================================
+
+GHOSTTY_CONFIG = Path.home() / ".config/ghostty/config"
+
+
+def update_ghostty(palette_data: dict) -> None:
+    theme_name = palette_data.get("_ghostty_theme", "")
+    if not theme_name:
+        print("    Warning: No _ghostty_theme in palette, skipping Ghostty")
+        return
+
+    if not GHOSTTY_CONFIG.exists():
+        print("    Warning: Ghostty config not found, skipping")
+        return
+
+    opacity = palette_data.get("_blur_opacity", 0.9)
+
+    lines = GHOSTTY_CONFIG.read_text().splitlines()
+    new_lines = []
+    found_theme = False
+    found_opacity = False
+    for line in lines:
+        if line.startswith("theme =") or line.startswith("theme="):
+            new_lines.append(f"theme = {theme_name}")
+            found_theme = True
+        elif line.startswith("background-opacity =") or line.startswith("background-opacity="):
+            new_lines.append(f"background-opacity = {opacity}")
+            found_opacity = True
+        else:
+            new_lines.append(line)
+
+    if not found_theme:
+        new_lines.insert(0, f"theme = {theme_name}")
+    if not found_opacity:
+        new_lines.insert(1, f"background-opacity = {opacity}")
+
+    GHOSTTY_CONFIG.write_text("\n".join(new_lines) + "\n")
+    print(f"    Ghostty theme: {theme_name}, opacity: {opacity}")
+
+
+BTOP_CONFIG = Path.home() / ".config/btop/btop.conf"
+
+
+def update_btop(palette_data: dict) -> None:
+    theme_name = palette_data.get("_btop_theme", "")
+    if not theme_name:
+        print("    Warning: No _btop_theme in palette, skipping btop")
+        return
+
+    if not BTOP_CONFIG.exists():
+        print("    Warning: btop config not found, skipping")
+        return
+
+    lines = BTOP_CONFIG.read_text().splitlines()
+    new_lines = []
+    found = False
+    for line in lines:
+        if line.startswith("color_theme =") or line.startswith("color_theme="):
+            new_lines.append(f'color_theme = "{theme_name}"')
+            found = True
+        else:
+            new_lines.append(line)
+
+    if not found:
+        new_lines.insert(0, f'color_theme = "{theme_name}"')
+
+    BTOP_CONFIG.write_text("\n".join(new_lines) + "\n")
+    print(f"    btop theme: {theme_name}")
+
+
+# =============================================================================
+# Application Reloading
 # =============================================================================
 
 
 async def run_async(cmd: list[str]) -> bool:
-    """Run command asynchronously, return True if successful."""
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
@@ -195,73 +245,23 @@ async def run_async(cmd: list[str]) -> bool:
         return False
 
 
-async def is_running(process: str) -> bool:
-    """Check if a process is running."""
-    proc = await asyncio.create_subprocess_exec(
-        "pgrep", "-x", process,
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
-    )
-    await proc.wait()
-    return proc.returncode == 0
-
-
 async def reload_hyprland() -> None:
-    """Reload Hyprland config."""
     await run_async(["hyprctl", "reload"])
     print("    Hyprland reloaded")
 
 
-async def reload_waybar() -> None:
-    """Reload Waybar via SIGUSR2."""
-    await run_async(["pkill", "-USR2", "waybar"])
-    print("    Waybar reloaded")
-
-
-async def reload_swaync() -> None:
-    """Reload SwayNC CSS via client."""
-    await run_async(["swaync-client", "--reload-css"])
-    print("    SwayNC reloaded")
-
-
-async def reload_elephant() -> None:
-    """Restart Elephant (elephant-wrapper will auto-restart)."""
-    await run_async(["pkill", "-x", "elephant"])
-    print("    Elephant restarted")
-
-
 async def reload_ghostty() -> None:
-    """Reload Ghostty config via SIGUSR2."""
     await run_async(["pkill", "-USR2", "ghostty"])
     print("    Ghostty reloaded")
 
 
-async def set_wallpaper(theme_data: dict) -> None:
-    """Set wallpaper if specified in theme."""
-    wallpaper = theme_data.get("_wallpaper")
-    if not wallpaper:
-        return
-
-    wallpaper_path = WALLPAPER_DIR / wallpaper
-    if not wallpaper_path.exists():
-        print(f"    Warning: Wallpaper not found: {wallpaper}")
-        return
-
-    if await is_running("awww-daemon"):
-        await run_async([
-            "awww", "img", str(wallpaper_path),
-            "--transition-type", "center",
-            "--transition-duration", "1",
-            "--transition-fps", "60",
-        ])
-        print(f"    Wallpaper set: {wallpaper}")
-    else:
-        print("    Warning: awww-daemon not running, skipping wallpaper")
+async def reload_btop() -> None:
+    await run_async(["pkill", "-x", "btop"])
+    print("    btop killed (will use new theme on next launch)")
 
 
-async def set_gtk_theme(theme_data: dict) -> None:
-    """Set GTK color scheme (dark/light) for libadwaita apps."""
-    scheme = theme_data.get("_gtk_color_scheme")
+async def set_gtk_theme(palette_data: dict) -> None:
+    scheme = palette_data.get("_gtk_color_scheme")
     if not scheme:
         return
 
@@ -273,7 +273,6 @@ async def set_gtk_theme(theme_data: dict) -> None:
 
 
 async def send_notification(theme_name: str) -> None:
-    """Send notification about theme switch."""
     await run_async([
         "notify-send",
         "-i", "preferences-desktop-theme",
@@ -282,17 +281,13 @@ async def send_notification(theme_name: str) -> None:
     ])
 
 
-async def reload_all(theme_data: dict) -> None:
-    """Reload all applications in parallel."""
+async def reload_all(palette_data: dict) -> None:
     print("==> Reloading applications...")
     await asyncio.gather(
         reload_hyprland(),
-        reload_waybar(),
-        reload_swaync(),
-        reload_elephant(),
         reload_ghostty(),
-        set_wallpaper(theme_data),
-        set_gtk_theme(theme_data),
+        reload_btop(),
+        set_gtk_theme(palette_data),
     )
 
 
@@ -304,29 +299,38 @@ async def reload_all(theme_data: dict) -> None:
 async def main() -> None:
     theme_name = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_THEME
 
-    print(f"==> Loading theme: {theme_name}")
-    theme_data = load_theme(theme_name)
+    # 1. Load palette
+    print(f"==> Loading palette: {theme_name}")
+    palette_data = load_palette(theme_name)
 
-    # Add theme name to data for templates
-    theme_data["_theme_name"] = theme_name
+    # 2. Copy palette → active.json (both chezmoi source and live config)
+    print("==> Updating active palette...")
+    src = PALETTE_DIR / f"{theme_name}.json"
+    shutil.copy2(str(src), str(PALETTE_DIR / "active.json"))
+    live_palette = Path.home() / ".config/palette/active.json"
+    live_palette.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(str(src), str(live_palette))
 
+    # 3. Process Jinja2 .theme templates → .tmpl files
     print("==> Processing theme templates...")
     env = create_jinja_env()
-    process_templates(env, theme_data)
+    process_templates(env, palette_data)
 
-    # Update active theme symlink
-    active_link = THEME_DIR / "active.json"
-    active_link.unlink(missing_ok=True)
-    active_link.symlink_to(f"{theme_name}.json")
-
+    # 4. Apply chezmoi
     print("==> Applying chezmoi...")
-    proc = await asyncio.create_subprocess_exec("chezmoi", "apply")
+    proc = await asyncio.create_subprocess_exec("chezmoi", "apply", "--force")
     await proc.wait()
 
-    await reload_all(theme_data)
+    # 5. Write app configs directly (after chezmoi so they aren't overwritten)
+    print("==> Updating app configs...")
+    update_ghostty(palette_data)
+    update_btop(palette_data)
+
+    # 6. Reload apps in parallel
+    await reload_all(palette_data)
     await send_notification(theme_name)
 
-    print(f"✓ Theme switched to: {theme_name}")
+    print(f"==> Theme switched to: {theme_name}")
 
 
 if __name__ == "__main__":

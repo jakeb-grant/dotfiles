@@ -10,15 +10,12 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 ## Features
 
 - **Window Manager**: Hyprland
-- **Status Bar**: Waybar with system monitoring
-- **Notifications**: SwayNC notification center with quick actions
-- **Launcher**: Walker with custom menus (apps, keybinds, clipboard, calculator)
-- **Terminal**: Ghostty with themed colors
+- **Desktop Shell**: Quickshell (bar, launcher, notifications)
+- **Terminal**: Ghostty with built-in theme support
 - **Editor**: Zed with theme integration
 - **File Manager**: Nautilus (GTK themed), Yazi (terminal)
-- **Theme System**: Runtime theme switching with Jinja2 templates
+- **Theme System**: Palette-based runtime theme switching
 - **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
-- **Windows VM**: Docker-based Windows 11 VM with RDP access
 
 ## Getting Started
 
@@ -65,19 +62,15 @@ These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant
 ```
 dot_config/
 ├── hypr/               # Hyprland window manager
-├── waybar/             # Status bar
-├── swaync/             # Notification center
-├── walker/             # Application launcher
+├── quickshell/         # Desktop shell (bar, launcher, notifications)
 ├── ghostty/            # Terminal emulator
 ├── zed/                # Zed editor settings
 ├── yazi/               # Yazi file manager theme
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
-├── elephant/           # Walker backend & custom menus
-│   └── menus/          # Main menu, keybinds menu
-├── themes/             # Theme definitions (JSON)
+├── palette/            # Theme palette definitions (JSON)
 ├── theme-templates/    # Jinja2 theme templates
-└── windows-vm/         # Windows VM docker config
+└── wallpapers/         # Theme-specific wallpapers
 dot_local/bin/
 ├── theme-switch        # Theme switching utility
 └── win-vm              # Windows VM management
@@ -85,28 +78,30 @@ dot_local/bin/
 
 ## Theme System
 
-The theme system uses Jinja2 templates with custom delimiters to avoid conflicts with chezmoi:
+Palette JSONs are the single source of truth. `theme-switch` applies them across all apps:
 
 ```
-Theme JSON              Theme Template                  Chezmoi Template           Final Config
-(everforest.json) --->  (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
-                        theme-switch                    chezmoi apply
+Palette JSON              Theme Template                  Chezmoi Template           Final Config
+(everforest.json) --->   (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
+                          theme-switch                    chezmoi apply
 ```
+
+Some apps use built-in themes instead of templating (e.g. Ghostty, Zed).
 
 ### How It Works
 
-1. **Theme files** (`dot_config/themes/*.json`) define color palettes
+1. **Palette files** (`dot_config/palette/*.json`) define color roles using Catppuccin-style naming
 2. **Theme templates** (`dot_config/theme-templates/`) use `{< variable >}` syntax
-3. **`theme-switch`** processes templates, outputs `.tmpl` files, reloads apps
+3. **`theme-switch`** copies active palette, processes templates, reloads apps
 4. **`chezmoi apply`** processes machine-specific variables
 
 ### Template Syntax
 
 Theme variables (processed by `theme-switch`):
 ```
-{< background >}                      # Direct color value
-{< background | rgba(0.95) >}         # With filter and opacity
-{< primary | hypr_rgba(0.93) >}       # Hyprland format
+{< crust >}                           # Direct color value
+{< crust | rgba(0.95) >}             # With filter and opacity
+{< surface0 | hypr_rgba(0.93) >}     # Hyprland format
 ```
 
 Chezmoi variables (processed by `chezmoi apply`):
@@ -131,7 +126,7 @@ Chezmoi variables (processed by `chezmoi apply`):
 ### Usage
 
 ```bash
-# Switch theme (processes templates, applies chezmoi, reloads apps)
+# Switch theme (updates palette, processes templates, applies chezmoi, reloads apps)
 theme-switch everforest
 ```
 
@@ -146,15 +141,6 @@ On first run, chezmoi prompts for machine-specific settings stored in `~/.config
 To change settings:
 ```bash
 chezmoi edit-config
-chezmoi apply
-```
-
-## Customization
-
-After applying, edit configs with:
-
-```bash
-chezmoi edit ~/.config/hypr/hyprland.conf
 chezmoi apply
 ```
 

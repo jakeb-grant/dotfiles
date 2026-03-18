@@ -21,16 +21,16 @@ input-field {
     dots_size = 0.25
     dots_spacing = 0.3
     dots_center = true
-    outer_color = {< border_focused | hypr_rgba(0.8) >}
-    inner_color = {< background | hypr_rgba(0.9) >}
-    font_color = {< foreground | hypr_rgb >}
+    outer_color = {< overlay0 | hypr_rgba(0.8) >}
+    inner_color = {< crust | hypr_rgba(0.9) >}
+    font_color = {< text | hypr_rgb >}
     fade_on_empty = false
     placeholder_text = <i>Password...</i>
     hide_input = false
-    check_color = {< primary | hypr_rgba(0.8) >}
-    fail_color = {< error | hypr_rgba(0.8) >}
+    check_color = {< surface0 | hypr_rgba(0.8) >}
+    fail_color = {< red | hypr_rgba(0.8) >}
     fail_text = <i>$FAIL</i>
-    capslock_color = {< warning | hypr_rgba(0.8) >}
+    capslock_color = {< yellow | hypr_rgba(0.8) >}
     position = 0, -80
     halign = center
     valign = center
@@ -39,7 +39,7 @@ input-field {
 label {
     monitor =
     text = $TIME
-    color = {< foreground_bright | hypr_rgba(0.95) >}
+    color = {< text | hypr_rgba(0.95) >}
     font_size = 72
     font_family = sans-serif
     position = 0, 120
@@ -50,7 +50,7 @@ label {
 label {
     monitor =
     text = cmd[update:3600000] date +"%A, %B %d"
-    color = {< foreground_dim | hypr_rgba(0.8) >}
+    color = {< subtext0 | hypr_rgba(0.8) >}
     font_size = 18
     font_family = sans-serif
     position = 0, 40

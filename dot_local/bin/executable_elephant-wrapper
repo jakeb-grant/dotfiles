@@ -1,7 +1,0 @@
-#!/bin/bash
-# Wrapper script to auto-restart elephant if it crashes
-
-while true; do
-    elephant
-    sleep 2
-done

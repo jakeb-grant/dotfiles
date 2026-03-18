@@ -1,41 +1,41 @@
 ● /* Window */
 window.auth-window.background,
 window.auth-window {
-    background-color: {< background >};
+    background-color: {< crust >};
 }
 
 /* Typography */
 .auth-header {
-    color: {< foreground_bright >};
+    color: {< text >};
     font-weight: bold;
 }
 
 .auth-message {
-    color: {< foreground >};
+    color: {< text >};
 }
 
 .auth-retry {
-    color: {< foreground >};
+    color: {< text >};
 }
 
 /* Identity dropdown */
 dropdown.auth-identity > button.toggle {
     background: none;
-    background-color: {< background_medium >};
-    border-color: {< border >};
+    background-color: {< mantle >};
+    border-color: {< surface1 >};
     border-radius: 8px;
-    color: {< foreground >};
+    color: {< text >};
 }
 
 dropdown.auth-identity > popover.menu > contents,
 dropdown.auth-identity listview {
-    background-color: {< background_medium >};
-    border-color: {< border >};
+    background-color: {< mantle >};
+    border-color: {< surface1 >};
 }
 
 dropdown.auth-identity listview > row:hover,
 dropdown.auth-identity listview > row:selected {
-    background-color: {< background_light >};
+    background-color: {< base >};
 }
 
 dropdown.auth-identity listview > row:focus:not(:hover) {
@@ -44,14 +44,14 @@ dropdown.auth-identity listview > row:focus:not(:hover) {
 
 /* Password entry */
 .auth-password {
-    background: {< background_medium >};
-    border-color: {< border >};
+    background: {< mantle >};
+    border-color: {< surface1 >};
     border-radius: 8px;
-    color: {< foreground >};
+    color: {< text >};
 }
 
 entry.auth-password:focus-within {
-    outline-color: {< primary >};
+    outline-color: {< surface0 >};
 }
 
 /* Buttons */
@@ -61,12 +61,12 @@ entry.auth-password:focus-within {
 
 .auth-cancel,
 .auth-confirm {
-    background: {< background_medium >};
-    border-color: {< border >};
-    color: {< foreground >};
+    background: {< mantle >};
+    border-color: {< surface1 >};
+    color: {< text >};
 }
 
 .auth-cancel:hover,
 .auth-confirm:hover {
-    background: {< background_light >};
+    background: {< base >};
 }

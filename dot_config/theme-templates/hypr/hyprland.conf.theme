@@ -9,7 +9,6 @@
 $terminal = ghostty +new-window
 $editor = zeditor --wait
 $fileManager = ghostty -e yazi
-$menu = walker
 
 # Modifier key
 $mod = SUPER
@@ -47,15 +46,11 @@ source = $HOME/.config/hypr/monitors.conf
 # ------------------------------------------------------------------------------
 # Autostart
 # ------------------------------------------------------------------------------
-exec-once = waybar
-exec-once = swaync
 exec-once = nm-applet --indicator
-# exec-once = /usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
 exec-once = phylax
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
-exec-once = elephant-wrapper
 exec-once = awww-daemon
-exec-once = walker --gapplication-service
+exec-once = quickshell
 exec-once = hypridle
 
 # ------------------------------------------------------------------------------
@@ -63,14 +58,11 @@ exec-once = hypridle
 # ------------------------------------------------------------------------------
 
 # Applications
-bind = $mod, Space, exec, walker -s main -H
+bind = $mod, Space, global, quickshell:launcher
 bind = $mod, Return, exec, $terminal
 bind = $mod SHIFT, B, exec, xdg-open https://
 bind = $mod SHIFT, F, exec, $fileManager
 bind = $mod SHIFT, Z, exec, $editor
-bind = $mod CTRL, V, exec, walker -m clipboard
-# bind = $mod, Escape, exec, walker -m power  # TODO: create power menu
-
 # Window management
 bind = $mod, W, killactive,
 bind = $mod, T, togglefloating,
@@ -80,14 +72,10 @@ bind = $mod, J, togglesplit,
 bind = $mod, F, fullscreen,
 bind = $mod, L, exec, hyprlock
 
-# Toggle waybar
-bind = $mod SHIFT, Space, exec, killall -SIGUSR1 waybar
-
-# Notifications
-bind = $mod, comma, exec, swaync-client -C
-bind = $mod SHIFT, comma, exec, swaync-client --close-all
-bind = $mod CTRL, comma, exec, swaync-client -d -sw
-bind = $mod ALT, comma, exec, swaync-client -t -sw
+# Notifications (Quickshell global shortcuts)
+bind = $mod, comma, global, quickshell:notif-dismiss
+bind = $mod SHIFT, comma, global, quickshell:notif-dismiss-all
+bind = $mod ALT, comma, global, quickshell:notif-panel
 
 # Move focus with arrow keys
 bind = $mod, left, movefocus, l
@@ -166,8 +154,8 @@ general {
     gaps_in = 5
     gaps_out = 10
     border_size = 2
-    col.active_border = {< primary | hypr_rgba(0.93) >}
-    col.inactive_border = {< border | hypr_rgba(0.5) >}
+    col.active_border = {< surface0 | hypr_rgba(0.93) >}
+    col.inactive_border = {< surface1 | hypr_rgba(0.5) >}
     resize_on_border = false
     allow_tearing = false
     layout = dwindle
@@ -193,7 +181,7 @@ decoration {
         enabled = true
         range = 4
         render_power = 3
-        color = {< black_dim | hypr_rgba(0.93) >}
+        color = {< crust | hypr_rgba(0.93) >}
     }
 }
 
