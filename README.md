@@ -10,7 +10,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 ## Features
 
 - **Window Manager**: Hyprland
-- **Desktop Shell**: Quickshell (bar, launcher, notifications — replaces waybar + swaync)
+- **Desktop Shell**: Quickshell (bar, launcher, notifications, lock screen — replaces waybar + swaync + hyprlock; uses hyprlock's PAM config for authentication)
 - **Terminal**: Ghostty
 - **Editor**: Zed with hand-crafted themes per palette
 - **File Manager**: Yazi (terminal, themed)
@@ -63,8 +63,8 @@ These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant
 
 ```
 dot_config/
-├── hypr/               # Hyprland window manager + hyprlock
-├── quickshell/         # Desktop shell (bar, launcher, notifications)
+├── hypr/               # Hyprland window manager + hypridle
+├── quickshell/         # Desktop shell (bar, launcher, notifications, lock screen)
 ├── ghostty/            # Terminal emulator
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
@@ -92,7 +92,7 @@ Palette JSON              Theme Template                  Chezmoi Template      
 (everforest.json) --->   (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
                           theme-switch                    chezmoi apply
 ```
-Used by: Hyprland, hyprlock, GTK3/4, Phylax, Yazi, Zed settings
+Used by: Hyprland, GTK3/4, Phylax, Yazi, Zed settings
 
 **Direct-write apps** (built-in theme selection):
 ```
