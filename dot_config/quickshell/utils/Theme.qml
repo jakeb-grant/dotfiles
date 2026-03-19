@@ -29,6 +29,7 @@ Singleton {
     // ── Palette Meta ──
     readonly property string palettePath: Quickshell.env("HOME") + "/.config/palette"
     readonly property string themeName: _p._name ?? "Unknown"
+    readonly property bool isDark: (_p._variant ?? "dark") === "dark"
 
     // ── Theme transition ──
     readonly property int _tt: 400

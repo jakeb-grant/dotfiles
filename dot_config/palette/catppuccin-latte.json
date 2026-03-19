@@ -45,7 +45,7 @@
     "hoverBg": "#ccd0da",
     "frameGlowEnabled": true,
     "frameGlow": "#6c6f85",
-    "frameGlowBlur": 16,
+    "frameGlowBlur": 8,
     "frameGlowSpread": 0.6,
     "frameGlowOpacity": 1.0,
     "bezelIntensity": 1

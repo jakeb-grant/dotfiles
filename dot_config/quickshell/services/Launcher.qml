@@ -52,7 +52,7 @@ Singleton {
         { name: "Screenshot (Area)", shortcut: "Print", command: "grim -g \"$(slurp)\" - | wl-copy", keywords: ["capture","snip"] },
         { name: "Screenshot (Full)", shortcut: "Shift + Print", command: "grim - | wl-copy", keywords: ["capture","screen"] },
         { name: "Color Picker", shortcut: "Super + Print", command: "hyprpicker -a", keywords: ["pick","eyedropper"] },
-        { name: "Lock Screen", shortcut: "Super + L", command: "hyprlock", keywords: ["lock"] },
+        { name: "Lock Screen", shortcut: "Super + L", command: "hyprctl dispatch global quickshell:lock", keywords: ["lock"] },
         { name: "Logout", shortcut: "", command: "hyprctl dispatch exit", keywords: ["exit"] },
         { name: "Suspend", shortcut: "", command: "systemctl suspend", keywords: ["sleep"] },
         { name: "Reboot", shortcut: "", command: "systemctl reboot", keywords: ["restart"] },

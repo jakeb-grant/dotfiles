@@ -71,7 +71,7 @@ bind = $mod, O, pin,
 bind = $mod, P, pseudo,
 bind = $mod, J, togglesplit,
 bind = $mod, F, fullscreen,
-bind = $mod, L, exec, hyprlock
+bind = $mod, L, global, quickshell:lock
 
 # Notifications (Quickshell global shortcuts)
 bind = $mod, comma, global, quickshell:notif-dismiss
