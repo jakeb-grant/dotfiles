@@ -78,13 +78,24 @@ Item {
         }
     }
 
-    // ── Exit animation ──
+    // ── Focus management ──
 
     Connections {
         target: Services.LockScreen
+        function onLockedChanged(): void {
+            if (Services.LockScreen.locked)
+                focusGrabTimer.restart();
+        }
         function onUnlockAccepted(): void {
             exitAnim.start();
         }
+    }
+
+    // Delay focus grab slightly so compositor finishes setting up the lock surface (esp. after sleep resume)
+    Timer {
+        id: focusGrabTimer
+        interval: 100
+        onTriggered: root.forceActiveFocus()
     }
 
     ParallelAnimation {
@@ -349,7 +360,7 @@ Item {
         hoverEnabled: true
         cursorShape: cursorTimer.running ? Qt.ArrowCursor : Qt.BlankCursor
         propagateComposedEvents: true
-        onPositionChanged: cursorTimer.restart()
+        onPositionChanged: { cursorTimer.restart(); root.forceActiveFocus(); }
         onClicked: mouse => { root.forceActiveFocus(); mouse.accepted = false; }
         z: -1
     }

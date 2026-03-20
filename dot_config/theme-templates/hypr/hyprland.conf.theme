@@ -46,6 +46,7 @@ source = $HOME/.config/hypr/monitors.conf
 # ------------------------------------------------------------------------------
 # Autostart
 # ------------------------------------------------------------------------------
+exec-once = dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_ID XDG_SESSION_TYPE
 exec-once = nm-applet --indicator
 exec-once = phylax
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
