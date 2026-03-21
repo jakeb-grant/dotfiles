@@ -45,6 +45,7 @@
     "pillBg": "#f2e9e1",
     "hoverBg": "#dfdad9",
     "frameShadow": "#9893a5",
-    "bezelIntensity": 1
+    "bezelIntensity": 1,
+    "barMode": "side"
   }
 }

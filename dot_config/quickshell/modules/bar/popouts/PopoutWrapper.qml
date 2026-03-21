@@ -8,6 +8,7 @@ Item {
     id: root
 
     required property real barWidth
+    required property real barHeight
     required property ShellScreen screen
 
     // active tracks hasCurrent (controls width), NOT currentName
@@ -25,13 +26,17 @@ Item {
     on_ContentWidthChanged: if (_contentWidth > 0) _lastContentWidth = _contentWidth
     on_ContentHeightChanged: if (_contentHeight > 0) _lastContentHeight = _contentHeight
 
-    // Non-animated target sizes (use cached height during switch to prevent flush detection flicker)
-    readonly property real nonAnimWidth: active
-        ? (_contentWidth > 0 ? _contentWidth : _lastContentWidth) + Utils.Theme.spacingLarge * 2 : 0
-    readonly property real nonAnimHeight:
-        (_contentHeight > 0 ? _contentHeight : (active ? _lastContentHeight : 0)) + Utils.Theme.spacingLarge * 2
+    // Non-animated target sizes
+    // Side mode: width is the animated axis (0 when closed), height is content-driven
+    // Top mode: height is the animated axis (0 when closed), width is content-driven
+    readonly property real nonAnimWidth: Utils.Theme.isSide
+        ? (active ? (_contentWidth > 0 ? _contentWidth : _lastContentWidth) + Utils.Theme.spacingLarge * 2 : 0)
+        : ((_contentWidth > 0 ? _contentWidth : (active ? _lastContentWidth : 0)) + Utils.Theme.spacingLarge * 2)
+    readonly property real nonAnimHeight: Utils.Theme.isTop
+        ? (active ? (_contentHeight > 0 ? _contentHeight : _lastContentHeight) + Utils.Theme.spacingLarge * 2 : 0)
+        : ((_contentHeight > 0 ? _contentHeight : (active ? _lastContentHeight : 0)) + Utils.Theme.spacingLarge * 2)
 
-    // Target Y — non-animated, used for flush detection and as base for positioning
+    // ── Side mode: vertical positioning (popout right of bar) ──
     readonly property real targetY: {
         if (!active && popoutContainer.implicitWidth <= 0) return 0;
         const border = Utils.Theme.borderThickness;
@@ -39,13 +44,23 @@ Item {
         return Math.max(border, Math.min(ideal, root.height - nonAnimHeight - border));
     }
 
-    // Flush detection uses target (non-animated) values so it's stable during transitions
-    readonly property bool flushTop: targetY <= Utils.Theme.borderThickness
-    readonly property bool flushBottom: targetY + nonAnimHeight >= root.height - Utils.Theme.borderThickness
+    readonly property bool flushTop: Utils.Theme.isSide && targetY <= Utils.Theme.borderThickness
+    readonly property bool flushBottom: Utils.Theme.isSide && targetY + nonAnimHeight >= root.height - Utils.Theme.borderThickness
+
+    // ── Top mode: horizontal positioning (popout below bar) ──
+    readonly property real targetX: {
+        if (!active && popoutContainer.implicitWidth <= 0) return 0;
+        const border = Utils.Theme.borderThickness;
+        const ideal = Services.Popout.centerX - nonAnimWidth / 2;
+        return Math.max(border, Math.min(ideal, root.width - nonAnimWidth - border));
+    }
+
+    readonly property bool flushLeft: Utils.Theme.isTop && targetX <= Utils.Theme.borderThickness
+    readonly property bool flushRight: Utils.Theme.isTop && targetX + nonAnimWidth >= root.width - Utils.Theme.borderThickness
 
     // Expose geometry for Drawers.qml background + mask
-    readonly property real popoutX: barWidth
-    readonly property real popoutY: popoutContainer.y
+    readonly property real popoutX: Utils.Theme.isSide ? barWidth : popoutContainer.x
+    readonly property real popoutY: Utils.Theme.isTop ? barHeight : popoutContainer.y
     readonly property real popoutWidth: popoutContainer.implicitWidth
     readonly property real popoutHeight: popoutContainer.implicitWidth > 0 ? popoutContainer.implicitHeight : 0
 
@@ -59,17 +74,24 @@ Item {
         id: popoutContainer
         z: 1
 
-        x: root.barWidth
-        // When flush, derive y from animated height to maintain edge constraint
-        y: root.flushBottom
-            ? root.height - implicitHeight - Utils.Theme.borderThickness
-            : root.flushTop
-                ? Utils.Theme.borderThickness
-                : root.targetY
+        x: Utils.Theme.isSide
+            ? root.barWidth
+            : (root.flushRight
+                ? root.width - implicitWidth - Utils.Theme.borderThickness
+                : root.flushLeft
+                    ? Utils.Theme.borderThickness
+                    : root.targetX)
+        y: Utils.Theme.isTop
+            ? root.barHeight
+            : (root.flushBottom
+                ? root.height - implicitHeight - Utils.Theme.borderThickness
+                : root.flushTop
+                    ? Utils.Theme.borderThickness
+                    : root.targetY)
         width: implicitWidth
         height: implicitHeight
         clip: true
-        visible: implicitWidth > 0
+        visible: Utils.Theme.isSide ? implicitWidth > 0 : implicitHeight > 0
 
         // Mutable curve/duration — swapped for close to decelerate at the end
         property var animCurve: Utils.Theme.animCurveEmphasized
@@ -81,14 +103,17 @@ Item {
         implicitHeight: root.nonAnimHeight
 
         // When retraction completes, clean up the service state and reset curve
-        onImplicitWidthChanged: {
-            if (implicitWidth <= 0 && !root.active) {
+        function _checkRetracted() {
+            const retracted = Utils.Theme.isSide ? implicitWidth <= 0 : implicitHeight <= 0;
+            if (retracted && !root.active) {
                 Services.Popout.cleanup();
                 animCurve = Utils.Theme.animCurveEmphasized;
                 animDuration = Utils.Theme.animDuration;
                 reshapeDuration = Utils.Theme.animDuration;
             }
         }
+        onImplicitWidthChanged: _checkRetracted()
+        onImplicitHeightChanged: _checkRetracted()
 
         // React to close and switch events
         Connections {
@@ -117,14 +142,24 @@ Item {
 
         Behavior on implicitWidth {
             NumberAnimation {
-                duration: popoutContainer.animDuration
+                duration: Utils.Theme.isSide ? popoutContainer.animDuration : popoutContainer.reshapeDuration
                 easing.type: Easing.BezierSpline
                 easing.bezierCurve: popoutContainer.animCurve
             }
         }
 
         Behavior on implicitHeight {
-            enabled: popoutContainer.implicitWidth > 0
+            enabled: Utils.Theme.isSide ? popoutContainer.implicitWidth > 0 : true
+
+            NumberAnimation {
+                duration: Utils.Theme.isTop ? popoutContainer.animDuration : popoutContainer.reshapeDuration
+                easing.type: Easing.BezierSpline
+                easing.bezierCurve: popoutContainer.animCurve
+            }
+        }
+
+        Behavior on x {
+            enabled: Utils.Theme.isTop && popoutContainer.implicitWidth > 0 && !root.flushLeft && !root.flushRight
 
             NumberAnimation {
                 duration: popoutContainer.reshapeDuration
@@ -134,7 +169,7 @@ Item {
         }
 
         Behavior on y {
-            enabled: popoutContainer.implicitWidth > 0 && !root.flushTop && !root.flushBottom
+            enabled: Utils.Theme.isSide && popoutContainer.implicitWidth > 0 && !root.flushTop && !root.flushBottom
 
             NumberAnimation {
                 duration: popoutContainer.reshapeDuration
@@ -287,17 +322,17 @@ Item {
                     ]
                 }
             }
-        }
 
-        // Hover area — full container
-        HoverHandler {
-            id: popoutHover
-            onHoveredChanged: {
-                if (hovered) {
-                    Services.Popout.popoutHovered = true;
-                } else {
-                    Services.Popout.popoutHovered = false;
-                    Services.Popout.requestClose();
+            // Hover area — full container
+            HoverHandler {
+                id: popoutHover
+                onHoveredChanged: {
+                    if (hovered) {
+                        Services.Popout.popoutHovered = true;
+                    } else {
+                        Services.Popout.popoutHovered = false;
+                        Services.Popout.requestClose();
+                    }
                 }
             }
         }

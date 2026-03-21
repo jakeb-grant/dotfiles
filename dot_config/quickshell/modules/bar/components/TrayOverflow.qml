@@ -12,15 +12,19 @@ Item {
 
     required property ShellScreen screen
 
-    implicitWidth: Utils.Theme.barInnerWidth
-    implicitHeight: col.implicitHeight
-    visible: col.visibleChildren.length > 0
+    implicitWidth: Utils.Theme.isSide ? Utils.Theme.barInnerWidth : layout.implicitWidth
+    implicitHeight: Utils.Theme.isTop ? Utils.Theme.barInnerWidth : layout.implicitHeight
+    visible: layout.visibleChildren.length > 0
 
-    ColumnLayout {
-        id: col
+    GridLayout {
+        id: layout
 
         anchors.centerIn: parent
-        spacing: Utils.Theme.spacingSmall
+        flow: Utils.Theme.isSide ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        columns: Utils.Theme.isTop ? -1 : 1
+        rows: Utils.Theme.isSide ? -1 : 1
+        columnSpacing: Utils.Theme.isTop ? Utils.Theme.spacingSmall : 0
+        rowSpacing: Utils.Theme.isSide ? Utils.Theme.spacingSmall : 0
 
         Repeater {
             model: SystemTray.items
@@ -31,7 +35,7 @@ Item {
                 required property SystemTrayItem modelData
                 required property int index
 
-                Layout.alignment: Qt.AlignHCenter
+                Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
                 Layout.preferredWidth: Utils.Theme.iconSize + 4
                 Layout.preferredHeight: Utils.Theme.iconSize + 4
 
@@ -75,8 +79,13 @@ Item {
                     cursorShape: Qt.PointingHandCursor
 
                     onEntered: {
-                        const globalPos = trayDelegate.mapToGlobal(0, trayDelegate.height / 2);
-                        Services.Popout.show(`traymenu${trayDelegate.index}`, globalPos.y, root.screen);
+                        const gp = Utils.Theme.isSide
+                            ? trayDelegate.mapToGlobal(0, trayDelegate.height / 2)
+                            : trayDelegate.mapToGlobal(trayDelegate.width / 2, 0);
+                        Services.Popout.show(`traymenu${trayDelegate.index}`,
+                            Utils.Theme.isTop ? gp.x : 0,
+                            Utils.Theme.isSide ? gp.y : 0,
+                            root.screen);
                     }
                     onExited: {
                         Services.Popout.barItemHovered = false;

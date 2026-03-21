@@ -111,10 +111,16 @@ Singleton {
     Behavior on hoverBg      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on frameShadow  { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
 
+    // ── Bar Mode ──
+    readonly property string barMode: _qs.barMode ?? "side"
+    readonly property bool isSide: barMode === "side"
+    readonly property bool isTop: barMode === "top"
+
     // ── Bar Dimensions ──
-    readonly property int barWidth: 56
-    readonly property int barInnerWidth: 38
-    readonly property int barPadding: 6
+    readonly property int barWidth: 48
+    readonly property int barInnerWidth: 34
+    readonly property int barPadding: 5
+    readonly property int barThickness: barWidth  // mode-agnostic: width for side, height for top
 
     // ── Sizes ──
     readonly property int iconSize: 20

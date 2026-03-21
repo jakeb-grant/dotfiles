@@ -43,6 +43,7 @@
     "separator": "#51576d",
     "pillBg": "#303446",
     "hoverBg": "#51576d",
-    "bezelIntensity": 1
+    "bezelIntensity": 1,
+    "barMode": "side"
   }
 }

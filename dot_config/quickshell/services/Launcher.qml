@@ -53,6 +53,7 @@ Singleton {
         { name: "Screenshot (Full)", shortcut: "Shift + Print", command: "grim - | wl-copy", keywords: ["capture","screen"] },
         { name: "Color Picker", shortcut: "Super + Print", command: "hyprpicker -a", keywords: ["pick","eyedropper"] },
         { name: "Lock Screen", shortcut: "Super + L", command: "hyprctl dispatch global quickshell:lock", keywords: ["lock"] },
+        { name: "Toggle Bar Mode", shortcut: "Super + Shift + T", command: "toggle-bar-mode", keywords: ["sidebar","topbar","bar","layout","swap"] },
         { name: "Logout", shortcut: "", command: "hyprctl dispatch exit", keywords: ["exit"] },
         { name: "Suspend", shortcut: "", command: "systemctl suspend", keywords: ["sleep"] },
         { name: "Reboot", shortcut: "", command: "systemctl reboot", keywords: ["restart"] },

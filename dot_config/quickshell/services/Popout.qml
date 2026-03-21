@@ -10,6 +10,7 @@ Singleton {
     // hasCurrent controls whether the wrapper is open.
     property string currentName: ""
     property bool hasCurrent: false
+    property real centerX: 0
     property real centerY: 0
     property var activeScreen: null
     property bool barItemHovered: false
@@ -18,9 +19,10 @@ Singleton {
 
     readonly property bool isOpen: hasCurrent
 
-    function show(name: string, y: real, screen: ShellScreen) {
+    function show(name: string, x: real, y: real, screen: ShellScreen) {
         closeTimer.stop();
         currentName = name;
+        centerX = x;
         centerY = y;
         activeScreen = screen;
         hasCurrent = true;

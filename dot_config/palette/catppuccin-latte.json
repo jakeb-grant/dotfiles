@@ -48,6 +48,7 @@
     "frameGlowBlur": 8,
     "frameGlowSpread": 0.6,
     "frameGlowOpacity": 1.0,
-    "bezelIntensity": 1
+    "bezelIntensity": 1,
+    "barMode": "side"
   }
 }

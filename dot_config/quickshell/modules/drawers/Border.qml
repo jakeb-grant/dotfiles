@@ -35,7 +35,8 @@ Item {
         Rectangle {
             anchors.fill: parent
             anchors.margins: Utils.Theme.borderThickness
-            anchors.leftMargin: root.bar.implicitWidth
+            anchors.leftMargin: Utils.Theme.isSide ? root.bar.implicitWidth : Utils.Theme.borderThickness
+            anchors.topMargin: Utils.Theme.isTop ? root.bar.implicitHeight : Utils.Theme.borderThickness
             radius: Utils.Theme.borderRounding
         }
     }

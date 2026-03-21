@@ -339,12 +339,27 @@ async def main() -> None:
     palette_data = load_palette(theme_name)
 
     # 2. Copy palette → active.json (both chezmoi source and live config)
+    #    Preserve barMode from current active.json so toggling survives theme switches
     print("==> Updating active palette...")
-    src = PALETTE_DIR / f"{theme_name}.json"
-    shutil.copy2(str(src), str(PALETTE_DIR / "active.json"))
     live_palette = Path.home() / ".config/palette/active.json"
+    active_bar_mode = None
+    if live_palette.exists():
+        try:
+            with open(live_palette) as f:
+                active_data = json.load(f)
+            active_bar_mode = active_data.get("_quickshell", {}).get("barMode")
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    src = PALETTE_DIR / f"{theme_name}.json"
+    with open(src) as f:
+        new_palette = json.load(f)
+    if active_bar_mode:
+        new_palette.setdefault("_quickshell", {})["barMode"] = active_bar_mode
     live_palette.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(str(src), str(live_palette))
+    for active_path in [PALETTE_DIR / "active.json", live_palette]:
+        with open(active_path, "w") as f:
+            json.dump(new_palette, f, indent=2)
 
     # 3. Process Jinja2 .theme templates → .tmpl files
     print("==> Processing theme templates...")

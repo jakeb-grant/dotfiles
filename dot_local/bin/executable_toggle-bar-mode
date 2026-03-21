@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+"""Toggle Quickshell bar between sidebar and topbar mode."""
+
+import json
+import os
+
+palette = os.path.expanduser("~/.config/palette/active.json")
+
+with open(palette) as f:
+    data = json.load(f)
+
+qs = data.setdefault("_quickshell", {})
+current = qs.get("barMode", "side")
+qs["barMode"] = "top" if current == "side" else "side"
+
+with open(palette, "w") as f:
+    json.dump(data, f, indent=2)
+
+print(f"Bar mode: {qs['barMode']}")

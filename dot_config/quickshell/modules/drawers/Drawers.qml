@@ -53,10 +53,22 @@ Variants {
                 readonly property bool passthrough: !popoutWrapper.active
                     && !Services.Notifications.expanded
                     && !Services.Launcher.visible
-                x: passthrough ? bar.implicitWidth : 0
-                y: passthrough ? bt : 0
-                width: passthrough ? (win.width - bar.implicitWidth - bt) : 0
-                height: passthrough ? (win.height - bt * 2) : 0
+                x: passthrough
+                    ? (Utils.Theme.isSide ? bar.implicitWidth : bt)
+                    : 0
+                y: passthrough
+                    ? (Utils.Theme.isTop ? bar.implicitHeight : bt)
+                    : 0
+                width: passthrough
+                    ? (Utils.Theme.isSide
+                        ? (win.width - bar.implicitWidth - bt)
+                        : (win.width - bt * 2))
+                    : 0
+                height: passthrough
+                    ? (Utils.Theme.isTop
+                        ? (win.height - bar.implicitHeight - bt)
+                        : (win.height - bt * 2))
+                    : 0
                 intersection: Intersection.Xor
 
                 // Cut notification area out of the click-through zone
@@ -133,9 +145,9 @@ Variants {
                     bar: bar
                 }
 
-                // Popout background — concave curves where popout meets bar and frame
+                // ── Side mode: popout background (right of bar) ──
                 Shape {
-                    id: popoutBg
+                    id: popoutBgSide
 
                     readonly property real r: Utils.Theme.popoutRounding
                     readonly property real pw: popoutWrapper.popoutWidth
@@ -152,7 +164,7 @@ Variants {
                     y: popoutWrapper.popoutY - topExt
                     width: pw + rightExt
                     height: ph + topExt + btmExt
-                    visible: pw > 1
+                    visible: Utils.Theme.isSide && pw > 1
                     preferredRendererType: Shape.CurveRenderer
 
                     ShapePath {
@@ -163,61 +175,161 @@ Variants {
                         startY: 0
 
                         PathArc {
-                            x: popoutBg.ft ? 0 : popoutBg.concaveR
-                            y: popoutBg.topExt
-                            radiusX: popoutBg.concaveR
-                            radiusY: popoutBg.r
+                            x: popoutBgSide.ft ? 0 : popoutBgSide.concaveR
+                            y: popoutBgSide.topExt
+                            radiusX: popoutBgSide.concaveR
+                            radiusY: popoutBgSide.r
                             direction: PathArc.Counterclockwise
                         }
 
                         PathLine {
-                            x: popoutBg.ft
-                                ? popoutBg.pw + popoutBg.concaveR
-                                : popoutBg.pw - popoutBg.convexR
-                            y: popoutBg.topExt
+                            x: popoutBgSide.ft
+                                ? popoutBgSide.pw + popoutBgSide.concaveR
+                                : popoutBgSide.pw - popoutBgSide.convexR
+                            y: popoutBgSide.topExt
                         }
 
                         PathArc {
-                            x: popoutBg.pw
-                            y: popoutBg.topExt + (popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR)
-                            radiusX: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
-                            radiusY: popoutBg.ft ? popoutBg.concaveR : popoutBg.convexR
-                            direction: popoutBg.ft
+                            x: popoutBgSide.pw
+                            y: popoutBgSide.topExt + (popoutBgSide.ft ? popoutBgSide.concaveR : popoutBgSide.convexR)
+                            radiusX: popoutBgSide.ft ? popoutBgSide.concaveR : popoutBgSide.convexR
+                            radiusY: popoutBgSide.ft ? popoutBgSide.concaveR : popoutBgSide.convexR
+                            direction: popoutBgSide.ft
                                 ? PathArc.Counterclockwise
                                 : PathArc.Clockwise
                         }
 
                         PathLine {
-                            x: popoutBg.pw
-                            y: popoutBg.fb
-                                ? popoutBg.topExt + popoutBg.ph - popoutBg.concaveR
-                                : popoutBg.topExt + popoutBg.ph - popoutBg.convexR
+                            x: popoutBgSide.pw
+                            y: popoutBgSide.fb
+                                ? popoutBgSide.topExt + popoutBgSide.ph - popoutBgSide.concaveR
+                                : popoutBgSide.topExt + popoutBgSide.ph - popoutBgSide.convexR
                         }
 
                         PathArc {
-                            x: popoutBg.fb
-                                ? popoutBg.pw + popoutBg.concaveR
-                                : popoutBg.pw - popoutBg.convexR
-                            y: popoutBg.topExt + popoutBg.ph
-                            radiusX: popoutBg.fb ? popoutBg.concaveR : popoutBg.convexR
-                            radiusY: popoutBg.fb ? popoutBg.concaveR : popoutBg.convexR
-                            direction: popoutBg.fb
+                            x: popoutBgSide.fb
+                                ? popoutBgSide.pw + popoutBgSide.concaveR
+                                : popoutBgSide.pw - popoutBgSide.convexR
+                            y: popoutBgSide.topExt + popoutBgSide.ph
+                            radiusX: popoutBgSide.fb ? popoutBgSide.concaveR : popoutBgSide.convexR
+                            radiusY: popoutBgSide.fb ? popoutBgSide.concaveR : popoutBgSide.convexR
+                            direction: popoutBgSide.fb
                                 ? PathArc.Counterclockwise
                                 : PathArc.Clockwise
                         }
 
                         PathLine {
-                            x: popoutBg.fb ? 0 : popoutBg.concaveR
-                            y: popoutBg.topExt + popoutBg.ph
+                            x: popoutBgSide.fb ? 0 : popoutBgSide.concaveR
+                            y: popoutBgSide.topExt + popoutBgSide.ph
                         }
 
                         PathArc {
                             x: 0
-                            y: popoutBg.fb
-                                ? popoutBg.topExt + popoutBg.ph
-                                : popoutBg.height
-                            radiusX: popoutBg.concaveR
-                            radiusY: popoutBg.r
+                            y: popoutBgSide.fb
+                                ? popoutBgSide.topExt + popoutBgSide.ph
+                                : popoutBgSide.height
+                            radiusX: popoutBgSide.concaveR
+                            radiusY: popoutBgSide.r
+                            direction: PathArc.Counterclockwise
+                        }
+                    }
+                }
+
+                // ── Top mode: popout background (below bar) ──
+                Shape {
+                    id: popoutBgTop
+
+                    readonly property real r: Utils.Theme.popoutRounding
+                    readonly property real pw: popoutWrapper.popoutWidth
+                    readonly property real ph: popoutWrapper.popoutHeight
+                    readonly property bool fl: popoutWrapper.flushLeft
+                    readonly property bool fr: popoutWrapper.flushRight
+                    readonly property real leftExt: fl ? 0 : r
+                    readonly property real rightExt: fr ? 0 : r
+                    readonly property real bottomExt: (fl || fr) ? concaveR : 0
+                    readonly property real concaveR: Math.min(ph, r)
+                    readonly property real convexR: Math.min(ph / 2, r)
+
+                    x: popoutWrapper.popoutX - leftExt
+                    y: popoutWrapper.popoutY
+                    width: pw + leftExt + rightExt
+                    height: ph + bottomExt
+                    visible: Utils.Theme.isTop && pw > 1
+                    preferredRendererType: Shape.CurveRenderer
+
+                    ShapePath {
+                        strokeWidth: -1
+                        fillColor: Utils.Theme.mantle
+
+                        startX: 0
+                        startY: 0
+
+                        // Along top (bar edge) left to right
+                        PathLine { x: popoutBgTop.width; y: 0 }
+
+                        // Top-right: concave arc down into right extension, or nothing
+                        PathArc {
+                            x: popoutBgTop.leftExt + popoutBgTop.pw
+                            y: popoutBgTop.fr ? 0 : popoutBgTop.concaveR
+                            radiusX: popoutBgTop.r
+                            radiusY: popoutBgTop.concaveR
+                            direction: PathArc.Counterclockwise
+                        }
+
+                        // Down right edge to bottom
+                        PathLine {
+                            x: popoutBgTop.leftExt + popoutBgTop.pw
+                            y: popoutBgTop.fr
+                                ? popoutBgTop.ph + popoutBgTop.concaveR
+                                : popoutBgTop.ph - popoutBgTop.convexR
+                        }
+
+                        // Bottom-right corner
+                        PathArc {
+                            x: popoutBgTop.fr
+                                ? popoutBgTop.leftExt + popoutBgTop.pw
+                                : popoutBgTop.leftExt + popoutBgTop.pw - popoutBgTop.convexR
+                            y: popoutBgTop.ph
+                            radiusX: popoutBgTop.fr ? popoutBgTop.concaveR : popoutBgTop.convexR
+                            radiusY: popoutBgTop.fr ? popoutBgTop.concaveR : popoutBgTop.convexR
+                            direction: popoutBgTop.fr
+                                ? PathArc.Counterclockwise
+                                : PathArc.Clockwise
+                        }
+
+                        // Along bottom
+                        PathLine {
+                            x: popoutBgTop.fl
+                                ? popoutBgTop.leftExt - popoutBgTop.convexR
+                                : popoutBgTop.leftExt + popoutBgTop.convexR
+                            y: popoutBgTop.ph
+                        }
+
+                        // Bottom-left corner
+                        PathArc {
+                            x: popoutBgTop.leftExt
+                            y: popoutBgTop.fl
+                                ? popoutBgTop.ph + popoutBgTop.concaveR
+                                : popoutBgTop.ph - popoutBgTop.convexR
+                            radiusX: popoutBgTop.fl ? popoutBgTop.concaveR : popoutBgTop.convexR
+                            radiusY: popoutBgTop.fl ? popoutBgTop.concaveR : popoutBgTop.convexR
+                            direction: popoutBgTop.fl
+                                ? PathArc.Counterclockwise
+                                : PathArc.Clockwise
+                        }
+
+                        // Up left edge
+                        PathLine {
+                            x: popoutBgTop.leftExt
+                            y: popoutBgTop.fl ? 0 : popoutBgTop.concaveR
+                        }
+
+                        // Top-left: concave arc back to start
+                        PathArc {
+                            x: 0
+                            y: 0
+                            radiusX: popoutBgTop.r
+                            radiusY: popoutBgTop.concaveR
                             direction: PathArc.Counterclockwise
                         }
                     }
@@ -255,7 +367,9 @@ Variants {
                     readonly property real cvr: Math.min(convexR, nh / 3)
 
                     x: win.width - bt - nw - leftExt
-                    y: bt
+                    y: Utils.Theme.isTop
+                        ? (bar.implicitHeight > bt ? bar.implicitHeight : bt)
+                        : bt
                     width: nw + leftExt
                     height: nh + bottomExt
                     visible: nh > 1
@@ -488,7 +602,10 @@ Variants {
 
                 x: win.width - Utils.Theme.borderThickness
                     - Utils.Theme.notificationWidth - Utils.Theme.spacingNormal
-                y: Utils.Theme.borderThickness + Utils.Theme.spacingNormal
+                y: (Utils.Theme.isTop
+                    ? Math.max(bar.implicitHeight, Utils.Theme.borderThickness)
+                    : Utils.Theme.borderThickness)
+                    + Utils.Theme.spacingNormal
                 width: Utils.Theme.notificationWidth
                 spacing: Utils.Theme.spacingSmall
 
@@ -617,15 +734,35 @@ Variants {
             BarWrapper {
                 id: bar
 
-                anchors.top: parent.top
-                anchors.bottom: parent.bottom
-
                 screen: scope.modelData
+
+                states: [
+                    State {
+                        name: "side"
+                        when: Utils.Theme.isSide
+                        AnchorChanges {
+                            target: bar
+                            anchors.top: bar.parent.top
+                            anchors.bottom: bar.parent.bottom
+                        }
+                    },
+                    State {
+                        name: "top"
+                        when: Utils.Theme.isTop
+                        AnchorChanges {
+                            target: bar
+                            anchors.top: bar.parent.top
+                            anchors.left: bar.parent.left
+                            anchors.right: bar.parent.right
+                        }
+                    }
+                ]
             }
 
             PopoutWrapper {
                 id: popoutWrapper
-                barWidth: bar.implicitWidth
+                barWidth: Utils.Theme.isSide ? bar.implicitWidth : 0
+                barHeight: Utils.Theme.isTop ? bar.implicitHeight : 0
                 screen: scope.modelData
             }
         }

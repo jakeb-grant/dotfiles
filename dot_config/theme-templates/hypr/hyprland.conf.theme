@@ -74,6 +74,9 @@ bind = $mod, J, togglesplit,
 bind = $mod, F, fullscreen,
 bind = $mod, L, global, quickshell:lock
 
+# Bar mode toggle
+bind = $mod SHIFT, T, exec, toggle-bar-mode
+
 # Notifications (Quickshell global shortcuts)
 bind = $mod, comma, global, quickshell:notif-dismiss
 bind = $mod SHIFT, comma, global, quickshell:notif-dismiss-all

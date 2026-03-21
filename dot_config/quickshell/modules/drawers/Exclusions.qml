@@ -9,17 +9,18 @@ Scope {
     required property ShellScreen screen
     required property Item bar
 
-    // Left edge: bar width
+    // Left edge: bar width (side mode) or border thickness
     ExclusionZone {
         anchors.left: true
-        exclusiveZone: root.bar.exclusiveZone
+        exclusiveZone: Utils.Theme.isSide ? root.bar.exclusiveZone : (Utils.Theme.borderThickness > 0 ? Utils.Theme.borderThickness : 0)
+        visible: Utils.Theme.isSide || Utils.Theme.borderThickness > 0
     }
 
-    // Top edge: border thickness
+    // Top edge: bar height (top mode) or border thickness
     ExclusionZone {
         anchors.top: true
-        visible: Utils.Theme.borderThickness > 0
-        exclusiveZone: Utils.Theme.borderThickness > 0 ? Utils.Theme.borderThickness : 0
+        exclusiveZone: Utils.Theme.isTop ? root.bar.exclusiveZone : (Utils.Theme.borderThickness > 0 ? Utils.Theme.borderThickness : 0)
+        visible: Utils.Theme.isTop || Utils.Theme.borderThickness > 0
     }
 
     // Right edge: border thickness

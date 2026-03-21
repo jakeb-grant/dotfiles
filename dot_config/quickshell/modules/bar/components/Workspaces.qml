@@ -55,8 +55,9 @@ Rectangle {
         return map;
     }
 
-    // Pre-computed slot heights: 22 dot area + icon rows
-    // Each icon row = 22px height + 2px column spacing
+    // Pre-computed slot sizes along the layout axis
+    // Side mode: height = 28 dot area + icon rows (each 24px)
+    // Top mode: width = 28 dot area + icon columns (each 24px)
     readonly property var slotHeights: {
         const heights = [];
         for (const id of configuredIds) {
@@ -64,6 +65,15 @@ Rectangle {
             heights.push(28 + icons.length * 24);
         }
         return heights;
+    }
+
+    readonly property var slotWidths: {
+        const widths = [];
+        for (const id of configuredIds) {
+            const icons = windowIcons[id] ?? [];
+            widths.push(28 + icons.length * 24);
+        }
+        return widths;
     }
 
     readonly property int activeIndex: {
@@ -86,12 +96,29 @@ Rectangle {
         return base + (icons.length > 0 ? 3 : 0);
     }
 
-    implicitWidth: Utils.Theme.barInnerWidth
-    implicitHeight: layout.implicitHeight + Utils.Theme.spacingNormal * 2
+    readonly property real indicatorX: {
+        if (activeIndex < 0) return Utils.Theme.spacingNormal;
+        let x = Utils.Theme.spacingNormal;
+        for (let i = 0; i < activeIndex; i++)
+            x += slotWidths[i] + Utils.Theme.spacingNormal;
+        return x;
+    }
+
+    readonly property real indicatorWidth: {
+        const base = activeIndex >= 0 ? (slotWidths[activeIndex] ?? 28) : 28;
+        const icons = activeIndex >= 0 ? (windowIcons[configuredIds[activeIndex]] ?? []) : [];
+        return base + (icons.length > 0 ? 3 : 0);
+    }
+
+    implicitWidth: Utils.Theme.isSide ? Utils.Theme.barInnerWidth : (layout.implicitWidth + Utils.Theme.spacingNormal * 2)
+    implicitHeight: Utils.Theme.isTop ? Utils.Theme.barInnerWidth : (layout.implicitHeight + Utils.Theme.spacingNormal * 2)
     radius: Utils.Theme.roundingNormal
     color: Utils.Theme.pillBg
 
     Behavior on implicitHeight {
+        Utils.Anim {}
+    }
+    Behavior on implicitWidth {
         Utils.Anim {}
     }
 
@@ -99,15 +126,21 @@ Rectangle {
     Rectangle {
         id: activeIndicator
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        y: root.indicatorY
-        width: 28
-        height: root.indicatorHeight
+        x: Utils.Theme.isTop ? root.indicatorX : (parent.width - 28) / 2
+        y: Utils.Theme.isSide ? root.indicatorY : (parent.height - 28) / 2
+        width: Utils.Theme.isTop ? root.indicatorWidth : 28
+        height: Utils.Theme.isSide ? root.indicatorHeight : 28
         radius: Utils.Theme.roundingFull
         color: Utils.Theme.accent
         visible: root.activeIndex >= 0
 
+        Behavior on x {
+            Utils.Anim {}
+        }
         Behavior on y {
+            Utils.Anim {}
+        }
+        Behavior on width {
             Utils.Anim {}
         }
         Behavior on height {
@@ -115,14 +148,42 @@ Rectangle {
         }
     }
 
-    ColumnLayout {
+    GridLayout {
         id: layout
 
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: Utils.Theme.spacingNormal
-        spacing: Utils.Theme.spacingNormal
+        flow: Utils.Theme.isSide ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        columns: Utils.Theme.isTop ? -1 : 1
+        rows: Utils.Theme.isSide ? -1 : 1
+        columnSpacing: Utils.Theme.isTop ? Utils.Theme.spacingNormal : 0
+        rowSpacing: Utils.Theme.isSide ? Utils.Theme.spacingNormal : 0
         z: 1
+
+        states: [
+            State {
+                name: "side"
+                when: Utils.Theme.isSide
+                AnchorChanges {
+                    target: layout
+                    anchors.horizontalCenter: root.horizontalCenter
+                    anchors.top: root.top
+                }
+                PropertyChanges {
+                    layout.anchors.topMargin: Utils.Theme.spacingNormal
+                }
+            },
+            State {
+                name: "top"
+                when: Utils.Theme.isTop
+                AnchorChanges {
+                    target: layout
+                    anchors.verticalCenter: root.verticalCenter
+                    anchors.left: root.left
+                }
+                PropertyChanges {
+                    layout.anchors.leftMargin: Utils.Theme.spacingNormal
+                }
+            }
+        ]
 
         Repeater {
             model: root.configuredIds.length
@@ -135,33 +196,41 @@ Rectangle {
                 readonly property bool active: wsId === root.activeWsId
                 readonly property bool occupied: root.occupiedIds[wsId] ?? false
                 readonly property var icons: root.windowIcons[wsId] ?? []
-                readonly property int contentHeight: 28 + icons.length * 24
+                readonly property int contentSize: 28 + icons.length * 24
 
                 // Entrance cascade
-                property real _yShift: root._wsAnimStep >= index ? 0 : 8
-                Behavior on _yShift {
+                property real _shift: root._wsAnimStep >= index ? 0 : 8
+                Behavior on _shift {
                     NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
                 }
                 opacity: root._wsAnimStep >= index ? 1 : 0
                 Behavior on opacity {
                     NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
                 }
-                transform: Translate { y: wsSlot._yShift }
+                transform: Translate {
+                    x: Utils.Theme.isTop ? wsSlot._shift : 0
+                    y: Utils.Theme.isSide ? wsSlot._shift : 0
+                }
 
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: contentHeight
+                Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
+                Layout.preferredWidth: Utils.Theme.isTop ? contentSize : 28
+                Layout.preferredHeight: Utils.Theme.isSide ? contentSize : 28
 
                 Behavior on Layout.preferredHeight {
                     Utils.Anim {}
                 }
+                Behavior on Layout.preferredWidth {
+                    Utils.Anim {}
+                }
 
-                // Content column: dot + window icons
-                Column {
+                // Content: dot + window icons, flow direction follows bar mode
+                Grid {
                     id: wsContent
 
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.top: parent.top
+                    anchors.centerIn: parent
+                    flow: Utils.Theme.isSide ? Grid.TopToBottom : Grid.LeftToRight
+                    columns: Utils.Theme.isTop ? -1 : 1
+                    rows: Utils.Theme.isSide ? -1 : 1
                     spacing: Utils.Theme.spacingTiny
 
                     // Workspace state icon
@@ -207,8 +276,8 @@ Rectangle {
                             color: wsSlot.active ? Utils.Theme.crust : Utils.Theme.subtleText
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
-                            width: 28
-                            height: 22
+                            width: Utils.Theme.isTop ? 22 : 28
+                            height: Utils.Theme.isSide ? 22 : 28
 
                             Behavior on color {
                                 ColorAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }

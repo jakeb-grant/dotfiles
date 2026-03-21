@@ -9,22 +9,36 @@ Rectangle {
 
     required property ShellScreen screen
 
-    implicitWidth: Utils.Theme.barInnerWidth
-    implicitHeight: col.implicitHeight + Utils.Theme.spacingNormal * 2
+    implicitWidth: Utils.Theme.isSide ? Utils.Theme.barInnerWidth : (layout.implicitWidth + Utils.Theme.spacingNormal * 2)
+    implicitHeight: Utils.Theme.isTop ? Utils.Theme.barInnerWidth : (layout.implicitHeight + Utils.Theme.spacingNormal * 2)
     radius: Utils.Theme.roundingNormal
     color: Utils.Theme.pillBg
 
-    ColumnLayout {
-        id: col
+    function _showPopout(item: Item, name: string) {
+        const gp = Utils.Theme.isSide
+            ? item.mapToGlobal(0, item.height / 2)
+            : item.mapToGlobal(item.width / 2, 0);
+        Services.Popout.show(name,
+            Utils.Theme.isTop ? gp.x : 0,
+            Utils.Theme.isSide ? gp.y : 0,
+            root.screen);
+    }
+
+    GridLayout {
+        id: layout
 
         anchors.centerIn: parent
-        spacing: Utils.Theme.spacingSmall
+        flow: Utils.Theme.isSide ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        columns: Utils.Theme.isTop ? -1 : 1
+        rows: Utils.Theme.isSide ? -1 : 1
+        columnSpacing: Utils.Theme.isTop ? Utils.Theme.spacingSmall : 0
+        rowSpacing: Utils.Theme.isSide ? Utils.Theme.spacingSmall : 0
 
         // Volume
         Item {
             id: volumeItem
 
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: volumeIcon.implicitWidth
             implicitHeight: volumeIcon.implicitHeight
 
@@ -51,10 +65,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: {
-                    const globalPos = volumeItem.mapToGlobal(0, volumeItem.height / 2);
-                    Services.Popout.show("volume", globalPos.y, root.screen);
-                }
+                onEntered: root._showPopout(volumeItem, "volume")
                 onExited: {
                     Services.Popout.barItemHovered = false;
                     Services.Popout.requestClose();
@@ -66,7 +77,7 @@ Rectangle {
         Item {
             id: brightnessItem
 
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             visible: Services.Brightness.available
             implicitWidth: brightnessIcon.implicitWidth
             implicitHeight: brightnessIcon.implicitHeight
@@ -97,10 +108,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: {
-                    const globalPos = brightnessItem.mapToGlobal(0, brightnessItem.height / 2);
-                    Services.Popout.show("brightness", globalPos.y, root.screen);
-                }
+                onEntered: root._showPopout(brightnessItem, "brightness")
                 onExited: {
                     Services.Popout.barItemHovered = false;
                     Services.Popout.requestClose();
@@ -112,7 +120,7 @@ Rectangle {
         Item {
             id: wifiItem
 
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: wifiIcon.implicitWidth
             implicitHeight: wifiIcon.implicitHeight
 
@@ -137,10 +145,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: {
-                    const globalPos = wifiItem.mapToGlobal(0, wifiItem.height / 2);
-                    Services.Popout.show("wifi", globalPos.y, root.screen);
-                }
+                onEntered: root._showPopout(wifiItem, "wifi")
                 onExited: {
                     Services.Popout.barItemHovered = false;
                     Services.Popout.requestClose();
@@ -152,7 +157,7 @@ Rectangle {
         Item {
             id: bluetoothItem
 
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: bluetoothIcon.implicitWidth
             implicitHeight: bluetoothIcon.implicitHeight
 
@@ -178,10 +183,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: {
-                    const globalPos = bluetoothItem.mapToGlobal(0, bluetoothItem.height / 2);
-                    Services.Popout.show("bluetooth", globalPos.y, root.screen);
-                }
+                onEntered: root._showPopout(bluetoothItem, "bluetooth")
                 onExited: {
                     Services.Popout.barItemHovered = false;
                     Services.Popout.requestClose();
@@ -193,7 +195,7 @@ Rectangle {
         Item {
             id: batteryItem
 
-            Layout.alignment: Qt.AlignHCenter
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             visible: Services.Battery.isLaptop
             implicitWidth: batteryIcon.implicitWidth
             implicitHeight: batteryIcon.implicitHeight
@@ -215,10 +217,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: {
-                    const globalPos = batteryItem.mapToGlobal(0, batteryItem.height / 2);
-                    Services.Popout.show("battery", globalPos.y, root.screen);
-                }
+                onEntered: root._showPopout(batteryItem, "battery")
                 onExited: {
                     Services.Popout.barItemHovered = false;
                     Services.Popout.requestClose();
