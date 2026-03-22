@@ -27,8 +27,8 @@ Item {
 
     function _showPopout(item: Item, name: string) {
         const gp = Utils.Theme.isSide
-            ? item.mapToGlobal(0, item.height / 2)
-            : item.mapToGlobal(item.width / 2, 0);
+            ? item.mapToItem(null, 0, item.height / 2)
+            : item.mapToItem(null, item.width / 2, 0);
         Services.Popout.show(name,
             Utils.Theme.isTop ? gp.x : 0,
             Utils.Theme.isSide ? gp.y : 0,

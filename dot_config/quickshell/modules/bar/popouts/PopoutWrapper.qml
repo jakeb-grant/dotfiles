@@ -14,27 +14,61 @@ Item {
     // active tracks hasCurrent (controls width), NOT currentName
     readonly property bool active: Services.Popout.isOpen && Services.Popout.activeScreen === screen
 
-    // currentPopout checks currentName — stays valid during close retraction
-    readonly property var currentPopout: contentArea.children.find(c => c.shouldBeActive) ?? null
-
-    // Track raw content size — falls back to last valid value during Loader activation frame
-    readonly property real _contentWidth: currentPopout?.implicitWidth ?? 0
-    readonly property real _contentHeight: currentPopout?.implicitHeight ?? 0
+    // currentPopout and content sizes updated imperatively to avoid binding loops.
+    // (Declarative bindings created a cycle: currentPopout → contentSize → nonAnimSize →
+    //  container implicitSize → children relayout → popout implicitSize → contentSize)
+    property var currentPopout: null
+    property real _contentWidth: 0
+    property real _contentHeight: 0
     property real _lastContentWidth: 0
     property real _lastContentHeight: 0
 
-    on_ContentWidthChanged: if (_contentWidth > 0) _lastContentWidth = _contentWidth
-    on_ContentHeightChanged: if (_contentHeight > 0) _lastContentHeight = _contentHeight
+    function _updateCurrentPopout() {
+        const n = Services.Popout.currentName;
+        if (!n) { currentPopout = null; _contentWidth = 0; _contentHeight = 0; return; }
+        const found = contentArea.children.find(c => (c.name ?? c.popoutName ?? "") === n) ?? null;
+        currentPopout = found;
+        _contentWidth = found?.implicitWidth ?? 0;
+        _contentHeight = found?.implicitHeight ?? 0;
+        if (_contentWidth > 0) _lastContentWidth = _contentWidth;
+        if (_contentHeight > 0) _lastContentHeight = _contentHeight;
+    }
+
+    // Track currentName changes to find the right popout
+    Connections {
+        target: Services.Popout
+        function onCurrentNameChanged() { root._updateCurrentPopout(); }
+    }
+
+    // Track the current popout's size changes
+    Connections {
+        target: root.currentPopout
+        function onImplicitWidthChanged() {
+            const w = root.currentPopout?.implicitWidth ?? 0;
+            root._contentWidth = w;
+            if (w > 0) root._lastContentWidth = w;
+        }
+        function onImplicitHeightChanged() {
+            const h = root.currentPopout?.implicitHeight ?? 0;
+            root._contentHeight = h;
+            if (h > 0) root._lastContentHeight = h;
+        }
+    }
 
     // Non-animated target sizes
-    // Side mode: width is the animated axis (0 when closed), height is content-driven
-    // Top mode: height is the animated axis (0 when closed), width is content-driven
+    // The animated axis goes to 0 when closed; the cross-axis stays at content size
+    // so content remains visible during the retraction clip animation.
+    // Side mode: width is animated, height is content-driven
+    // Top mode: height is animated, width is content-driven
+    readonly property real _effectiveWidth: (_contentWidth > 0 ? _contentWidth : _lastContentWidth) || Utils.Theme.popoutWidth
+    readonly property real _effectiveHeight: (_contentHeight > 0 ? _contentHeight : _lastContentHeight) || Utils.Theme.popoutWidth
+
     readonly property real nonAnimWidth: Utils.Theme.isSide
-        ? (active ? (_contentWidth > 0 ? _contentWidth : _lastContentWidth) + Utils.Theme.spacingLarge * 2 : 0)
-        : ((_contentWidth > 0 ? _contentWidth : (active ? _lastContentWidth : 0)) + Utils.Theme.spacingLarge * 2)
+        ? (active ? _effectiveWidth + Utils.Theme.spacingLarge * 2 : 0)
+        : _effectiveWidth + Utils.Theme.spacingLarge * 2
     readonly property real nonAnimHeight: Utils.Theme.isTop
-        ? (active ? (_contentHeight > 0 ? _contentHeight : _lastContentHeight) + Utils.Theme.spacingLarge * 2 : 0)
-        : ((_contentHeight > 0 ? _contentHeight : (active ? _lastContentHeight : 0)) + Utils.Theme.spacingLarge * 2)
+        ? (active ? _effectiveHeight + Utils.Theme.spacingLarge * 2 : 0)
+        : _effectiveHeight + Utils.Theme.spacingLarge * 2
 
     // ── Side mode: vertical positioning (popout right of bar) ──
     readonly property real targetY: {
@@ -62,7 +96,9 @@ Item {
     readonly property real popoutX: Utils.Theme.isSide ? barWidth : popoutContainer.x
     readonly property real popoutY: Utils.Theme.isTop ? barHeight : popoutContainer.y
     readonly property real popoutWidth: popoutContainer.implicitWidth
-    readonly property real popoutHeight: popoutContainer.implicitWidth > 0 ? popoutContainer.implicitHeight : 0
+    readonly property real popoutHeight: Utils.Theme.isSide
+        ? (popoutContainer.implicitWidth > 0 ? popoutContainer.implicitHeight : 0)
+        : popoutContainer.implicitHeight
 
     anchors.top: parent.top
     anchors.bottom: parent.bottom
@@ -102,10 +138,13 @@ Item {
         implicitWidth: root.nonAnimWidth
         implicitHeight: root.nonAnimHeight
 
-        // When retraction completes, clean up the service state and reset curve
+        // When retraction completes, clean up the service state and reset curve.
+        // Only the instance whose screen matches activeScreen (or null) may cleanup,
+        // so non-active monitors don't wipe state set by show().
         function _checkRetracted() {
             const retracted = Utils.Theme.isSide ? implicitWidth <= 0 : implicitHeight <= 0;
-            if (retracted && !root.active) {
+            if (retracted && !root.active
+                    && (Services.Popout.activeScreen === root.screen || Services.Popout.activeScreen === null)) {
                 Services.Popout.cleanup();
                 animCurve = Utils.Theme.animCurveEmphasized;
                 animDuration = Utils.Theme.animDuration;
@@ -124,6 +163,11 @@ Item {
                     popoutContainer.animCurve = Utils.Theme.animCurveEmphasizedDecel;
                     popoutContainer.animDuration = Utils.Theme.animDuration + 100;
                     popoutContainer.reshapeDuration = Utils.Theme.animDuration + 100;
+                } else {
+                    // Reset to normal curve on reopen (e.g. hovering during close animation)
+                    popoutContainer.animCurve = Utils.Theme.animCurveEmphasized;
+                    popoutContainer.animDuration = Utils.Theme.animDuration;
+                    popoutContainer.reshapeDuration = Utils.Theme.animDuration;
                 }
             }
         }
@@ -141,6 +185,8 @@ Item {
         }
 
         Behavior on implicitWidth {
+            enabled: Utils.Theme.isSide ? true : popoutContainer.implicitHeight > 0
+
             NumberAnimation {
                 duration: Utils.Theme.isSide ? popoutContainer.animDuration : popoutContainer.reshapeDuration
                 easing.type: Easing.BezierSpline
@@ -149,7 +195,7 @@ Item {
         }
 
         Behavior on implicitHeight {
-            enabled: Utils.Theme.isSide ? popoutContainer.implicitWidth > 0 : true
+            enabled: Utils.Theme.isTop ? true : popoutContainer.implicitWidth > 0
 
             NumberAnimation {
                 duration: Utils.Theme.isTop ? popoutContainer.animDuration : popoutContainer.reshapeDuration
@@ -237,6 +283,7 @@ Item {
 
                     readonly property string popoutName: `traymenu${index}`
                     readonly property bool shouldBeActive: Services.Popout.currentName === popoutName
+                        && Services.Popout.activeScreen === root.screen
 
                     // Expose for currentPopout lookup
                     implicitWidth: trayLoader.item?.implicitWidth ?? 0
@@ -394,6 +441,7 @@ Item {
 
         required property string name
         readonly property bool shouldBeActive: Services.Popout.currentName === name
+            && Services.Popout.activeScreen === root.screen
 
         anchors.verticalCenter: parent.verticalCenter
         anchors.right: parent.right

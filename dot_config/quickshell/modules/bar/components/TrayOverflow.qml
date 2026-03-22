@@ -80,8 +80,8 @@ Item {
 
                     onEntered: {
                         const gp = Utils.Theme.isSide
-                            ? trayDelegate.mapToGlobal(0, trayDelegate.height / 2)
-                            : trayDelegate.mapToGlobal(trayDelegate.width / 2, 0);
+                            ? trayDelegate.mapToItem(null, 0, trayDelegate.height / 2)
+                            : trayDelegate.mapToItem(null, trayDelegate.width / 2, 0);
                         Services.Popout.show(`traymenu${trayDelegate.index}`,
                             Utils.Theme.isTop ? gp.x : 0,
                             Utils.Theme.isSide ? gp.y : 0,

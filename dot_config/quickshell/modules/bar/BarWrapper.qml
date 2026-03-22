@@ -34,14 +34,14 @@ Item {
 
     states: [
         State {
-            name: "side"
+            name: "barSide"
             when: Utils.Theme.isSide
             PropertyChanges {
                 root.implicitWidth: root.contentWidth
             }
         },
         State {
-            name: "top"
+            name: "barTop"
             when: Utils.Theme.isTop
             PropertyChanges {
                 root.implicitHeight: root.contentHeight
@@ -51,14 +51,14 @@ Item {
 
     transitions: [
         Transition {
-            to: "side"
+            to: "barSide"
             Utils.Anim {
                 target: root
                 property: "implicitWidth"
             }
         },
         Transition {
-            to: "top"
+            to: "barTop"
             Utils.Anim {
                 target: root
                 property: "implicitHeight"

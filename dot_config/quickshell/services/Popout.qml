@@ -21,11 +21,14 @@ Singleton {
 
     function show(name: string, x: real, y: real, screen: ShellScreen) {
         closeTimer.stop();
-        currentName = name;
-        centerX = x;
-        centerY = y;
+        // Set screen and open state BEFORE currentName so that shouldBeActive
+        // (which checks both currentName and activeScreen) evaluates with
+        // the correct screen — prevents wrong-monitor Loader activation.
         activeScreen = screen;
         hasCurrent = true;
+        centerX = x;
+        centerY = y;
+        currentName = name;
         barItemHovered = true;
     }
 

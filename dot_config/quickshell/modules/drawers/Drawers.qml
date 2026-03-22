@@ -738,7 +738,7 @@ Variants {
 
                 states: [
                     State {
-                        name: "side"
+                        name: "anchorSide"
                         when: Utils.Theme.isSide
                         AnchorChanges {
                             target: bar
@@ -747,7 +747,7 @@ Variants {
                         }
                     },
                     State {
-                        name: "top"
+                        name: "anchorTop"
                         when: Utils.Theme.isTop
                         AnchorChanges {
                             target: bar
