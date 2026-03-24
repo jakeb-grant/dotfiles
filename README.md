@@ -10,14 +10,15 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 ## Features
 
 - **Window Manager**: Hyprland
-- **Desktop Shell**: Quickshell (bar, launcher, notifications, lock screen — replaces waybar + swaync + hyprlock; uses hyprlock's PAM config for authentication)
+- **Desktop Shell**: Quickshell (bar, launcher, notifications, lock screen, wallpaper picker — uses hyprlock's PAM config for authentication; hyprlock configured as fallback)
 - **Terminal**: Ghostty
 - **Editor**: Zed with hand-crafted themes per palette
 - **File Manager**: Yazi (terminal, themed)
 - **System Monitor**: btop
 - **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
-- **Boot Theming**: GRUB and SDDM login screen
+- **Login Manager**: greetd + tuigreet
+- **Boot Theming**: GRUB bootloader theme
 
 ## Getting Started
 
@@ -63,8 +64,15 @@ These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant
 
 ```
 dot_config/
-├── hypr/               # Hyprland window manager + hypridle
-├── quickshell/         # Desktop shell (bar, launcher, notifications, lock screen)
+├── hypr/               # Hyprland window manager + hypridle + hyprlock (fallback)
+├── quickshell/         # Desktop shell
+│   └── modules/
+│       ├── bar/            # Status bar (sidebar + topbar modes)
+│       ├── drawers/        # Slide-out panels
+│       ├── launcher/       # App launcher
+│       ├── lockscreen/     # Lock screen (uses hyprlock PAM)
+│       ├── notifications/  # Notification center
+│       └── wallpaper/      # Wallpaper picker
 ├── ghostty/            # Terminal emulator
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
@@ -73,12 +81,14 @@ dot_config/
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
 ├── grub/               # GRUB bootloader theme
-├── sddm-theme/         # SDDM login screen theme
+├── sddm-theme/         # SDDM login theme (legacy, replaced by greetd)
+├── windows-vm/         # Windows VM (docker-compose)
 ├── palette/            # Theme palette definitions (JSON)
 ├── theme-templates/    # Jinja2 theme templates
 └── wallpapers/         # Per-theme wallpapers
 dot_local/bin/
 ├── theme-switch        # Theme switching utility
+├── toggle-bar-mode     # Switch between sidebar and topbar layouts
 └── win-vm              # Windows VM management
 ```
 
