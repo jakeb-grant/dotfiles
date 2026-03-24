@@ -87,9 +87,21 @@ case "${1:-start-and-open}" in
         ;;
     start-and-open)
         ensure_docker
-        docker compose -f "$COMPOSE_FILE" up -d
-        sleep 2
-        sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+        if is_running; then
+            sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+        else
+            docker compose -f "$COMPOSE_FILE" up -d
+            notify-send -a "Windows VM" "Starting VM..." "Waiting for RDP to become available"
+            for i in $(seq 1 60); do
+                if timeout 1 bash -c 'echo > /dev/tcp/localhost/3389' 2>/dev/null; then
+                    sleep 2  # Brief settle after port opens
+                    sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+                    exit 0
+                fi
+                sleep 2
+            done
+            notify-send -a "Windows VM" -u critical "VM timed out" "RDP not available. Try 'win-vm open' or check http://localhost:8006"
+        fi
         ;;
     help|--help|-h)
         show_help
