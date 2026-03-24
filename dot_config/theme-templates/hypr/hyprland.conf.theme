@@ -51,6 +51,7 @@ exec-once = nm-applet --indicator
 exec-once = phylax
 exec-once = hyprctl setcursor Bibata-Modern-Classic 24
 exec-once = awww-daemon
+exec-once = wl-paste --watch cliphist store
 exec-once = quickshell
 exec-once = hypridle
 exec-once = hyprpier daemon
@@ -139,9 +140,9 @@ bind = $mod, mouse_up, workspace, e-1
 bindm = $mod, mouse:272, movewindow
 bindm = $mod, mouse:273, resizewindow
 
-# Screenshots
-bind = , Print, exec, grim -g "$(slurp)" - | wl-copy
-bind = SHIFT, Print, exec, grim - | wl-copy
+# Screenshots (save to ~/Pictures/Screenshots/ and copy to clipboard)
+bind = , Print, exec, sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim -g "$(slurp)" "$f" && wl-copy < "$f"'
+bind = SHIFT, Print, exec, sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim "$f" && wl-copy < "$f"'
 bind = $mod, Print, exec, hyprpicker -a
 
 # Laptop function keys

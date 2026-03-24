@@ -49,8 +49,8 @@ Singleton {
         { name: "Dismiss Notification", shortcut: "Super + ,", command: "hyprctl dispatch global quickshell:notif-dismiss", keywords: ["close","clear"] },
         { name: "Dismiss All", shortcut: "Super + Shift + ,", command: "hyprctl dispatch global quickshell:notif-dismiss-all", keywords: ["clear","close"] },
         { name: "Notification Panel", shortcut: "Super + Alt + ,", command: "hyprctl dispatch global quickshell:notif-panel", keywords: ["center"] },
-        { name: "Screenshot (Area)", shortcut: "Print", command: "grim -g \"$(slurp)\" - | wl-copy", keywords: ["capture","snip"] },
-        { name: "Screenshot (Full)", shortcut: "Shift + Print", command: "grim - | wl-copy", keywords: ["capture","screen"] },
+        { name: "Screenshot (Area)", shortcut: "Print", command: "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim -g \"$(slurp)\" \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","snip"] },
+        { name: "Screenshot (Full)", shortcut: "Shift + Print", command: "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","screen"] },
         { name: "Color Picker", shortcut: "Super + Print", command: "hyprpicker -a", keywords: ["pick","eyedropper"] },
         { name: "Lock Screen", shortcut: "Super + L", command: "hyprctl dispatch global quickshell:lock", keywords: ["lock"] },
         { name: "Toggle Bar Mode", shortcut: "Super + Shift + T", command: "toggle-bar-mode", keywords: ["sidebar","topbar","bar","layout","swap"] },
@@ -398,17 +398,30 @@ Singleton {
         return out;
     }
 
+    function _formatClipEntry(entry): var {
+        const binaryMatch = entry.text.match(/^\[\[ binary data (\d+\s*\w+) (\w+) (\d+x\d+) \]\]$/);
+        if (binaryMatch) {
+            return {
+                name: "Image — " + binaryMatch[1] + " " + binaryMatch[2] + " " + binaryMatch[3],
+                materialIcon: "image",
+            };
+        }
+        return {
+            name: entry.text.length > 80 ? entry.text.substring(0, 80) + "…" : entry.text,
+            materialIcon: "content_paste",
+        };
+    }
+
     function _clipboardToResults(entries): var {
         const out = [];
         for (const entry of entries) {
-            const display = entry.text.length > 80
-                ? entry.text.substring(0, 80) + "…" : entry.text;
+            const fmt = _formatClipEntry(entry);
             out.push({
                 type: "clipboard",
-                name: display,
+                name: fmt.name,
                 subtitle: "",
                 icon: "",
-                materialIcon: "content_paste",
+                materialIcon: fmt.materialIcon,
                 score: 0,
                 _data: entry.id,
             });
@@ -442,14 +455,13 @@ Singleton {
                 if (!text.includes(term)) { match = false; break; }
             }
             if (match) {
-                const display = entry.text.length > 80
-                    ? entry.text.substring(0, 80) + "…" : entry.text;
+                const fmt = _formatClipEntry(entry);
                 out.push({
                     type: "clipboard",
-                    name: display,
+                    name: fmt.name,
                     subtitle: "",
                     icon: "",
-                    materialIcon: "content_paste",
+                    materialIcon: fmt.materialIcon,
                     score: 1,
                     _data: entry.id,
                 });

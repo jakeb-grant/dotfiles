@@ -4,8 +4,9 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment.
 
 ## Preview
 
-<!-- TODO: Add screenshot -->
-![Desktop screenshot](screenshots/desktop.png)
+| Everforest | Catppuccin Mocha |
+|:---:|:---:|
+| ![Everforest](screenshots/everforest.png) | ![Catppuccin Mocha](screenshots/mocha.png) |
 
 ## Features
 
