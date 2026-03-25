@@ -670,11 +670,35 @@ Variants {
                                 ? Services.Notifications.history
                                 : Services.Notifications.popups
 
-                            delegate: NotificationCard {
+                            delegate: Item {
+                                id: notifWrapper
+
                                 required property Notification modelData
-                                notification: modelData
-                                historyMode: notifColumn.expanded
+                                required property int index
+
                                 Layout.fillWidth: true
+                                implicitHeight: notifCard.implicitHeight
+
+                                // Staggered entrance for history mode
+                                property bool _staggerReady: !notifColumn.expanded
+                                opacity: _staggerReady ? 1 : 0
+                                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                                transform: Translate {
+                                    x: notifWrapper._staggerReady ? 0 : 12
+                                    Behavior on x { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+                                }
+                                Timer {
+                                    running: notifColumn.expanded && !notifWrapper._staggerReady
+                                    interval: 10 + (notifWrapper.index * 40)
+                                    onTriggered: notifWrapper._staggerReady = true
+                                }
+
+                                NotificationCard {
+                                    id: notifCard
+                                    width: parent.width
+                                    notification: notifWrapper.modelData
+                                    historyMode: notifColumn.expanded
+                                }
                             }
                         }
                     }

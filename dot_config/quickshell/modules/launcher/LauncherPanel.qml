@@ -122,8 +122,20 @@ ColumnLayout {
                         : itemMouse.containsMouse
                             ? Utils.Theme.hoverBg : "transparent"
 
+                    // Staggered entrance
+                    property bool _entered: false
+                    opacity: _entered ? 1 : 0
+                    Timer {
+                        running: true
+                        interval: 10 + (item.index * 25)
+                        onTriggered: item._entered = true
+                    }
+                    Behavior on opacity {
+                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                    }
+
                     transform: Translate {
-                        x: (item.index === Services.Launcher.selectedIndex || itemMouse.containsMouse) ? 4 : 0
+                        x: (item._entered ? 0 : 8) + ((item.index === Services.Launcher.selectedIndex || itemMouse.containsMouse) ? 4 : 0)
                         Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
                     }
 
