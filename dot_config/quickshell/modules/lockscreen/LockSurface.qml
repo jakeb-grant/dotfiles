@@ -7,6 +7,28 @@ import qs.utils as Utils
 Item {
     id: root
 
+    property int revealDuration: 120
+
+    // UI states
+    property real introState: 0.0
+    property bool inputActive: false
+    property real orbitAngle: 0
+    NumberAnimation on orbitAngle {
+        from: 0; to: Math.PI * 2; duration: 90000; loops: Animation.Infinite; running: true
+    }
+
+    Component.onCompleted: introState = 1.0
+    Behavior on introState { NumberAnimation { duration: 1000; easing.type: Easing.OutQuint } }
+
+    // Auto-hide input if empty and idle for 15 seconds
+    Timer {
+        id: idleTimer
+        interval: 15000
+        running: root.inputActive && hiddenInput.text.length === 0
+        repeat: false
+        onTriggered: root.inputActive = false
+    }
+
     // ── Background: wallpaper + blur + vignette ──
 
     Image {
@@ -43,9 +65,7 @@ Item {
 
     // Vignette
     Rectangle {
-        id: vignette
         anchors.fill: parent
-
         gradient: Gradient {
             GradientStop { position: 0.0; color: "transparent" }
             GradientStop { position: 0.85; color: Utils.Theme.isDark ? Qt.rgba(0, 0, 0, 0.25) : Qt.rgba(1, 1, 1, 0.15) }
@@ -53,32 +73,71 @@ Item {
         }
     }
 
-    // ── Key input ──
+    // ── Living background ──
 
-    focus: true
-    Keys.onPressed: event => {
-        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            Services.LockScreen.tryUnlock();
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Escape) {
-            Services.LockScreen.clear();
-            event.accepted = true;
-        } else if (event.key === Qt.Key_Backspace) {
-            const t = Services.LockScreen.currentText;
-            if (t.length > 0)
-                Services.LockScreen.currentText = t.substring(0, t.length - 1);
-            event.accepted = true;
-        } else if (event.text.length > 0 && !event.modifiers) {
-            if (Services.LockScreen.showFailure)
-                Services.LockScreen.showFailure = false;
-            Services.LockScreen.currentText += event.text;
-            inputField._pulseScale = 1.03;
-            pulseReset.restart();
-            event.accepted = true;
+    // Orbiting accent blob
+    Rectangle {
+        width: parent.width * 0.8; height: width; radius: width / 2
+        x: (parent.width / 2 - width / 2) + Math.cos(root.orbitAngle * 2) * 200
+        y: (parent.height / 2 - height / 2) + Math.sin(root.orbitAngle * 2) * 150
+        scale: 1.0 + Math.sin(root.orbitAngle * 6) * 0.05
+        opacity: 0.05
+        color: Utils.Theme.accent
+        Behavior on color { ColorAnimation { duration: 1000 } }
+    }
+
+    // Counter-orbiting secondary blob
+    Rectangle {
+        width: parent.width * 0.9; height: width; radius: width / 2
+        x: (parent.width / 2 - width / 2) + Math.sin(root.orbitAngle * 1.5) * -200
+        y: (parent.height / 2 - height / 2) + Math.cos(root.orbitAngle * 1.5) * -150
+        scale: 1.0 + Math.cos(root.orbitAngle * 5) * 0.05
+        opacity: 0.04
+        color: Utils.Theme.blue
+        Behavior on color { ColorAnimation { duration: 1000 } }
+    }
+
+    // Concentric rings (fade in with intro, flash red on failure)
+    Item {
+        anchors.fill: parent
+        opacity: root.introState
+        scale: 1.1 - (0.1 * root.introState)
+
+        Repeater {
+            model: 4
+            Rectangle {
+                anchors.centerIn: parent
+                anchors.verticalCenterOffset: -40
+                width: 400 + (index * 220)
+                height: width
+                radius: width / 2
+                color: "transparent"
+                border.color: Services.LockScreen.showFailure ? Utils.Theme.red : Utils.Theme.accent
+                border.width: 1
+                opacity: Services.LockScreen.showFailure ? (0.1 - (index * 0.02)) : (0.04 - (index * 0.01))
+                Behavior on border.color { ColorAnimation { duration: 600; easing.type: Easing.OutExpo } }
+                Behavior on opacity { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
+            }
         }
     }
 
-    // ── Focus management ──
+    // ── Password character model ──
+
+    ListModel { id: passModel }
+
+    function syncPassModel(): void {
+        const newText = hiddenInput.text;
+        const modelCount = passModel.count;
+
+        if (newText.length > modelCount) {
+            for (let i = modelCount; i < newText.length; i++)
+                passModel.append({ charStr: newText[i], isDot: false });
+        } else if (newText.length < modelCount) {
+            passModel.remove(newText.length, modelCount - newText.length);
+        }
+    }
+
+    // ── Focus & service connections ──
 
     Connections {
         target: Services.LockScreen
@@ -89,280 +148,36 @@ Item {
         function onUnlockAccepted(): void {
             exitAnim.start();
         }
+        function onClearInput(): void {
+            hiddenInput.text = "";
+            passModel.clear();
+        }
     }
 
-    // Delay focus grab slightly so compositor finishes setting up the lock surface (esp. after sleep resume)
     Timer {
         id: focusGrabTimer
         interval: 100
-        onTriggered: root.forceActiveFocus()
+        onTriggered: hiddenInput.forceActiveFocus()
     }
 
     ParallelAnimation {
         id: exitAnim
-        NumberAnimation { target: contentColumn; property: "opacity"; to: 0; duration: 300; easing.type: Easing.OutCubic }
-        NumberAnimation { target: contentColumn; property: "scale"; to: 1.02; duration: 300; easing.type: Easing.OutCubic }
+        NumberAnimation { target: root; property: "opacity"; to: 0; duration: 300; easing.type: Easing.OutCubic }
         NumberAnimation { target: blurredBg; property: "brightness"; to: Utils.Theme.isDark ? -1.0 : 1.0; duration: 400; easing.type: Easing.InCubic }
         onFinished: Services.LockScreen.finishUnlock()
     }
 
-    // ── Content ──
-
-    ColumnLayout {
-        id: contentColumn
-        anchors.centerIn: parent
-        spacing: 0
-        transformOrigin: Item.Center
-
-        // Clock
-        Text {
-            id: clockText
-            Layout.alignment: Qt.AlignHCenter
-            text: Services.Clock.hours + ":" + Services.Clock.minutes
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: 96
-            font.weight: Font.ExtraLight
-            color: Utils.Theme.text
-
-            Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-
-            opacity: 0
-            transform: Translate { id: clockTranslate; y: 20 }
-
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowBlur: 0.3
-                shadowColor: Utils.Theme.isDark ? Qt.rgba(0, 0, 0, 0.5) : Qt.rgba(0, 0, 0, 0.15)
-                shadowVerticalOffset: 2
-            }
-        }
-
-        // AM/PM
-        Text {
-            id: ampmText
-            Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: -8
-            text: Services.Clock.ampm.toUpperCase()
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: 16
-            font.weight: Font.Medium
-            font.letterSpacing: 3
-            color: Qt.rgba(Utils.Theme.subtext0.r, Utils.Theme.subtext0.g, Utils.Theme.subtext0.b, 0.7)
-
-            Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-
-            opacity: 0
-            transform: Translate { id: ampmTranslate; y: 20 }
-        }
-
-        // Date
-        Text {
-            id: dateText
-            Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: 4
-            text: Services.Clock.format("dddd, MMMM d")
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: 18
-            font.letterSpacing: 0.5
-            color: Qt.rgba(Utils.Theme.subtext0.r, Utils.Theme.subtext0.g, Utils.Theme.subtext0.b, 0.85)
-
-            Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-
-            opacity: 0
-            transform: Translate { id: dateTranslate; y: 15 }
-
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                shadowEnabled: true
-                shadowBlur: 0.2
-                shadowColor: Utils.Theme.isDark ? Qt.rgba(0, 0, 0, 0.4) : Qt.rgba(0, 0, 0, 0.1)
-                shadowVerticalOffset: 1
-            }
-        }
-
-        // Spacer between clock group and input
-        Item { Layout.preferredHeight: 48 }
-
-        // ── Password input field ──
-        Rectangle {
-            id: inputField
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 300
-            Layout.preferredHeight: 50
-            radius: 25
-            color: Qt.rgba(Utils.Theme.crust.r, Utils.Theme.crust.g, Utils.Theme.crust.b, 0.55)
-            border.width: 2
-            border.color: {
-                if (Services.LockScreen.showFailure)
-                    return Qt.rgba(Utils.Theme.red.r, Utils.Theme.red.g, Utils.Theme.red.b, 0.8);
-                if (Services.LockScreen.unlockInProgress)
-                    return Qt.rgba(Utils.Theme.surface1.r, Utils.Theme.surface1.g, Utils.Theme.surface1.b, 0.8);
-                if (Services.LockScreen.currentText.length > 0)
-                    return Qt.rgba(Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, 0.6);
-                return Qt.rgba(Utils.Theme.surface1.r, Utils.Theme.surface1.g, Utils.Theme.surface1.b, 0.5);
-            }
-
-            opacity: 0
-            transform: [
-                Translate { id: inputTranslate; y: 10 },
-                Translate { id: shakeTranslate; x: 0 },
-                Scale {
-                    origin.x: inputField.width / 2
-                    origin.y: inputField.height / 2
-                    xScale: inputField._pulseScale
-                    yScale: inputField._pulseScale
-                }
-            ]
-
-            property real _pulseScale: 1.0
-            Behavior on _pulseScale {
-                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
-            }
-
-            Timer {
-                id: pulseReset
-                interval: 80
-                onTriggered: inputField._pulseScale = 1.0
-            }
-
-            Behavior on border.color { ColorAnimation { duration: 200; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-
-            // Inner frost edge
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: 1
-                radius: 24
-                color: "transparent"
-                border.width: 1
-                border.color: Qt.rgba(Utils.Theme.overlay0.r, Utils.Theme.overlay0.g, Utils.Theme.overlay0.b, 0.15)
-            }
-
-            // Red flash overlay on failure
-            Rectangle {
-                anchors.fill: parent
-                radius: parent.radius
-                color: Utils.Theme.red
-                opacity: Services.LockScreen.showFailure ? 0.15 : 0
-                Behavior on opacity { NumberAnimation { duration: 300; easing.type: Easing.OutCubic } }
-            }
-
-            // Password dots
-            Row {
-                anchors.centerIn: parent
-                spacing: 8
-                Repeater {
-                    model: Services.LockScreen.currentText.length
-
-                    Rectangle {
-                        width: 12
-                        height: 12
-                        radius: 6
-                        color: Services.LockScreen.failureFlash
-                            ? Utils.Theme.red
-                            : Qt.rgba(Utils.Theme.text.r, Utils.Theme.text.g, Utils.Theme.text.b, 0.95)
-
-                        // Pop-in animation
-                        scale: 0
-                        Component.onCompleted: scale = 1
-                        Behavior on scale {
-                            NumberAnimation {
-                                duration: 250
-                                easing.type: Easing.BezierSpline
-                                easing.bezierCurve: Utils.Theme.animCurveEmphasizedDecel
-                            }
-                        }
-                        Behavior on color { ColorAnimation { duration: 200; easing.type: Easing.OutCubic } }
-                    }
-                }
-            }
-
-            // Placeholder
-            Text {
-                anchors.centerIn: parent
-                text: "Enter password"
-                font.family: Utils.Theme.fontFamily
-                font.pixelSize: 15
-                font.letterSpacing: 0.5
-                color: Qt.rgba(Utils.Theme.overlay0.r, Utils.Theme.overlay0.g, Utils.Theme.overlay0.b, 0.6)
-                opacity: Services.LockScreen.currentText.length === 0
-                    && !Services.LockScreen.unlockInProgress ? 1 : 0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-            }
-
-            // Unlocking indicator with pulse
-            Text {
-                id: unlockingText
-                anchors.centerIn: parent
-                text: "Unlocking..."
-                font.family: Utils.Theme.fontFamily
-                font.pixelSize: 15
-                color: Utils.Theme.subtext0
-                visible: Services.LockScreen.unlockInProgress
-
-                Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-
-                SequentialAnimation on opacity {
-                    running: Services.LockScreen.unlockInProgress
-                    loops: Animation.Infinite
-                    NumberAnimation { from: 1.0; to: 0.4; duration: 800; easing.type: Easing.InOutSine }
-                    NumberAnimation { from: 0.4; to: 1.0; duration: 800; easing.type: Easing.InOutSine }
-                }
-            }
-
-            // Shake animation on failure
-            SequentialAnimation {
-                id: shakeAnim
-                NumberAnimation { target: shakeTranslate; property: "x"; to: -12; duration: 50; easing.type: Easing.OutQuad }
-                NumberAnimation { target: shakeTranslate; property: "x"; to: 10; duration: 50; easing.type: Easing.OutQuad }
-                NumberAnimation { target: shakeTranslate; property: "x"; to: -8; duration: 50; easing.type: Easing.OutQuad }
-                NumberAnimation { target: shakeTranslate; property: "x"; to: 6; duration: 50; easing.type: Easing.OutQuad }
-                NumberAnimation { target: shakeTranslate; property: "x"; to: -3; duration: 40; easing.type: Easing.OutQuad }
-                NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: 40; easing.type: Easing.OutQuad }
-            }
-
-            Connections {
-                target: Services.LockScreen
-                function onShowFailureChanged(): void {
-                    if (Services.LockScreen.showFailure)
-                        shakeAnim.start();
-                }
-            }
-        }
-
-        // Failure message
-        Text {
-            id: failText
-            Layout.alignment: Qt.AlignHCenter
-            Layout.topMargin: 12
-            text: Services.LockScreen.failMessage
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: 13
-            font.weight: Font.Medium
-            color: Utils.Theme.red
-            opacity: Services.LockScreen.showFailure ? 1 : 0
-
-            property real _offsetY: Services.LockScreen.showFailure ? 0 : 5
-            transform: Translate { y: failText._offsetY }
-
-            Behavior on _offsetY { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
-            Behavior on color { ColorAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-        }
-    }
-
-    // ── Cursor auto-hide ──
+    // ── Click to activate input ──
 
     MouseArea {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: cursorTimer.running ? Qt.ArrowCursor : Qt.BlankCursor
-        propagateComposedEvents: true
-        onPositionChanged: { cursorTimer.restart(); root.forceActiveFocus(); }
-        onClicked: mouse => { root.forceActiveFocus(); mouse.accepted = false; }
-        z: -1
+        onPositionChanged: cursorTimer.restart()
+        onClicked: {
+            if (!root.inputActive) root.inputActive = true;
+            hiddenInput.forceActiveFocus();
+        }
     }
 
     Timer {
@@ -371,63 +186,306 @@ Item {
         running: true
     }
 
-    // ── Staggered entrance animation ──
+    // ── Main content layer ──
 
-    Component.onCompleted: entranceAnim.start()
+    Item {
+        anchors.fill: parent
+        opacity: root.introState
+        transform: Translate { y: 30 * (1.0 - root.introState) }
 
-    SequentialAnimation {
-        id: entranceAnim
+        // ── Clock module (idle state) ──
+        ColumnLayout {
+            id: clockModule
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: root.inputActive ? -120 : -40
+            spacing: -4
 
-        // Background brighten
-        ParallelAnimation {
-            NumberAnimation {
-                target: blurredBg; property: "brightness"
-                from: Utils.Theme.isDark ? -1.0 : 1.0
-                to: Utils.Theme.isDark ? -0.25 : 0.25
-                duration: 600; easing.type: Easing.OutCubic
+            opacity: root.inputActive ? 0.0 : 1.0
+            scale: root.inputActive ? 0.9 : 1.0
+            visible: opacity > 0.01
+
+            Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
+            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                text: Services.Clock.hours + ":" + Services.Clock.minutes
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: 140
+                font.weight: Font.Black
+                color: Utils.Theme.text
+
+                Behavior on color { ColorAnimation { duration: 300 } }
             }
-            NumberAnimation {
-                target: blurredBg; property: "blur"
-                from: 1.0; to: 0.6; duration: 800; easing.type: Easing.OutCubic
+
+            Text {
+                Layout.alignment: Qt.AlignHCenter
+                Layout.topMargin: 8
+                text: Services.Clock.ampm.toUpperCase() + "  \u2022  " + Services.Clock.format("dddd, MMMM d")
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: 28
+                font.weight: Font.Bold
+                color: Utils.Theme.accent
+
+                Behavior on color { ColorAnimation { duration: 300 } }
             }
         }
 
-        // Stagger in: clock group (overlapped starts via ParallelAnimation + PauseAnimation)
-        PauseAnimation { duration: 0 }
+        // ── Auth module (input state) ──
+        ColumnLayout {
+            id: authModule
+            anchors.centerIn: parent
+            anchors.verticalCenterOffset: root.inputActive ? -40 : 40
+            spacing: 20
 
-        ParallelAnimation {
-            // Clock
-            SequentialAnimation {
-                ParallelAnimation {
-                    NumberAnimation { target: clockText; property: "opacity"; to: 1; duration: 400; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: clockTranslate; property: "y"; to: 0; duration: 500; easing.type: Easing.BezierSpline; easing.bezierCurve: Utils.Theme.animCurveEmphasizedDecel }
+            opacity: root.inputActive ? 1.0 : 0.0
+            scale: root.inputActive ? 1.0 : 0.9
+            visible: opacity > 0.01
+
+            Behavior on anchors.verticalCenterOffset { NumberAnimation { duration: 600; easing.type: Easing.OutExpo } }
+            Behavior on opacity { NumberAnimation { duration: 400; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: 500; easing.type: Easing.OutBack } }
+
+            // Status row with icon
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 12
+
+                Rectangle {
+                    width: 36; height: 36; radius: 18
+                    color: Services.LockScreen.showFailure
+                        ? Qt.rgba(Utils.Theme.red.r, Utils.Theme.red.g, Utils.Theme.red.b, 0.2)
+                        : (Services.LockScreen.unlockInProgress
+                            ? Qt.rgba(Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, 0.2)
+                            : "transparent")
+                    border.color: Services.LockScreen.showFailure
+                        ? Utils.Theme.red
+                        : (Services.LockScreen.unlockInProgress
+                            ? Utils.Theme.accent
+                            : Utils.Theme.surface2)
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 300 } }
+                    Behavior on border.color { ColorAnimation { duration: 300 } }
+
+                    Utils.MaterialIcon {
+                        anchors.centerIn: parent
+                        text: Services.LockScreen.showFailure ? "lock" : (Services.LockScreen.unlockInProgress ? "sync" : "lock_open")
+                        font.pixelSize: 18
+                        color: Services.LockScreen.showFailure
+                            ? Utils.Theme.red
+                            : (Services.LockScreen.unlockInProgress
+                                ? Utils.Theme.accent
+                                : Utils.Theme.subtext0)
+                        Behavior on color { ColorAnimation { duration: 300 } }
+
+                        RotationAnimation on rotation {
+                            running: Services.LockScreen.status === "unlocking"
+                            from: 0; to: 360; duration: 1000
+                            loops: Animation.Infinite
+                        }
+                    }
+                }
+
+                Text {
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: 16
+                    font.weight: Font.Bold
+                    color: Services.LockScreen.showFailure
+                        ? Utils.Theme.red
+                        : (Services.LockScreen.unlockInProgress
+                            ? Utils.Theme.accent
+                            : Utils.Theme.subtext0)
+                    text: {
+                        if (Services.LockScreen.showFailure)
+                            return Services.LockScreen.failMessage || "Incorrect password";
+                        if (Services.LockScreen.unlockInProgress) return "Authenticating...";
+                        if (hiddenInput.text.length > 0) return "Enter password";
+                        return "Locked";
+                    }
+                    Behavior on color { ColorAnimation { duration: 300 } }
                 }
             }
 
-            // AM/PM (100ms delay)
-            SequentialAnimation {
-                PauseAnimation { duration: 100 }
-                ParallelAnimation {
-                    NumberAnimation { target: ampmText; property: "opacity"; to: 1; duration: 400; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: ampmTranslate; property: "y"; to: 0; duration: 500; easing.type: Easing.BezierSpline; easing.bezierCurve: Utils.Theme.animCurveEmphasizedDecel }
-                }
-            }
+            // Password pill
+            Rectangle {
+                id: inputPill
+                Layout.alignment: Qt.AlignHCenter
+                width: 280; height: 60; radius: 30
+                clip: true
 
-            // Date (200ms delay)
-            SequentialAnimation {
-                PauseAnimation { duration: 200 }
-                ParallelAnimation {
-                    NumberAnimation { target: dateText; property: "opacity"; to: 1; duration: 400; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: dateTranslate; property: "y"; to: 0; duration: 500; easing.type: Easing.BezierSpline; easing.bezierCurve: Utils.Theme.animCurveEmphasizedDecel }
+                color: Services.LockScreen.showFailure
+                    ? Qt.rgba(Utils.Theme.red.r, Utils.Theme.red.g, Utils.Theme.red.b, 0.1)
+                    : Qt.rgba(Utils.Theme.surface0.r, Utils.Theme.surface0.g, Utils.Theme.surface0.b, 0.5)
+                border.width: 2
+                border.color: {
+                    if (Services.LockScreen.showFailure) return Utils.Theme.red;
+                    if (Services.LockScreen.unlockInProgress)
+                        return Qt.rgba(Utils.Theme.surface1.r, Utils.Theme.surface1.g, Utils.Theme.surface1.b, 0.8);
+                    if (hiddenInput.text.length > 0) return Utils.Theme.accent;
+                    return Qt.rgba(Utils.Theme.text.r, Utils.Theme.text.g, Utils.Theme.text.b, 0.08);
                 }
-            }
 
-            // Input field (300ms delay)
-            SequentialAnimation {
-                PauseAnimation { duration: 300 }
-                ParallelAnimation {
-                    NumberAnimation { target: inputField; property: "opacity"; to: 1; duration: 350; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: inputTranslate; property: "y"; to: 0; duration: 450; easing.type: Easing.BezierSpline; easing.bezierCurve: Utils.Theme.animCurveEmphasizedDecel }
+                Behavior on color { ColorAnimation { duration: 250; easing.type: Easing.OutExpo } }
+                Behavior on border.color { ColorAnimation { duration: 250; easing.type: Easing.OutExpo } }
+
+                scale: Services.LockScreen.showFailure ? 1.05
+                    : (Services.LockScreen.unlockInProgress ? 0.98 : 1.0)
+                Behavior on scale { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+
+                transform: Translate { id: shakeTranslate; x: 0 }
+
+                // Hidden TextInput for native keystroke capture
+                TextInput {
+                    id: hiddenInput
+                    anchors.fill: parent
+                    opacity: 0
+                    echoMode: TextInput.Password
+
+                    property string oldText: ""
+
+                    Component.onCompleted: forceActiveFocus()
+
+                    onActiveFocusChanged: {
+                        if (!activeFocus) forceActiveFocus()
+                    }
+
+                    Keys.onPressed: event => {
+                        if (event.key === Qt.Key_Escape) {
+                            root.inputActive = false;
+                            text = "";
+                            passModel.clear();
+                            Services.LockScreen.clear();
+                            event.accepted = true;
+                        } else if (!root.inputActive) {
+                            root.inputActive = true;
+                        }
+                    }
+
+                    onAccepted: {
+                        if (text.length > 0 && !Services.LockScreen.unlockInProgress) {
+                            Services.LockScreen.tryUnlock(text);
+                            text = "";
+                            oldText = "";
+                            passModel.clear();
+                        }
+                    }
+
+                    onTextChanged: {
+                        if (Services.LockScreen.unlockInProgress) return;
+
+                        if (text.length > 0 && !root.inputActive)
+                            root.inputActive = true;
+
+                        idleTimer.restart();
+
+                        if (text !== oldText) {
+                            if (text.length > oldText.length) {
+                                for (let i = oldText.length; i < text.length; i++)
+                                    passModel.append({ charStr: text.charAt(i), isDot: false });
+                            } else if (text.length < oldText.length) {
+                                let diff = oldText.length - text.length;
+                                for (let i = 0; i < diff; i++)
+                                    passModel.remove(passModel.count - 1);
+                            }
+                            oldText = text;
+                        }
+
+                        if (Services.LockScreen.showFailure)
+                            Services.LockScreen.showFailure = false;
+
+                        Services.LockScreen.currentText = text;
+                    }
+                }
+
+                // Password characters display
+                Item {
+                    anchors.fill: parent
+                    anchors.leftMargin: 20
+                    anchors.rightMargin: 20
+                    clip: true
+
+                    Row {
+                        id: dotRow
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: width > parent.width ? parent.width - width : (parent.width - width) / 2
+                        spacing: -2
+
+                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
+
+                        Repeater {
+                            model: passModel
+                            delegate: Item {
+                                width: charText.implicitWidth
+                                height: 30
+
+                                Timer {
+                                    interval: root.revealDuration
+                                    running: !model.isDot
+                                    onTriggered: {
+                                        if (index >= 0 && index < passModel.count)
+                                            passModel.setProperty(index, "isDot", true);
+                                    }
+                                }
+
+                                Text {
+                                    id: charText
+                                    anchors.centerIn: parent
+                                    text: model.isDot ? "\u2022" : model.charStr
+                                    font.family: Utils.Theme.fontFamily
+                                    font.pixelSize: model.isDot ? 42 : 28
+                                    font.weight: Font.Bold
+                                    color: Services.LockScreen.failureFlash
+                                        ? Utils.Theme.red
+                                        : Utils.Theme.text
+
+                                    NumberAnimation on opacity { from: 0; to: 1; duration: 150 }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Unlocking indicator
+                Text {
+                    anchors.centerIn: parent
+                    text: "Unlocking..."
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: 15
+                    font.weight: Font.Medium
+                    color: Utils.Theme.subtext0
+                    visible: Services.LockScreen.unlockInProgress
+
+                    SequentialAnimation on opacity {
+                        running: Services.LockScreen.unlockInProgress
+                        loops: Animation.Infinite
+                        NumberAnimation { from: 1.0; to: 0.4; duration: 800; easing.type: Easing.InOutSine }
+                        NumberAnimation { from: 0.4; to: 1.0; duration: 800; easing.type: Easing.InOutSine }
+                    }
+                }
+
+                // Shake on failure
+                SequentialAnimation {
+                    id: shakeAnim
+                    NumberAnimation { target: shakeTranslate; property: "x"; to: -12; duration: 50; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: shakeTranslate; property: "x"; to: 10; duration: 50; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: shakeTranslate; property: "x"; to: -8; duration: 50; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: shakeTranslate; property: "x"; to: 6; duration: 50; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: shakeTranslate; property: "x"; to: -3; duration: 40; easing.type: Easing.OutQuad }
+                    NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: 40; easing.type: Easing.OutQuad }
+                }
+
+                Connections {
+                    target: Services.LockScreen
+                    function onShowFailureChanged(): void {
+                        if (Services.LockScreen.showFailure)
+                            shakeAnim.start();
+                    }
+                    function onClearInput(): void {
+                        hiddenInput.text = "";
+                        hiddenInput.oldText = "";
+                        passModel.clear();
+                    }
                 }
             }
         }

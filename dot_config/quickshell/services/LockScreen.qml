@@ -12,6 +12,7 @@ Singleton {
     property bool unlockInProgress: false
     property bool showFailure: false
     property string failMessage: ""
+    property string status: "locked"  // "locked" | "typing" | "unlocking" | "failed"
 
     // Set true briefly before clearing text on failure, so UI can animate dots red
     property bool failureFlash: false
@@ -20,6 +21,13 @@ Singleton {
     property string _errorMessage: ""
 
     signal unlockAccepted()
+    signal clearInput()
+
+    onCurrentTextChanged: {
+        if (status !== "unlocking" && status !== "failed") {
+            status = currentText.length > 0 ? "typing" : "locked";
+        }
+    }
 
     PamContext {
         id: pam
@@ -42,6 +50,7 @@ Singleton {
             } else {
                 root.failureFlash = true;
                 root.showFailure = true;
+                root.status = "failed";
                 if (result === PamResult.Error)
                     root.failMessage = root._errorMessage || "Authentication error";
                 else if (result === PamResult.MaxTries)
@@ -61,6 +70,7 @@ Singleton {
         interval: 250
         onTriggered: {
             root.currentText = "";
+            root.clearInput();
             root.failureFlash = false;
         }
     }
@@ -73,28 +83,35 @@ Singleton {
 
     function lock(): void {
         currentText = "";
+        clearInput();
         unlockInProgress = false;
         showFailure = false;
         failureFlash = false;
         failMessage = "";
+        status = "locked";
         locked = true;
     }
 
-    function tryUnlock(): void {
+    function tryUnlock(password: string): void {
         if (unlockInProgress) return;
-        _savedPassword = currentText;
+        _savedPassword = password || currentText;
         currentText = "";
+        clearInput();
         unlockInProgress = true;
         showFailure = false;
+        status = "unlocking";
         pam.start();
     }
 
     function clear(): void {
         currentText = "";
+        clearInput();
     }
 
     function finishUnlock(): void {
         locked = false;
         currentText = "";
+        clearInput();
+        status = "locked";
     }
 }
