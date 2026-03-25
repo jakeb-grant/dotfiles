@@ -216,8 +216,21 @@ Rectangle {
             implicitWidth: batteryIcon.implicitWidth
             implicitHeight: batteryIcon.implicitHeight
 
-            scale: batteryMouse.containsMouse ? 1.15 : 1.0
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+            property bool _isDanger: Services.Battery.percent < 15 && !Services.Battery.charging
+
+            SequentialAnimation on scale {
+                loops: Animation.Infinite; running: true
+                NumberAnimation {
+                    to: batteryMouse.containsMouse ? 1.05 : (batteryItem._isDanger ? 1.04 : 1.01)
+                    duration: batteryMouse.containsMouse ? 1200 : (batteryItem._isDanger ? 600 : 2500)
+                    easing.type: Easing.InOutSine
+                }
+                NumberAnimation {
+                    to: 1.0
+                    duration: batteryMouse.containsMouse ? 1200 : (batteryItem._isDanger ? 600 : 2500)
+                    easing.type: Easing.InOutSine
+                }
+            }
 
             Utils.MaterialIcon {
                 id: batteryIcon
