@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import qs.services as Services
 import qs.utils as Utils
@@ -7,6 +8,9 @@ ColumnLayout {
     id: root
 
     spacing: Utils.Theme.spacingNormal
+
+    property real _flowOffset: 0
+    NumberAnimation on _flowOffset { from: 0; to: 1; duration: 8000; loops: Animation.Infinite }
 
     // Width spacer
     Item {
@@ -76,32 +80,45 @@ ColumnLayout {
             radius: height / 2
             color: Utils.Theme.pillBg
 
-            // Fill
-            Rectangle {
+            // Fill — masked flowing gradient
+            Item {
                 width: parent.width * Services.Brightness.brightness
                 height: parent.height
-                radius: height / 2
-                color: sliderColor
 
-                readonly property color sliderColor: {
-                    const t = Math.min(1, Services.Brightness.percent / 100);
-                    if (t <= 0.5) {
-                        const s = t / 0.5;
-                        return Qt.tint(Utils.Theme.subtleText, Qt.rgba(
-                            Utils.Theme.accent.r, Utils.Theme.accent.g, Utils.Theme.accent.b, s));
+                layer.enabled: true
+                layer.effect: MultiEffect {
+                    maskEnabled: true
+                    maskSource: briFillMask
+                }
+
+                Rectangle {
+                    id: briFillMask
+                    anchors.fill: parent
+                    radius: parent.height / 2
+                    visible: false
+                    layer.enabled: true
+                }
+
+                Rectangle {
+                    width: 2000
+                    height: parent.height
+                    x: -(root._flowOffset * 1000)
+
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.000; color: Utils.Theme.accent }
+                        GradientStop { position: 0.167; color: Utils.Theme.yellow }
+                        GradientStop { position: 0.333; color: Utils.Theme.peach }
+                        GradientStop { position: 0.500; color: Utils.Theme.accent }
+                        GradientStop { position: 0.667; color: Utils.Theme.yellow }
+                        GradientStop { position: 0.833; color: Utils.Theme.peach }
+                        GradientStop { position: 1.000; color: Utils.Theme.accent }
                     }
-                    const s = (t - 0.5) / 0.5;
-                    return Qt.tint(Utils.Theme.accent, Qt.rgba(
-                        Utils.Theme.yellow.r, Utils.Theme.yellow.g, Utils.Theme.yellow.b, s));
                 }
 
                 Behavior on width {
                     enabled: !slider.dragging
                     NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-                }
-
-                Behavior on color {
-                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
                 }
             }
         }

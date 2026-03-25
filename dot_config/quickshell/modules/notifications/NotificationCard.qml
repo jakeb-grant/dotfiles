@@ -71,8 +71,8 @@ Rectangle {
 
     Behavior on scale {
         NumberAnimation {
-            duration: root.dismissing ? 200 : 350
-            easing.type: root.dismissing ? Easing.InCubic : Easing.OutBack
+            duration: root.dismissing ? 200 : 300
+            easing.type: root.dismissing ? Easing.InCubic : Easing.OutCubic
         }
     }
 

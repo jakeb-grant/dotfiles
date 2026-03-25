@@ -92,13 +92,6 @@ Variants {
 
             }
 
-            HyprlandFocusGrab {
-                id: focusGrab
-                active: Services.Notifications.expanded
-                windows: [win]
-                onCleared: Services.Notifications.expanded = false
-            }
-
             // Click-outside-to-close for notification panel
             MouseArea {
                 anchors.fill: parent
