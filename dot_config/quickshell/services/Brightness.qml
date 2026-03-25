@@ -10,9 +10,25 @@ Singleton {
     property bool available: false
     property int percent: 0
     readonly property real brightness: percent / 100
+    property bool suppressUpdates: false
 
     property int _max: 0
     property string _sysfsPath: ""
+
+    Timer {
+        id: resyncDelay
+        interval: 800
+        onTriggered: root.suppressUpdates = false
+    }
+
+    function beginUserInput(): void {
+        suppressUpdates = true;
+        resyncDelay.stop();
+    }
+
+    function endUserInput(): void {
+        resyncDelay.restart();
+    }
 
     // Step 1: Detect backlight device + get sysfs path and max
     // brightnessctl info -m outputs: device,class,current,percent,max
@@ -56,7 +72,7 @@ Singleton {
     }
 
     on_CurrentRawChanged: {
-        if (_max > 0)
+        if (_max > 0 && !suppressUpdates)
             percent = Math.round(_currentRaw / _max * 100);
     }
 

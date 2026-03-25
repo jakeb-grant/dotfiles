@@ -50,7 +50,7 @@ Item {
             implicitWidth: archTextSide.implicitWidth
             implicitHeight: archTextSide.implicitHeight
             property real _shift: root._animStep >= 0 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 0 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { y: archLogoSide._shift }
@@ -77,7 +77,7 @@ Item {
             screen: root.screen
             entranceReady: root._animStep >= 1
             property real _shift: root._animStep >= 1 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 1 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { y: workspacesSide._shift }
@@ -90,7 +90,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             screen: root.screen
             property real _shift: root._animStep >= 2 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 2 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { y: traySide._shift }
@@ -104,7 +104,7 @@ Item {
             implicitWidth: Utils.Theme.barInnerWidth
             implicitHeight: calendarClockCol.implicitHeight
             property real _shift: root._animStep >= 3 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 3 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { y: clockSide._shift }
@@ -163,7 +163,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             screen: root.screen
             property real _shift: root._animStep >= 4 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 4 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { y: statusSide._shift }
@@ -177,7 +177,7 @@ Item {
             implicitWidth: powerIconSide.implicitWidth
             implicitHeight: powerIconSide.implicitHeight
             property real _shift: root._animStep >= 5 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 5 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { y: powerSide._shift }
@@ -216,7 +216,7 @@ Item {
             implicitWidth: archTextTop.implicitWidth
             implicitHeight: archTextTop.implicitHeight
             property real _shift: root._animStep >= 0 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 0 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { x: archLogoTop._shift }
@@ -243,7 +243,7 @@ Item {
             screen: root.screen
             entranceReady: root._animStep >= 1
             property real _shift: root._animStep >= 1 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 1 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { x: workspacesTop._shift }
@@ -256,7 +256,7 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             screen: root.screen
             property real _shift: root._animStep >= 2 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 2 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { x: trayTop._shift }
@@ -270,7 +270,7 @@ Item {
             implicitWidth: clockTopRow.implicitWidth
             implicitHeight: clockTopRow.implicitHeight
             property real _shift: root._animStep >= 3 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 3 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { x: clockTop._shift }
@@ -321,7 +321,7 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             screen: root.screen
             property real _shift: root._animStep >= 4 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 4 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { x: statusTop._shift }
@@ -335,7 +335,7 @@ Item {
             implicitWidth: powerIconTop.implicitWidth
             implicitHeight: powerIconTop.implicitHeight
             property real _shift: root._animStep >= 5 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
             opacity: root._animStep >= 5 ? 1 : 0
             Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
             transform: Translate { x: powerTop._shift }

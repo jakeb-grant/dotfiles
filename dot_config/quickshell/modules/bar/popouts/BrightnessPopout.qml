@@ -117,7 +117,7 @@ ColumnLayout {
             radius: width / 2
             color: sliderMouse.containsMouse || sliderMouse.pressed
                 ? Utils.Theme.text : Utils.Theme.subtext0
-            scale: sliderMouse.pressed ? 1.2 : sliderMouse.containsMouse ? 1.1 : 1
+            scale: sliderMouse.pressed ? 1.4 : sliderMouse.containsMouse ? 1.15 : 1
 
             Behavior on x {
                 enabled: !slider.dragging
@@ -129,7 +129,10 @@ ColumnLayout {
             }
 
             Behavior on scale {
-                NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                NumberAnimation {
+                    duration: sliderMouse.pressed ? 80 : Utils.Theme.animDurationFast
+                    easing.type: sliderMouse.pressed ? Easing.OutQuad : Easing.OutBack
+                }
             }
         }
 
@@ -145,16 +148,21 @@ ColumnLayout {
                 const clamped = Math.max(slider.thumbSize / 2,
                     Math.min(mouseX, slider.width - slider.thumbSize / 2));
                 const pct = Math.round((clamped - slider.thumbSize / 2) / slider.effectiveWidth * 100);
+                Services.Brightness.percent = pct;
                 Services.Brightness.setBrightness(pct);
             }
 
             onPressed: (mouse) => {
+                Services.Brightness.beginUserInput();
                 brightnessFromX(mouse.x);
             }
 
             onPositionChanged: (mouse) => {
                 if (pressed) brightnessFromX(mouse.x);
             }
+
+            onReleased: Services.Brightness.endUserInput()
+            onCanceled: Services.Brightness.endUserInput()
         }
     }
 

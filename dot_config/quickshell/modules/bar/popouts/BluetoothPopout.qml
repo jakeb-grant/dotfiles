@@ -243,6 +243,11 @@ ColumnLayout {
                 radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
+                transform: Translate {
+                    x: deviceDelegate.clickable && delegateMouse.containsMouse ? 4 : 0
+                    Behavior on x { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutExpo } }
+                }
+
                 // Hover background
                 Rectangle {
                     anchors.fill: parent

@@ -10,7 +10,16 @@ Rectangle {
     implicitWidth: Utils.Theme.iconSize + 4
     implicitHeight: Utils.Theme.iconSize + 4
     radius: Utils.Theme.roundingSmall
-    color: "transparent"
+    color: hover.containsMouse ? Utils.Theme.surface1 : "transparent"
+
+    scale: hover.pressed ? 0.85 : (hover.containsMouse ? 1.15 : 1.0)
+    Behavior on scale {
+        NumberAnimation {
+            duration: hover.pressed ? 50 : 250
+            easing.type: hover.pressed ? Easing.OutQuad : Easing.OutBack
+        }
+    }
+    Behavior on color { ColorAnimation { duration: 200 } }
 
     Image {
         id: trayIcon

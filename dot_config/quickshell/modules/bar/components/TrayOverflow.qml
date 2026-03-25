@@ -39,10 +39,19 @@ Item {
                 Layout.preferredWidth: Utils.Theme.iconSize + 4
                 Layout.preferredHeight: Utils.Theme.iconSize + 4
 
+                scale: hover.pressed ? 0.85 : (hover.containsMouse ? 1.15 : 1.0)
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: hover.pressed ? 50 : 250
+                        easing.type: hover.pressed ? Easing.OutQuad : Easing.OutBack
+                    }
+                }
+
                 Rectangle {
                     anchors.fill: parent
                     radius: Utils.Theme.roundingSmall
-                    color: "transparent"
+                    color: hover.containsMouse ? Utils.Theme.surface1 : "transparent"
+                    Behavior on color { ColorAnimation { duration: 200 } }
                 }
 
                 Image {

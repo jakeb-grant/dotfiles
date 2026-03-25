@@ -340,11 +340,11 @@ ColumnLayout {
                 color: stat.barColor
 
                 Behavior on width {
-                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: 600; easing.type: Easing.OutQuint }
                 }
 
                 Behavior on color {
-                    ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                    ColorAnimation { duration: 600; easing.type: Easing.OutQuint }
                 }
             }
         }

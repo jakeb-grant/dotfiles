@@ -37,8 +37,12 @@ Rectangle {
     // In history mode, cards are never in dismissing state
     readonly property bool dismissing: !historyMode && Services.Notifications.isDismissing(notification)
 
-    color: Utils.Theme.surface0
+    color: cardHover.hovered ? Utils.Theme.surface1 : Utils.Theme.surface0
     radius: Utils.Theme.roundingSmall
+
+    Behavior on color {
+        ColorAnimation { duration: Utils.Theme.animDurationFast }
+    }
     implicitHeight: content.implicitHeight + Utils.Theme.spacingLarge * 2
 
     // Entrance: new cards start transparent+small; recreated cards start full.
@@ -46,7 +50,7 @@ Rectangle {
     readonly property bool _isNew: Services.Notifications.isNew(notification)
 
     opacity: dismissing ? 0 : _isNew ? 0 : 1
-    scale: dismissing ? 0.92 : _isNew ? 0.92 : 1
+    scale: dismissing ? 0.85 : _isNew ? 0.85 : 1
     transformOrigin: Item.Right
 
     Component.onCompleted: {
@@ -55,22 +59,20 @@ Rectangle {
 
     // Exit: fade out + scale down
     onDismissingChanged: {
-        if (dismissing) { opacity = 0; scale = 0.92 }
+        if (dismissing) { opacity = 0; scale = 0.85 }
     }
 
     Behavior on opacity {
         NumberAnimation {
-            duration: Utils.Theme.animDurationSmall
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Utils.Theme.animCurveStandard
+            duration: root.dismissing ? 200 : 300
+            easing.type: root.dismissing ? Easing.InCubic : Easing.OutCubic
         }
     }
 
     Behavior on scale {
         NumberAnimation {
-            duration: Utils.Theme.animDurationSmall
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Utils.Theme.animCurveStandard
+            duration: root.dismissing ? 200 : 350
+            easing.type: root.dismissing ? Easing.InCubic : Easing.OutBack
         }
     }
 
@@ -117,6 +119,7 @@ Rectangle {
 
     // Pause timer on hover (non-blocking — doesn't consume clicks)
     HoverHandler {
+        id: cardHover
         onHoveredChanged: {
             if (root.dismissing) return;
             if (hovered) expireTimer.stop();

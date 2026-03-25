@@ -341,11 +341,18 @@ Item {
                                     target: trayLoader
                                     property: "active"
                                 }
-                                NumberAnimation {
-                                    properties: "opacity,scale"
-                                    duration: Utils.Theme.animDuration
-                                    easing.type: Easing.BezierSpline
-                                    easing.bezierCurve: Utils.Theme.animCurveStandard
+                                ParallelAnimation {
+                                    NumberAnimation {
+                                        property: "opacity"
+                                        duration: Utils.Theme.animDuration
+                                        easing.type: Easing.OutCubic
+                                    }
+                                    NumberAnimation {
+                                        property: "scale"
+                                        duration: Utils.Theme.animDuration
+                                        easing.type: Easing.OutBack
+                                        easing.overshoot: 1.2
+                                    }
                                 }
                             }
                         },
@@ -354,11 +361,17 @@ Item {
                             to: ""
 
                             SequentialAnimation {
-                                NumberAnimation {
-                                    properties: "opacity,scale"
-                                    duration: Utils.Theme.animDurationSmall
-                                    easing.type: Easing.BezierSpline
-                                    easing.bezierCurve: Utils.Theme.animCurveStandard
+                                ParallelAnimation {
+                                    NumberAnimation {
+                                        property: "opacity"
+                                        duration: Utils.Theme.animDurationSmall
+                                        easing.type: Easing.InCubic
+                                    }
+                                    NumberAnimation {
+                                        property: "scale"
+                                        duration: Utils.Theme.animDurationSmall
+                                        easing.type: Easing.InCubic
+                                    }
                                 }
                                 PropertyAction {
                                     target: trayLoader
@@ -471,11 +484,18 @@ Item {
                         target: popout
                         property: "active"
                     }
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        duration: Utils.Theme.animDuration
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Utils.Theme.animCurveStandard
+                    ParallelAnimation {
+                        NumberAnimation {
+                            property: "opacity"
+                            duration: Utils.Theme.animDuration
+                            easing.type: Easing.OutCubic
+                        }
+                        NumberAnimation {
+                            property: "scale"
+                            duration: Utils.Theme.animDuration
+                            easing.type: Easing.OutBack
+                            easing.overshoot: 1.2
+                        }
                     }
                 }
             },
@@ -484,11 +504,17 @@ Item {
                 to: ""
 
                 SequentialAnimation {
-                    NumberAnimation {
-                        properties: "opacity,scale"
-                        duration: Utils.Theme.animDurationSmall
-                        easing.type: Easing.BezierSpline
-                        easing.bezierCurve: Utils.Theme.animCurveStandard
+                    ParallelAnimation {
+                        NumberAnimation {
+                            property: "opacity"
+                            duration: Utils.Theme.animDurationSmall
+                            easing.type: Easing.InCubic
+                        }
+                        NumberAnimation {
+                            property: "scale"
+                            duration: Utils.Theme.animDurationSmall
+                            easing.type: Easing.InCubic
+                        }
                     }
                     PropertyAction {
                         target: popout

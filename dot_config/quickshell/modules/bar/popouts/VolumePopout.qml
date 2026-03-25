@@ -65,6 +65,22 @@ ColumnLayout {
         readonly property real effectiveWidth: width - thumbSize
         readonly property bool dragging: sliderMouse.pressed
 
+        property real displayVolume: Services.Audio.volume
+
+        Connections {
+            target: Services.Audio
+            function onVolumeChanged() {
+                if (!slider.dragging && !volResync.running)
+                    slider.displayVolume = Services.Audio.volume;
+            }
+        }
+
+        Timer {
+            id: volResync
+            interval: 800
+            onTriggered: slider.displayVolume = Services.Audio.volume
+        }
+
         // Track background
         Rectangle {
             anchors.left: parent.left
@@ -78,7 +94,7 @@ ColumnLayout {
 
             // Fill
             Rectangle {
-                width: parent.width * Services.Audio.volume
+                width: parent.width * slider.displayVolume
                 height: parent.height
                 radius: height / 2
                 color: Services.Audio.muted ? Utils.Theme.subtleText : sliderColor
@@ -104,14 +120,14 @@ ColumnLayout {
         Rectangle {
             id: thumb
 
-            x: slider.thumbSize / 2 + slider.effectiveWidth * Services.Audio.volume - width / 2
+            x: slider.thumbSize / 2 + slider.effectiveWidth * slider.displayVolume - width / 2
             anchors.verticalCenter: parent.verticalCenter
             width: slider.thumbSize
             height: slider.thumbSize
             radius: width / 2
             color: sliderMouse.containsMouse || sliderMouse.pressed
                 ? Utils.Theme.text : Utils.Theme.subtext0
-            scale: sliderMouse.pressed ? 1.2 : sliderMouse.containsMouse ? 1.1 : 1
+            scale: sliderMouse.pressed ? 1.4 : sliderMouse.containsMouse ? 1.15 : 1
 
             Behavior on x {
                 enabled: !slider.dragging
@@ -123,7 +139,10 @@ ColumnLayout {
             }
 
             Behavior on scale {
-                NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                NumberAnimation {
+                    duration: sliderMouse.pressed ? 80 : Utils.Theme.animDurationFast
+                    easing.type: sliderMouse.pressed ? Easing.OutQuad : Easing.OutBack
+                }
             }
         }
 
@@ -139,6 +158,7 @@ ColumnLayout {
                 const clamped = Math.max(slider.thumbSize / 2,
                     Math.min(mouseX, slider.width - slider.thumbSize / 2));
                 const vol = (clamped - slider.thumbSize / 2) / slider.effectiveWidth;
+                slider.displayVolume = vol;
                 if (Services.Audio.sink?.audio)
                     Services.Audio.sink.audio.volume = vol;
             }
@@ -150,6 +170,9 @@ ColumnLayout {
             onPositionChanged: (mouse) => {
                 if (pressed) volumeFromX(mouse.x);
             }
+
+            onReleased: volResync.restart()
+            onCanceled: volResync.restart()
         }
     }
 
@@ -385,6 +408,11 @@ ColumnLayout {
                 radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
+                transform: Translate {
+                    x: !sinkDelegate.isDefault && sinkMouse.containsMouse ? 4 : 0
+                    Behavior on x { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutExpo } }
+                }
+
                 // Hover background
                 Rectangle {
                     anchors.fill: parent
@@ -476,7 +504,10 @@ ColumnLayout {
             }
 
             Behavior on scale {
-                NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                NumberAnimation {
+                    duration: btnMouse.pressed ? 50 : 250
+                    easing.type: btnMouse.pressed ? Easing.OutQuad : Easing.OutBack
+                }
             }
         }
 

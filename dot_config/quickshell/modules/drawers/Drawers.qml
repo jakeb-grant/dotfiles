@@ -351,9 +351,8 @@ Variants {
                         ? notifColumn.implicitHeight + spacing * 2 : 0
                     Behavior on animatedHeight {
                         NumberAnimation {
-                            duration: Utils.Theme.animDurationSmall
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Utils.Theme.animCurveStandard
+                            duration: 300
+                            easing.type: Easing.OutExpo
                         }
                     }
 
@@ -446,9 +445,8 @@ Variants {
                         ? launcherPanel.implicitHeight + spacing * 2 : 0
                     Behavior on animatedHeight {
                         NumberAnimation {
-                            duration: Utils.Theme.animDurationSmall
-                            easing.type: Easing.BezierSpline
-                            easing.bezierCurve: Utils.Theme.animCurveStandard
+                            duration: 300
+                            easing.type: Easing.OutExpo
                         }
                     }
 

@@ -17,23 +17,22 @@ ColumnLayout {
     readonly property bool wallpaperMode: Services.Launcher._submenu === "wallpaper"
 
     // #6: Open/close animation (opacity + scale from bottom)
+    property bool _opening: false
     opacity: 0
-    scale: 0.92
+    scale: 0.88
     transformOrigin: Item.Bottom
 
     Behavior on opacity {
         NumberAnimation {
-            duration: Utils.Theme.animDurationSmall
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Utils.Theme.animCurveStandard
+            duration: root._opening ? 300 : 200
+            easing.type: root._opening ? Easing.OutCubic : Easing.InCubic
         }
     }
 
     Behavior on scale {
         NumberAnimation {
-            duration: Utils.Theme.animDurationSmall
-            easing.type: Easing.BezierSpline
-            easing.bezierCurve: Utils.Theme.animCurveStandard
+            duration: root._opening ? 350 : 200
+            easing.type: root._opening ? Easing.OutBack : Easing.InCubic
         }
     }
 
@@ -122,6 +121,11 @@ ColumnLayout {
                         ? Utils.Theme.surface1
                         : itemMouse.containsMouse
                             ? Utils.Theme.hoverBg : "transparent"
+
+                    transform: Translate {
+                        x: (item.index === Services.Launcher.selectedIndex || itemMouse.containsMouse) ? 4 : 0
+                        Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
+                    }
 
                     // #9: Add easing to hover color animation
                     Behavior on color {
@@ -257,11 +261,11 @@ ColumnLayout {
         visible: !root.wallpaperMode
 
         // #7: Focus indicator
-        border.width: searchInput.activeFocus ? 1 : 0
-        border.color: Utils.Theme.accent
+        border.width: 1.5
+        border.color: searchInput.activeFocus ? Utils.Theme.accent : "transparent"
 
-        Behavior on border.width {
-            NumberAnimation { duration: Utils.Theme.animDurationFast }
+        Behavior on border.color {
+            ColorAnimation { duration: 200 }
         }
 
         RowLayout {
@@ -361,11 +365,13 @@ ColumnLayout {
             if (Services.Launcher.visible) {
                 searchInput.forceActiveFocus();
                 // #6: Trigger entrance animation
+                root._opening = true;
                 root.opacity = 1;
                 root.scale = 1;
             } else {
+                root._opening = false;
                 root.opacity = 0;
-                root.scale = 0.92;
+                root.scale = 0.88;
             }
         }
         function on_SubmenuChanged(): void {

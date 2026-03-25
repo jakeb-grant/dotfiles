@@ -213,6 +213,11 @@ ColumnLayout {
                 radius: Utils.Theme.listItemRadius
                 color: "transparent"
 
+                transform: Translate {
+                    x: (itemMouse.containsMouse && menuItem.modelData.enabled && !menuItem.modelData.isSeparator) ? 4 : 0
+                    Behavior on x { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutExpo } }
+                }
+
                 // Separator
                 Rectangle {
                     id: separatorRect

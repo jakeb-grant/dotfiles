@@ -42,6 +42,9 @@ Rectangle {
             implicitWidth: volumeIcon.implicitWidth
             implicitHeight: volumeIcon.implicitHeight
 
+            scale: volumeMouse.containsMouse ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
             Utils.MaterialIcon {
                 id: volumeIcon
                 anchors.centerIn: parent
@@ -62,6 +65,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: volumeMouse
                 anchors.fill: parent
                 hoverEnabled: true
 
@@ -81,6 +85,9 @@ Rectangle {
             visible: Services.Brightness.available
             implicitWidth: brightnessIcon.implicitWidth
             implicitHeight: brightnessIcon.implicitHeight
+
+            scale: brightnessMouse.containsMouse ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
             Utils.MaterialIcon {
                 id: brightnessIcon
@@ -105,6 +112,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: brightnessMouse
                 anchors.fill: parent
                 hoverEnabled: true
 
@@ -124,6 +132,9 @@ Rectangle {
             implicitWidth: wifiIcon.implicitWidth
             implicitHeight: wifiIcon.implicitHeight
 
+            scale: wifiMouse.containsMouse ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
             Text {
                 id: wifiIcon
                 anchors.centerIn: parent
@@ -142,6 +153,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: wifiMouse
                 anchors.fill: parent
                 hoverEnabled: true
 
@@ -160,6 +172,9 @@ Rectangle {
             Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: bluetoothIcon.implicitWidth
             implicitHeight: bluetoothIcon.implicitHeight
+
+            scale: bluetoothMouse.containsMouse ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
             Utils.MaterialIcon {
                 id: bluetoothIcon
@@ -180,6 +195,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: bluetoothMouse
                 anchors.fill: parent
                 hoverEnabled: true
 
@@ -200,6 +216,9 @@ Rectangle {
             implicitWidth: batteryIcon.implicitWidth
             implicitHeight: batteryIcon.implicitHeight
 
+            scale: batteryMouse.containsMouse ? 1.15 : 1.0
+            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
+
             Utils.MaterialIcon {
                 id: batteryIcon
                 anchors.centerIn: parent
@@ -214,6 +233,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: batteryMouse
                 anchors.fill: parent
                 hoverEnabled: true
 

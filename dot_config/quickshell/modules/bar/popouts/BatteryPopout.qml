@@ -82,7 +82,11 @@ ColumnLayout {
                 }
 
                 Behavior on width {
-                    Utils.Anim {}
+                    NumberAnimation { duration: 1200; easing.type: Easing.OutQuint }
+                }
+
+                Behavior on color {
+                    ColorAnimation { duration: 1200; easing.type: Easing.OutQuint }
                 }
             }
         }
@@ -136,7 +140,7 @@ ColumnLayout {
                 color: Utils.Theme.surface2
 
                 Behavior on x {
-                    NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: Utils.Theme.animDuration; easing.type: Easing.OutExpo }
                 }
             }
 

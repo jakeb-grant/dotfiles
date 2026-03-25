@@ -135,16 +135,16 @@ Rectangle {
         visible: root.activeIndex >= 0
 
         Behavior on x {
-            Utils.Anim {}
+            NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutBack }
         }
         Behavior on y {
-            Utils.Anim {}
+            NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutBack }
         }
         Behavior on width {
-            Utils.Anim {}
+            NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
         Behavior on height {
-            Utils.Anim {}
+            NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
         }
     }
 
@@ -201,7 +201,7 @@ Rectangle {
                 // Entrance cascade
                 property real _shift: root._wsAnimStep >= index ? 0 : 8
                 Behavior on _shift {
-                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: 300; easing.type: Easing.OutBack }
                 }
                 opacity: root._wsAnimStep >= index ? 1 : 0
                 Behavior on opacity {
@@ -248,10 +248,10 @@ Rectangle {
                             scale: wsSlot.occupied ? 1 : (wsSlot.active ? 1.2 : 1)
 
                             Behavior on scale {
-                                Utils.Anim {}
+                                NumberAnimation { duration: 250; easing.type: Easing.OutBack }
                             }
                             Behavior on opacity {
-                                Utils.Anim {}
+                                NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic }
                             }
                             color: wsSlot.active ? Utils.Theme.crust : wsSlot.occupied ? Utils.Theme.subtext0 : Utils.Theme.surface2
 
