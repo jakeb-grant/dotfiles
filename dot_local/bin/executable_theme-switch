@@ -366,9 +366,20 @@ async def main() -> None:
     env = create_jinja_env()
     process_templates(env, palette_data)
 
-    # 4. Apply chezmoi
-    print("==> Applying chezmoi...")
-    proc = await asyncio.create_subprocess_exec("chezmoi", "apply", "--force")
+    # 4. Apply chezmoi (only theme-dependent configs, not large static files)
+    print("==> Applying chezmoi (themed configs)...")
+    themed_targets = [
+        "~/.config/hypr",
+        "~/.config/gtk-3.0",
+        "~/.config/gtk-4.0",
+        "~/.config/yazi",
+        "~/.config/phylax",
+        "~/.config/zed/settings.json",
+        "~/.config/palette/active.json",
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        "chezmoi", "apply", "--force", *themed_targets
+    )
     await proc.wait()
 
     # 5. Write app configs directly (after chezmoi so they aren't overwritten)

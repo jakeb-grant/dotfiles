@@ -38,6 +38,7 @@
   "lavender": "#7287fd",
 
   "_quickshell": {
+    "accent": "#209fb5",
     "disabledText": "#7c7f93",
     "subtleText": "#6c6f85",
     "separator": "#acb0be",

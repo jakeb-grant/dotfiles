@@ -1,0 +1,157 @@
+#!/bin/bash
+# Split wide images into per-monitor slices and register them in wallpapers.json.
+
+set -euo pipefail
+
+WALLPAPER_DIR="$HOME/.config/wallpapers"
+CONFIG="$WALLPAPER_DIR/wallpapers.json"
+
+usage() {
+    cat <<'EOF'
+Usage: wallpaper-split [OPTIONS] <input_dir>
+
+Split wide images into equal per-monitor slices and add them as sets
+in ~/.config/wallpapers/wallpapers.json.
+
+Arguments:
+  input_dir     Directory containing wide images to split
+
+Options:
+  -o, --output DIR       Output directory (default: ~/.config/wallpapers)
+  -p, --palettes LIST    Comma-separated palette slugs (default: "*")
+  -n, --monitors NUM     Number of monitors to split across (default: 3)
+  -q, --quality NUM      JPEG output quality 1-100 (default: 95)
+  --format FMT           Output format: jpg or png (default: jpg)
+  -f, --force            Re-split even if files exist
+  -h, --help             Show this help
+EOF
+    exit "${1:-0}"
+}
+
+NUM_MONITORS=3
+QUALITY=95
+FORMAT=jpg
+FORCE=false
+PALETTES='["*"]'
+OUTPUT_DIR="$WALLPAPER_DIR"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o|--output)    OUTPUT_DIR="$2"; shift 2 ;;
+        -p|--palettes)
+            # Convert comma-separated to JSON array
+            PALETTES=$(echo "$2" | tr ',' '\n' | sed 's/.*/"&"/' | paste -sd',' | sed 's/^/[/;s/$/]/')
+            shift 2 ;;
+        -n|--monitors)  NUM_MONITORS="$2"; shift 2 ;;
+        -q|--quality)   QUALITY="$2"; shift 2 ;;
+        --format)       FORMAT="$2"; shift 2 ;;
+        -f|--force)     FORCE=true; shift ;;
+        -h|--help)      usage 0 ;;
+        -*)             echo "Unknown option: $1" >&2; usage 1 ;;
+        *)              break ;;
+    esac
+done
+
+if [[ $# -lt 1 ]]; then
+    echo "Error: input_dir is required" >&2
+    usage 1
+fi
+
+INPUT_DIR="$1"
+
+if [[ ! -d "$INPUT_DIR" ]]; then
+    echo "Error: input directory does not exist: $INPUT_DIR" >&2
+    exit 1
+fi
+
+mkdir -p "$OUTPUT_DIR"
+
+# Ensure wallpapers.json exists
+if [[ ! -f "$CONFIG" ]]; then
+    echo '{"wallpapers":[],"sets":[]}' > "$CONFIG"
+fi
+
+echo "Splitting images from: $INPUT_DIR"
+echo "Output to: $OUTPUT_DIR"
+echo "Monitors: $NUM_MONITORS | Format: $FORMAT | Quality: $QUALITY"
+echo "Palettes: $PALETTES"
+echo
+
+count=0
+skipped=0
+
+shopt -s nullglob
+for img in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR"/*.webp; do
+
+    basename=$(basename "$img")
+    name="${basename%.*}"
+
+    # Check if output files already exist
+    if [[ "$FORCE" != true ]] && [[ -f "$OUTPUT_DIR/${name}-1.${FORMAT}" ]]; then
+        echo "[skip] $basename"
+        skipped=$((skipped + 1))
+        continue
+    fi
+
+    dims=$(magick identify -format "%w %h" "$img" 2>/dev/null)
+    img_w=$(echo "$dims" | cut -d" " -f1)
+    img_h=$(echo "$dims" | cut -d" " -f2)
+
+    # Crop to correct aspect ratio: N × 16:9
+    canvas_aspect_w=$((NUM_MONITORS * 16))
+    canvas_aspect_h=9
+    target_h=$((img_w * canvas_aspect_h / canvas_aspect_w))
+    if [[ $target_h -gt $img_h ]]; then
+        target_w=$((img_h * canvas_aspect_w / canvas_aspect_h))
+        target_h=$img_h
+    else
+        target_w=$img_w
+    fi
+    slice_w=$((target_w / NUM_MONITORS))
+
+    echo "[split] $basename (${img_w}x${img_h} → ${NUM_MONITORS} × ${slice_w}x${target_h})"
+
+    # Center crop to correct aspect ratio
+    magick "$img" \
+        -gravity center \
+        -crop "${target_w}x${target_h}+0+0" +repage \
+        "/tmp/_wpp_cropped.${FORMAT}"
+
+    # Split into slices
+    image_list=""
+    for i in $(seq 0 $((NUM_MONITORS - 1))); do
+        offset_x=$((i * slice_w))
+        out_name="${name}-$((i + 1)).${FORMAT}"
+        out="$OUTPUT_DIR/$out_name"
+        if [[ "$FORMAT" == "png" ]]; then
+            magick "/tmp/_wpp_cropped.${FORMAT}" \
+                -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
+                "$out"
+        else
+            magick "/tmp/_wpp_cropped.${FORMAT}" \
+                -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
+                -quality "$QUALITY" \
+                "$out"
+        fi
+        image_list="${image_list}\"${out_name}\","
+    done
+    image_list="[${image_list%,}]"
+
+    rm -f "/tmp/_wpp_cropped.${FORMAT}"
+
+    # Add set to wallpapers.json
+    if command -v jq &>/dev/null; then
+        # Remove existing set with same name, then add new one
+        jq --arg name "$name" --argjson images "$image_list" --argjson palettes "$PALETTES" '
+            .sets = (.sets // [] | map(select(.name != $name))) + [{name: $name, images: $images, palettes: $palettes}]
+        ' "$CONFIG" > "${CONFIG}.tmp" && mv "${CONFIG}.tmp" "$CONFIG"
+        echo "  → registered set \"$name\" in wallpapers.json"
+    else
+        echo "  → jq not found, skipping wallpapers.json update"
+    fi
+
+    count=$((count + 1))
+done
+
+echo
+echo "Done! Split: $count, Skipped: $skipped"

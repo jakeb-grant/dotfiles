@@ -1,0 +1,107 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "super-image",
+#     "Pillow",
+#     "torch",
+#     "torchvision",
+# ]
+# ///
+"""Upscale images using EDSR 4x with tiled processing (CPU)."""
+
+import argparse
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+from pathlib import Path
+from PIL import Image
+import torch
+from super_image import EdsrModel, ImageLoader
+
+TILE_SIZE = 256
+OVERLAP = 32
+SCALE = 4
+EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def upscale_tiled(img: Image.Image, model) -> Image.Image:
+    w, h = img.size
+    out = Image.new("RGB", (w * SCALE, h * SCALE))
+
+    tiles_x = max(1, (w + TILE_SIZE - OVERLAP - 1) // (TILE_SIZE - OVERLAP))
+    tiles_y = max(1, (h + TILE_SIZE - OVERLAP - 1) // (TILE_SIZE - OVERLAP))
+    total = tiles_x * tiles_y
+    done = 0
+
+    for ty in range(tiles_y):
+        for tx in range(tiles_x):
+            x0 = min(tx * (TILE_SIZE - OVERLAP), w - TILE_SIZE)
+            y0 = min(ty * (TILE_SIZE - OVERLAP), h - TILE_SIZE)
+            x0 = max(0, x0)
+            y0 = max(0, y0)
+            x1 = min(x0 + TILE_SIZE, w)
+            y1 = min(y0 + TILE_SIZE, h)
+
+            tile = img.crop((x0, y0, x1, y1))
+            inputs = ImageLoader.load_image(tile)
+
+            with torch.no_grad():
+                preds = model(inputs)
+
+            tile_out = preds.squeeze(0).permute(1, 2, 0).clamp(0, 1).mul(255).byte()
+            tile_img = Image.fromarray(tile_out.cpu().numpy())
+
+            out.paste(tile_img, (x0 * SCALE, y0 * SCALE))
+
+            done += 1
+            print(f"    tile {done}/{total}", end="\r", flush=True)
+
+    print(f"    {total}/{total} tiles done", flush=True)
+    return out
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Upscale images 4x using EDSR (CPU, tiled)")
+    parser.add_argument("input", type=Path, help="Input directory of images")
+    parser.add_argument("-o", "--output", type=Path, default=None,
+                        help="Output directory (default: <input>-upscaled)")
+    parser.add_argument("-q", "--quality", type=int, default=95,
+                        help="JPEG output quality (default: 95)")
+    parser.add_argument("--skip-existing", action="store_true", default=True,
+                        help="Skip images that already have output (default)")
+    parser.add_argument("--force", action="store_true",
+                        help="Re-upscale even if output exists")
+    args = parser.parse_args()
+
+    input_dir = args.input.expanduser().resolve()
+    output_dir = (args.output or input_dir.parent / f"{input_dir.name}-upscaled").expanduser().resolve()
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    print(f"Loading EDSR 4x model (CPU, tiled)...", flush=True)
+    model = EdsrModel.from_pretrained("eugenesiow/edsr-base", scale=SCALE).to("cpu")
+    model.eval()
+
+    images = sorted(p for p in input_dir.iterdir() if p.suffix.lower() in EXTENSIONS)
+    print(f"Found {len(images)} images\n", flush=True)
+
+    for i, img_path in enumerate(images):
+        out_path = output_dir / img_path.with_suffix(".jpg").name
+        if out_path.exists() and not args.force:
+            print(f"[{i+1}/{len(images)}] {img_path.name} — skipping (exists)", flush=True)
+            continue
+
+        print(f"[{i+1}/{len(images)}] {img_path.name}", flush=True)
+        img = Image.open(img_path).convert("RGB")
+        print(f"  Input: {img.width}x{img.height}", flush=True)
+
+        result = upscale_tiled(img, model)
+
+        result.save(out_path, "JPEG", quality=args.quality)
+        print(f"  Output: {result.width}x{result.height} -> {out_path.name}\n", flush=True)
+
+    print("Done!")
+
+
+if __name__ == "__main__":
+    main()

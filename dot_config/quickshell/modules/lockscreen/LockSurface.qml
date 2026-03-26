@@ -34,8 +34,8 @@ Item {
     Image {
         id: wallpaperBg
         anchors.fill: parent
-        source: Services.Wallpaper.currentWallpaper
-            ? "file://" + Services.Wallpaper.wallpaperDir + "/" + Services.Wallpaper.currentWallpaper
+        source: Services.Wallpaper.lockScreenImage
+            ? "file://" + Services.Wallpaper.lockScreenImage
             : ""
         fillMode: Image.PreserveAspectCrop
         visible: false

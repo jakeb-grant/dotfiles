@@ -1,0 +1,54 @@
+{
+  "wallpapers": [],
+  "sets": [
+    {
+      "name": "Astronaut",
+      "images": ["astronaut1.png", "astronaut2.png", "astronaut3.png"],
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "name": "Escape Velocity",
+      "images": [
+        "escape-velocity1.png",
+        "escape-velocity2.png",
+        "escape-velocity3.png"
+      ],
+      "palettes": ["rose-pine*", "catppuccin*"]
+    },
+    {
+      "name": "Everforest",
+      "images": ["everforest1.png", "everforest2.png", "everforest3.png"],
+      "palettes": ["everforest*"]
+    },
+    {
+      "name": "Ireland",
+      "images": ["ireland1.png", "ireland2.png", "ireland3.png"],
+      "palettes": ["everforest*"]
+    },
+    {
+      "name": "Lavender",
+      "images": ["lavender1.png", "lavender2.png", "lavender3.png"],
+      "palettes": ["rose-pine*", "catppuccin*"]
+    },
+    {
+      "name": "Mars Race",
+      "images": ["mars-race1.png", "mars-race2.png", "mars-race3.png"],
+      "palettes": []
+    },
+    {
+      "name": "Snowfield",
+      "images": ["snowfield1.png", "snowfield2.png", "snowfield3.png"],
+      "palettes": ["catppuccin*"]
+    },
+    {
+      "name": "Sunset",
+      "images": ["sunset1.png", "sunset2.png", "sunset3.png"],
+      "palettes": []
+    },
+    {
+      "name": "Urban",
+      "images": ["urban1.png", "urban2.png", "urban3.png"],
+      "palettes": []
+    }
+  ]
+}
