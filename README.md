@@ -86,10 +86,12 @@ dot_config/
 ├── windows-vm/         # Windows VM (docker-compose)
 ├── palette/            # Theme palette definitions (JSON)
 ├── theme-templates/    # Jinja2 theme templates
-└── wallpapers/         # Per-theme wallpapers
+└── wallpapers/         # Flat image pool + wallpapers.json config
 dot_local/bin/
 ├── theme-switch        # Theme switching utility
 ├── toggle-bar-mode     # Switch between sidebar and topbar layouts
+├── wallpaper-split     # Split wide/panoramic images into per-monitor sets
+├── wallpaper-upscale   # AI upscale images using EDSR 4x (CPU)
 └── win-vm              # Windows VM management
 ```
 
@@ -169,6 +171,42 @@ Chezmoi variables (processed by `chezmoi apply`):
 ```bash
 # Switch theme (updates palette, processes templates, applies chezmoi, reloads apps)
 theme-switch everforest
+```
+
+## Wallpaper System
+
+Wallpapers live in a flat directory (`~/.config/wallpapers/`) with a `wallpapers.json` config that defines singles and sets with palette assignments.
+
+```json
+{
+  "wallpapers": [
+    { "file": "forest.jpg", "palettes": ["everforest*"] },
+    { "file": "sunset.jpg", "palettes": ["*"] }
+  ],
+  "sets": [
+    {
+      "name": "Cyberpunk",
+      "images": ["cyberpunk-1.png", "cyberpunk-2.png", "cyberpunk-3.png"],
+      "palettes": ["catppuccin*"]
+    }
+  ]
+}
+```
+
+- **Singles** apply one image across all monitors
+- **Sets** assign images to monitors left-to-right, cycling with modulo if there are fewer images than monitors
+- **Palettes** supports exact names (`catppuccin-mocha`), globs (`catppuccin*`), or `*` for all themes
+- The current wallpaper persists across reboots via `~/.config/wallpapers/.current`
+- Quickshell watches `wallpapers.json` for live updates via `FileView`
+
+### Wallpaper Tools
+
+```bash
+# Split panoramic images into per-monitor sets (default: 3 monitors, jpg)
+wallpaper-split ~/Downloads/panoramas/ --palettes "catppuccin*,rose-pine*"
+
+# AI upscale images using EDSR 4x (CPU-only, tiled processing)
+wallpaper-upscale ~/Downloads/lowres/ -o ~/Downloads/upscaled/
 ```
 
 ## Machine-Specific Configuration
