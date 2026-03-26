@@ -83,12 +83,10 @@ Singleton {
     Process { id: _saveProc }
 
     Component.onCompleted: {
-        paletteSlug = _deriveSlug();
         const saved = stateFile.text().trim();
-        if (saved) {
-            _savedWallpaper = saved;
-        }
+        if (saved) _savedWallpaper = saved;
         _autoSetOnRefresh = true;
+        paletteSlug = _deriveSlug(); // must be last — triggers _rebuildEntries()
     }
 
     property string _savedWallpaper: ""
@@ -209,4 +207,28 @@ Singleton {
     }
 
     Process { id: _applyProc }
+
+    // Re-apply set wallpaper when monitors appear/change (startup race).
+    // Debounced to avoid rapid-fire re-applies as monitors come online.
+    Timer {
+        id: screenDebounce
+        interval: 200
+        onTriggered: {
+            if (!root.currentWallpaper) return;
+            for (let i = 0; i < root.entries.length; i++) {
+                const e = root.entries[i];
+                if (e.name === root.currentWallpaper && e.isSet) {
+                    root._applySet(e);
+                    return;
+                }
+            }
+        }
+    }
+
+    Connections {
+        target: Quickshell
+        function onScreensChanged(): void {
+            screenDebounce.restart();
+        }
+    }
 }
