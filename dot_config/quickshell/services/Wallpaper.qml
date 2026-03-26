@@ -15,6 +15,7 @@ Singleton {
     property int selectedIndex: 0
     property string paletteSlug: ""
     readonly property string wallpaperDir: Quickshell.env("HOME") + "/.config/wallpapers"
+    readonly property string _stateFile: wallpaperDir + "/.current"
 
     // Full path to a displayable image (for lock screen, etc.)
     // For singles: wallpaperDir + "/" + filename
@@ -65,11 +66,32 @@ Singleton {
         }
     }
 
+    // ── Persistence ──
+    FileView {
+        id: stateFile
+        path: root._stateFile
+        blockLoading: true
+    }
+
+    onCurrentWallpaperChanged: {
+        if (currentWallpaper) {
+            _saveProc.command = ["sh", "-c", `printf '%s' "${currentWallpaper}" > "${_stateFile}"`];
+            _saveProc.running = true;
+        }
+    }
+
+    Process { id: _saveProc }
+
     Component.onCompleted: {
         paletteSlug = _deriveSlug();
+        const saved = stateFile.text().trim();
+        if (saved) {
+            _savedWallpaper = saved;
+        }
         _autoSetOnRefresh = true;
     }
 
+    property string _savedWallpaper: ""
     property bool _autoSetOnRefresh: false
 
     // ── Rebuild entries when config or theme changes ──
@@ -113,8 +135,21 @@ Singleton {
         selectedIndex = 0;
 
         if (_autoSetOnRefresh && entries.length > 0) {
-            const idx = Math.floor(Math.random() * entries.length);
-            applyEntry(entries[idx]);
+            let restored = false;
+            if (_savedWallpaper) {
+                for (let i = 0; i < entries.length; i++) {
+                    if (entries[i].name === _savedWallpaper) {
+                        applyEntry(entries[i]);
+                        restored = true;
+                        break;
+                    }
+                }
+                _savedWallpaper = "";
+            }
+            if (!restored) {
+                const idx = Math.floor(Math.random() * entries.length);
+                applyEntry(entries[idx]);
+            }
         }
         _autoSetOnRefresh = false;
     }

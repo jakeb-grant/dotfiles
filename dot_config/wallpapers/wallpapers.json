@@ -1,5 +1,86 @@
 {
-  "wallpapers": [],
+  "wallpapers": [
+    {
+      "file": "astronaut3.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "escape-velocity1.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "escape-velocity2.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "everforest1.png",
+      "palettes": ["everforest"]
+    },
+    {
+      "file": "everforest2.png",
+      "palettes": ["everforest"]
+    },
+    {
+      "file": "everforest3.png",
+      "palettes": ["everforest"]
+    },
+    {
+      "file": "ireland1.png",
+      "palettes": ["everforest"]
+    },
+    {
+      "file": "ireland2.png",
+      "palettes": ["everforest"]
+    },
+    {
+      "file": "ireland3.png",
+      "palettes": ["everforest"]
+    },
+    {
+      "file": "lavender3.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "mars-race1.png",
+      "palettes": []
+    },
+    {
+      "file": "snowfield1.png",
+      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+    },
+    {
+      "file": "snowfield2.png",
+      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+    },
+    {
+      "file": "snowfield3.png",
+      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+    },
+    {
+      "file": "sunset1.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "sunset2.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "sunset3.png",
+      "palettes": ["catppuccin*", "rose-pine*"]
+    },
+    {
+      "file": "urban1.png",
+      "palettes": []
+    },
+    {
+      "file": "urban2.png",
+      "palettes": []
+    },
+    {
+      "file": "urban3.png",
+      "palettes": []
+    }
+  ],
   "sets": [
     {
       "name": "Astronaut",
@@ -18,16 +99,16 @@
     {
       "name": "Everforest",
       "images": ["everforest1.png", "everforest2.png", "everforest3.png"],
-      "palettes": ["everforest*"]
+      "palettes": ["everforest"]
     },
     {
       "name": "Ireland",
       "images": ["ireland1.png", "ireland2.png", "ireland3.png"],
-      "palettes": ["everforest*"]
+      "palettes": ["everforest"]
     },
     {
-      "name": "Lavender",
-      "images": ["lavender1.png", "lavender2.png", "lavender3.png"],
+      "name": "Kyoto",
+      "images": ["lavender1.png", "lavender2.png"],
       "palettes": ["rose-pine*", "catppuccin*"]
     },
     {
@@ -38,12 +119,12 @@
     {
       "name": "Snowfield",
       "images": ["snowfield1.png", "snowfield2.png", "snowfield3.png"],
-      "palettes": ["catppuccin*"]
+      "palettes": ["catppuccin*", "rose-pine*", "nord"]
     },
     {
       "name": "Sunset",
       "images": ["sunset1.png", "sunset2.png", "sunset3.png"],
-      "palettes": []
+      "palettes": ["catppuccin*", "rose-pine*"]
     },
     {
       "name": "Urban",

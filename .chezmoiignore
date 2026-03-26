@@ -4,3 +4,6 @@ README.md
 docs/
 screenshots/
 
+# Runtime state (not managed by chezmoi)
+.config/wallpapers/.current
+
