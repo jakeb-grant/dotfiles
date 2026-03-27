@@ -1,6 +1,8 @@
 # Hyprland Dotfiles
 
-Chezmoi-managed dotfiles for my Hyprland desktop environment.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, GTK, Ghostty, Zed, Quickshell — so switching from Everforest to Catppuccin is a single command with live animated transitions.
 
 ## Preview
 
