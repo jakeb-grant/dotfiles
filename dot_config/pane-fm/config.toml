@@ -11,6 +11,9 @@ light_icons = false
 # Terminal emulator for "Open Terminal Here" (` keybind)
 terminal = "ghostty"
 
+# Editor for open with editor commands (e keybind)
+editor = "zeditor --wait"
+
 # Default sort and display
 # show_hidden = false
 # sort_by = "name"
