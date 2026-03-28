@@ -263,6 +263,46 @@ def update_btop(palette_data: dict) -> None:
     print(f"    btop theme: {theme_name}")
 
 
+PANE_FM_CONFIG = Path.home() / ".config/pane-fm/config.toml"
+
+
+def update_pane_fm(palette_data: dict) -> None:
+    theme_name = palette_data.get("_pane_fm_theme", "")
+    if not theme_name:
+        print("    Warning: No _pane_fm_theme in palette, skipping pane-fm")
+        return
+
+    if not PANE_FM_CONFIG.exists():
+        print("    Warning: pane-fm config not found, skipping")
+        return
+
+    variant = palette_data.get("_variant", "dark")
+    light_icons = "true" if variant == "light" else "false"
+
+    lines = PANE_FM_CONFIG.read_text().splitlines()
+    new_lines = []
+    found_theme = False
+    found_icons = False
+    for line in lines:
+        stripped = line.lstrip("# ")
+        if stripped.startswith("theme =") or stripped.startswith("theme="):
+            new_lines.append(f'theme = "{theme_name}"')
+            found_theme = True
+        elif stripped.startswith("light_icons =") or stripped.startswith("light_icons="):
+            new_lines.append(f"light_icons = {light_icons}")
+            found_icons = True
+        else:
+            new_lines.append(line)
+
+    if not found_theme:
+        new_lines.insert(0, f'theme = "{theme_name}"')
+    if not found_icons:
+        new_lines.insert(1, f"light_icons = {light_icons}")
+
+    PANE_FM_CONFIG.write_text("\n".join(new_lines) + "\n")
+    print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
+
+
 # =============================================================================
 # Application Reloading
 # =============================================================================
@@ -375,6 +415,7 @@ async def main() -> None:
         "~/.config/yazi",
         "~/.config/phylax",
         "~/.config/zed/settings.json",
+        "~/.config/pane-fm/themes",
         "~/.config/palette/active.json",
     ]
     proc = await asyncio.create_subprocess_exec(
@@ -387,6 +428,7 @@ async def main() -> None:
     update_ghostty(palette_data)
     update_btop(palette_data)
     update_zed(palette_data)
+    update_pane_fm(palette_data)
 
     # 6. Reload apps in parallel
     await reload_all(palette_data)

@@ -1,0 +1,16 @@
+:root {
+  --bg-primary: #191724;
+  --bg-secondary: #1f1d2e;
+  --bg-surface: #26233a;
+  --bg-hover: #21202e;
+  --text-primary: #e0def4;
+  --text-secondary: #cccae2;
+  --text-muted: #908caa;
+  --accent: #31748f;
+  --accent-hover: #31748f;
+  --border: #403d52;
+  --danger: #eb6f92;
+  --success: #9ccfd8;
+  --warning: #f6c177;
+  --overlay-bg: rgba(25, 23, 36, 0.7);
+}
