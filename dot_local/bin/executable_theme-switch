@@ -415,7 +415,7 @@ async def main() -> None:
         "~/.config/yazi",
         "~/.config/phylax",
         "~/.config/zed/settings.json",
-        "~/.config/pane-fm/themes",
+        "~/.config/pane-fm",
         "~/.config/palette/active.json",
     ]
     proc = await asyncio.create_subprocess_exec(
