@@ -6,6 +6,11 @@
 # Add ~/.local/bin to PATH
 export PATH="$HOME/.local/bin:$PATH"
 
+# Editor
+export EDITOR="zeditor"
+export VISUAL="zeditor"
+export GIT_EDITOR="zeditor --wait"
+
 # Basic prompt
 PS1='[\u@\h \W]\$ '
 

@@ -16,7 +16,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 - **Desktop Shell**: Quickshell (bar, launcher, notifications, lock screen, wallpaper picker — uses hyprlock's PAM config for authentication; hyprlock configured as fallback)
 - **Terminal**: Ghostty
 - **Editor**: Zed with hand-crafted themes per palette
-- **File Manager**: Yazi (terminal, themed)
+- **File Manager**: Yazi (terminal, themed), pane-fm (GUI, themed)
 - **System Monitor**: btop
 - **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
@@ -79,6 +79,7 @@ dot_config/
 ├── ghostty/            # Terminal emulator
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
+├── pane-fm/            # pane-fm file manager config + themes
 ├── btop/               # System monitor theme
 ├── phylax/             # Desktop widget styling
 ├── gtk-3.0/            # GTK3 color overrides
@@ -114,7 +115,7 @@ Used by: Hyprland, GTK3/4, Phylax, Yazi, Zed settings
 Palette JSON              theme-switch                    Final Config
 (everforest.json) --->   reads _ghostty_theme   --->    writes theme = Everforest Dark Hard
 ```
-Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`), btop (`_btop_theme`)
+Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`), btop (`_btop_theme`), pane-fm (`_pane_fm_theme`)
 
 **Quickshell** watches `active.json` directly for live animated transitions — no restart needed.
 

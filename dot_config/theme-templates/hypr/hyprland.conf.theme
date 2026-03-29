@@ -8,7 +8,7 @@
 # ------------------------------------------------------------------------------
 $terminal = ghostty +new-window
 $editor = zeditor --wait
-$fileManager = pane-fm
+$fileManager = ghostty -e yazi
 
 # Modifier key
 $mod = SUPER
@@ -16,8 +16,9 @@ $mod = SUPER
 # ------------------------------------------------------------------------------
 # Environment Variables
 # ------------------------------------------------------------------------------
-env = EDITOR,zeditor --wait
-env = VISUAL,zeditor --wait
+env = EDITOR,zeditor
+env = VISUAL,zeditor
+env = GIT_EDITOR,zeditor --wait
 env = GSK_RENDERER,gl
 env = GDK_BACKEND,wayland,x11
 env = XCURSOR_THEME,Bibata-Modern-Classic
