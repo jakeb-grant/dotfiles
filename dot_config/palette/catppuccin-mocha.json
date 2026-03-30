@@ -9,6 +9,7 @@
   "_btop_theme": "catppuccin_mocha",
   "_gtk_color_scheme": "prefer-dark",
   "_pane_fm_theme": "catppuccin-mocha",
+  "_chromium_seed_color": "#1e1e2e",
 
   "crust": "#11111b",
   "mantle": "#181825",

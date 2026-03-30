@@ -303,6 +303,41 @@ def update_pane_fm(palette_data: dict) -> None:
     print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
 
 
+CHROMIUM_POLICY_DIR = Path("/etc/chromium/policies/managed")
+CHROMIUM_THEME_POLICY = CHROMIUM_POLICY_DIR / "theme.json"
+
+
+def update_chromium(palette_data: dict) -> None:
+    seed_color = palette_data.get("_chromium_seed_color", "")
+    if not seed_color:
+        print("    Warning: No _chromium_seed_color in palette, skipping Chromium")
+        return
+
+    if not CHROMIUM_POLICY_DIR.exists():
+        print("    Warning: Chromium policy dir not found, skipping")
+        print("    Run: sudo mkdir -p /etc/chromium/policies/managed && "
+              "sudo setfacl -m u:$USER:rwx /etc/chromium/policies/managed")
+        return
+
+    variant = palette_data.get("_variant", "dark")
+    color_scheme = 1 if variant == "light" else 2
+
+    policy = {
+        "BrowserThemeColor": seed_color,
+        "ThemeColorScheme": color_scheme,
+    }
+
+    try:
+        CHROMIUM_THEME_POLICY.write_text(json.dumps(policy, indent=2) + "\n")
+    except PermissionError:
+        print("    Warning: No write permission to Chromium policy dir, skipping")
+        print("    Run: sudo setfacl -m u:$USER:rwx /etc/chromium/policies/managed")
+        return
+
+    scheme_label = "light" if variant == "light" else "dark"
+    print(f"    Chromium seed: {seed_color}, scheme: {scheme_label}")
+
+
 # =============================================================================
 # Application Reloading
 # =============================================================================
@@ -348,6 +383,12 @@ async def set_gtk_theme(palette_data: dict) -> None:
     print(f"    GTK color scheme: {scheme}")
 
 
+async def reload_chromium() -> None:
+    if shutil.which("chromium"):
+        await run_async(["chromium", "--refresh-platform-policy"])
+        print("    Chromium policy refreshed")
+
+
 async def send_notification(theme_name: str) -> None:
     await run_async([
         "notify-send",
@@ -363,6 +404,7 @@ async def reload_all(palette_data: dict) -> None:
         reload_ghostty(),
         reload_btop(),
         set_gtk_theme(palette_data),
+        reload_chromium(),
     )
 
 
@@ -429,6 +471,7 @@ async def main() -> None:
     update_btop(palette_data)
     update_zed(palette_data)
     update_pane_fm(palette_data)
+    update_chromium(palette_data)
 
     # 6. Reload apps in parallel
     await reload_all(palette_data)
