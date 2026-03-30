@@ -303,39 +303,41 @@ def update_pane_fm(palette_data: dict) -> None:
     print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
 
 
-CHROMIUM_POLICY_DIR = Path("/etc/chromium/policies/managed")
-CHROMIUM_THEME_POLICY = CHROMIUM_POLICY_DIR / "theme.json"
+CHROME_POLICY_DIRS = [
+    Path("/etc/chromium/policies/managed"),
+    Path("/etc/opt/chrome/policies/managed"),
+]
 
 
 def update_chromium(palette_data: dict) -> None:
     seed_color = palette_data.get("_chromium_seed_color", "")
     if not seed_color:
-        print("    Warning: No _chromium_seed_color in palette, skipping Chromium")
-        return
-
-    if not CHROMIUM_POLICY_DIR.exists():
-        print("    Warning: Chromium policy dir not found, skipping")
-        print("    Run: sudo mkdir -p /etc/chromium/policies/managed && "
-              "sudo setfacl -m u:$USER:rwx /etc/chromium/policies/managed")
+        print("    Warning: No _chromium_seed_color in palette, skipping Chromium/Chrome")
         return
 
     variant = palette_data.get("_variant", "dark")
     color_scheme = 1 if variant == "light" else 2
+    scheme_label = "light" if variant == "light" else "dark"
 
     policy = {
         "BrowserThemeColor": seed_color,
         "ThemeColorScheme": color_scheme,
     }
+    policy_text = json.dumps(policy, indent=2) + "\n"
 
-    try:
-        CHROMIUM_THEME_POLICY.write_text(json.dumps(policy, indent=2) + "\n")
-    except PermissionError:
-        print("    Warning: No write permission to Chromium policy dir, skipping")
-        print("    Run: sudo setfacl -m u:$USER:rwx /etc/chromium/policies/managed")
-        return
+    wrote = False
+    for policy_dir in CHROME_POLICY_DIRS:
+        if not policy_dir.exists():
+            continue
+        try:
+            (policy_dir / "theme.json").write_text(policy_text)
+            print(f"    {policy_dir.parent.parent.name}: seed {seed_color}, scheme: {scheme_label}")
+            wrote = True
+        except PermissionError:
+            print(f"    Warning: No write permission to {policy_dir}, skipping")
 
-    scheme_label = "light" if variant == "light" else "dark"
-    print(f"    Chromium seed: {seed_color}, scheme: {scheme_label}")
+    if not wrote:
+        print("    Warning: No Chromium/Chrome policy dirs found, skipping")
 
 
 # =============================================================================
@@ -384,9 +386,10 @@ async def set_gtk_theme(palette_data: dict) -> None:
 
 
 async def reload_chromium() -> None:
-    if shutil.which("chromium"):
-        await run_async(["chromium", "--refresh-platform-policy"])
-        print("    Chromium policy refreshed")
+    for browser, process in [("chromium", "chromium"), ("google-chrome-stable", "chrome")]:
+        if shutil.which(browser) and await run_async(["pgrep", "-x", process]):
+            await run_async([browser, "--refresh-platform-policy"])
+            print(f"    {browser} policy refreshed")
 
 
 async def send_notification(theme_name: str) -> None:
