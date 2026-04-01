@@ -19,19 +19,22 @@ $mod = SUPER
 env = EDITOR,zeditor
 env = VISUAL,zeditor
 env = GIT_EDITOR,zeditor --wait
-env = GSK_RENDERER,gl
 env = GDK_BACKEND,wayland,x11
 env = XCURSOR_THEME,Bibata-Modern-Classic
 env = XCURSOR_SIZE,24
 env = HYPRCURSOR_SIZE,24
 env = PATH,$HOME/.local/bin:$PATH
+env = ELECTRON_OZONE_PLATFORM_HINT,auto
 
+{{ if eq .graphics "intel" -}}
+# Intel iGPU
+env = LIBVA_DRIVER_NAME,iHD
+{{ end -}}
 {{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
 # NVIDIA environment variables
 env = LIBVA_DRIVER_NAME,nvidia
 env = __GLX_VENDOR_LIBRARY_NAME,nvidia
 env = NVD_BACKEND,direct
-env = ELECTRON_OZONE_PLATFORM_HINT,auto
 {{ if eq .graphics "prime" -}}
 # Multi-monitor support for hybrid graphics
 env = AQ_DRM_DEVICES,/dev/dri/card1:/dev/dri/card0
@@ -254,7 +257,9 @@ gesture = 3, horizontal, workspace
 # Cursor
 # ------------------------------------------------------------------------------
 cursor {
+{{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
     no_hardware_cursors = true
+{{ end -}}
 }
 
 # ------------------------------------------------------------------------------

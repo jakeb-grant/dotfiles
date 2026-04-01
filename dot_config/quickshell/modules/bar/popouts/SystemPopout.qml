@@ -270,7 +270,7 @@ ColumnLayout {
     }
 
     StatBar {
-        visible: Services.SystemStats.gpuAvailable
+        visible: Services.SystemStats.gpuAvailable && Services.SystemStats.gpuType !== "intel"
         icon: "storage"
         label: "VRAM"
         value: Services.SystemStats.gpuMemUsed + " / " + Services.SystemStats.gpuMemTotal

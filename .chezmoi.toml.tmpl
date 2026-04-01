@@ -1,4 +1,4 @@
-{{- $graphics := promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "prime" "nvidia") -}}
+{{- $graphics := promptChoiceOnce . "graphics" "Graphics driver" (list "amd" "intel" "prime" "nvidia") -}}
 {{- $igpu_pci := "" -}}
 {{- $dgpu_pci := "" -}}
 {{- if eq $graphics "prime" -}}

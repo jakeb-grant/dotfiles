@@ -24,7 +24,8 @@ Singleton {
     property int gpuMemPercent: 0
     property string gpuMemUsed: ""
     property string gpuMemTotal: ""
-    property string gpuType: "" // "nvidia" or "amd"
+    property string gpuType: "" // "nvidia", "amd", or "intel"
+    property string gpuCardPath: "" // e.g. "/sys/class/drm/card0"
 
     property real _prevIdle: 0
     property real _prevTotal: 0
@@ -90,15 +91,22 @@ Singleton {
         id: gpuDetect
         command: ["sh", "-c",
             "if command -v nvidia-smi >/dev/null 2>&1; then echo nvidia; " +
-            "elif [ -f /sys/class/drm/card1/device/gpu_busy_percent ]; then echo amd; " +
-            "else echo none; fi"
+            "else for card in /sys/class/drm/card[0-9]; do " +
+            "  [ -f \"$card/device/uevent\" ] || continue; " +
+            "  drv=$(grep ^DRIVER= \"$card/device/uevent\" | cut -d= -f2); " +
+            "  case $drv in " +
+            "    amdgpu) echo \"amd $card\"; exit 0;; " +
+            "    i915|xe) echo \"intel $card\"; exit 0;; " +
+            "  esac; " +
+            "done; echo none; fi"
         ]
         running: true
         stdout: SplitParser {
             onRead: data => {
-                const t = data.trim();
-                if (t !== "none") {
-                    root.gpuType = t;
+                const parts = data.trim().split(" ");
+                if (parts[0] !== "none") {
+                    root.gpuType = parts[0];
+                    root.gpuCardPath = parts[1] || "";
                     root.gpuAvailable = true;
                 }
             }
@@ -107,14 +115,23 @@ Singleton {
 
     Process {
         id: gpuProc
-        command: gpuType === "nvidia"
-            ? ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total",
-               "--format=csv,noheader,nounits"]
-            : ["sh", "-c",
-                "cat /sys/class/drm/card1/device/gpu_busy_percent; " +
-                "cat /sys/class/drm/card1/device/hwmon/hwmon*/temp1_input 2>/dev/null || echo 0; " +
-                "cat /sys/class/drm/card1/device/mem_info_vram_used 2>/dev/null || echo 0; " +
-                "cat /sys/class/drm/card1/device/mem_info_vram_total 2>/dev/null || echo 0"]
+        command: {
+            if (gpuType === "nvidia")
+                return ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total",
+                        "--format=csv,noheader,nounits"];
+            if (gpuType === "intel")
+                return ["sh", "-c",
+                    "a=$(cat " + gpuCardPath + "/gt/gt0/rc6_residency_ms 2>/dev/null || echo 0); " +
+                    "sleep 1; " +
+                    "b=$(cat " + gpuCardPath + "/gt/gt0/rc6_residency_ms 2>/dev/null || echo 0); " +
+                    "echo $(( 100 - (b - a) / 10 ))"];
+            // AMD
+            return ["sh", "-c",
+                "cat " + gpuCardPath + "/device/gpu_busy_percent; " +
+                "cat " + gpuCardPath + "/device/hwmon/hwmon*/temp1_input 2>/dev/null || echo 0; " +
+                "cat " + gpuCardPath + "/device/mem_info_vram_used 2>/dev/null || echo 0; " +
+                "cat " + gpuCardPath + "/device/mem_info_vram_total 2>/dev/null || echo 0"];
+        }
         stdout: SplitParser {
             onRead: data => root._parseGpu(data)
         }
@@ -135,6 +152,12 @@ Singleton {
                 gpuMemTotal = total >= 1024 ? (total / 1024).toFixed(1) + " GB" : total + " MB";
                 gpuMemPercent = total > 0 ? Math.round(used / total * 100) : 0;
             }
+        } else if (gpuType === "intel") {
+            // Single line: utilization percentage from rc6 delta
+            gpuPercent = Math.max(0, Math.min(100, parseInt(line.trim())));
+            // Intel iGPU shares the CPU die — reuse cpuTemp for temperature
+            gpuTemp = cpuTemp;
+            // No dedicated VRAM on Intel iGPU
         } else {
             // AMD: 4 lines
             const idx = _gpuLineIndex++;
