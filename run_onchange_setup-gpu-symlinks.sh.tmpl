@@ -2,9 +2,9 @@
 # Create stable /dev/dri/ symlinks for GPU devices via udev rules.
 # Re-runs when GPU PCI IDs change in chezmoi config.
 #
-# Config hash: {{ .igpu_pci | default "" }}:{{ .dgpu_pci | default "" }}
+# Config hash: {{ index . "igpu_pci" | default "" }}:{{ index . "dgpu_pci" | default "" }}
 
-{{ if and (eq (.graphics | default "") "prime") (ne (.igpu_pci | default "") "") -}}
+{{ if and (eq (index . "graphics" | default "") "prime") (ne (index . "igpu_pci" | default "") "") -}}
 set -e
 
 RULE_FILE="/etc/udev/rules.d/99-gpu-symlinks.rules"
@@ -14,15 +14,15 @@ echo "This requires sudo access."
 
 RULES=""
 
-{{ if ne (.igpu_pci | default "") "" -}}
-# Integrated GPU: {{ .igpu_pci }}
-RULES+='KERNEL=="card*", KERNELS=="{{ .igpu_pci }}", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/igpu"
+{{ if ne (index . "igpu_pci" | default "") "" -}}
+# Integrated GPU: {{ index . "igpu_pci" }}
+RULES+='KERNEL=="card*", KERNELS=="{{ index . "igpu_pci" }}", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/igpu"
 '
 {{ end -}}
 
-{{ if ne (.dgpu_pci | default "") "" -}}
-# Discrete GPU: {{ .dgpu_pci }}
-RULES+='KERNEL=="card*", KERNELS=="{{ .dgpu_pci }}", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/dgpu"
+{{ if ne (index . "dgpu_pci" | default "") "" -}}
+# Discrete GPU: {{ index . "dgpu_pci" }}
+RULES+='KERNEL=="card*", KERNELS=="{{ index . "dgpu_pci" }}", SUBSYSTEM=="drm", SUBSYSTEMS=="pci", SYMLINK+="dri/dgpu"
 '
 {{ end -}}
 
