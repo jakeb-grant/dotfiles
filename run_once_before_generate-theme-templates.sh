@@ -3,23 +3,13 @@
 # These are gitignored build artifacts that theme-switch normally creates.
 # On a fresh clone they don't exist, so chezmoi has nothing to apply.
 
-CHEZMOI_SOURCE="$(chezmoi source-path)"
-THEME_SWITCH="$CHEZMOI_SOURCE/dot_local/bin/executable_theme-switch"
-DEFAULT_THEME="catppuccin-mocha"
-
-if [ ! -f "$THEME_SWITCH" ]; then
-    echo "Warning: theme-switch not found, skipping template generation"
-    exit 0
-fi
-
 if ! command -v uv >/dev/null 2>&1; then
-    echo "Warning: uv not found, cannot generate templates. Install uv then run: theme-switch $DEFAULT_THEME"
+    echo "Warning: uv not found, cannot generate templates. Install uv then run: theme-switch catppuccin-mocha"
     exit 0
 fi
 
-# Only generate templates — run theme-switch's Python directly with a flag
-# to skip app reloads and recursive chezmoi apply.
-# We use a minimal inline script that imports just the template processing.
+# Generate templates inline — theme-switch isn't installed yet, so we
+# replicate just the template processing with an inline Python script.
 uv run --quiet --script - <<'PYTHON'
 # /// script
 # requires-python = ">=3.11"
