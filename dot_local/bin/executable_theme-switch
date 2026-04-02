@@ -17,10 +17,20 @@ Usage: theme-switch [THEME]
 import asyncio
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
 from jinja2 import BaseLoader, Environment
+
+
+def notify(message: str, urgency: str = "normal") -> None:
+    print(message, flush=True)
+    subprocess.Popen(
+        ["notify-send", "-a", "Theme Switch", "-u", urgency, "Theme Switch", message],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 # =============================================================================
 # Configuration
@@ -127,11 +137,8 @@ def load_palette(theme_name: str) -> dict:
     palette_file = PALETTE_DIR / f"{theme_name}.json"
 
     if not palette_file.exists():
-        print(f"Error: Palette not found: {theme_name}")
-        print("Available palettes:")
-        for f in sorted(PALETTE_DIR.glob("*.json")):
-            if f.name != "active.json":
-                print(f"  {f.stem}")
+        available = ", ".join(f.stem for f in sorted(PALETTE_DIR.glob("*.json")) if f.name != "active.json")
+        notify(f"Palette not found: {theme_name}. Available: {available}", "critical")
         sys.exit(1)
 
     with open(palette_file) as f:
@@ -392,14 +399,6 @@ async def reload_chromium() -> None:
             print(f"    {browser} policy refreshed")
 
 
-async def send_notification(theme_name: str) -> None:
-    await run_async([
-        "notify-send",
-        f"Theme: {theme_name.replace('-', ' ').title()}",
-        "Some apps may need a restart to apply changes.",
-    ])
-
-
 async def reload_all(palette_data: dict) -> None:
     print("==> Reloading applications...")
     await asyncio.gather(
@@ -420,7 +419,7 @@ async def main() -> None:
     theme_name = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_THEME
 
     # 1. Load palette
-    print(f"==> Loading palette: {theme_name}")
+    notify(f"Switching to {theme_name}...")
     palette_data = load_palette(theme_name)
 
     # 2. Copy palette → active.json (both chezmoi source and live config)
@@ -478,9 +477,8 @@ async def main() -> None:
 
     # 6. Reload apps in parallel
     await reload_all(palette_data)
-    await send_notification(theme_name)
 
-    print(f"==> Theme switched to: {theme_name}")
+    notify(f"Switched to {theme_name.replace('-', ' ').title()}")
 
 
 if __name__ == "__main__":
