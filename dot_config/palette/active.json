@@ -43,6 +43,6 @@
     "pillBg": "#1e1e2e",
     "hoverBg": "#45475a",
     "bezelIntensity": 1,
-    "barMode": "side"
+    "barMode": "top"
   }
 }

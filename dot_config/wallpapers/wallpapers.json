@@ -2,15 +2,30 @@
   "wallpapers": [
     {
       "file": "astronaut3.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "file": "escape-velocity1.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "file": "escape-velocity2.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "file": "everforest1.png",
@@ -38,7 +53,13 @@
     },
     {
       "file": "lavender3.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "catppuccin-latte",
+        "rose-pine*"
+      ]
     },
     {
       "file": "mars-race1.png",
@@ -46,27 +67,63 @@
     },
     {
       "file": "snowfield1.png",
-      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "catppuccin-latte",
+        "rose-pine*",
+        "nord"
+      ]
     },
     {
       "file": "snowfield2.png",
-      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "catppuccin-latte",
+        "rose-pine*",
+        "nord"
+      ]
     },
     {
       "file": "snowfield3.png",
-      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "catppuccin-latte",
+        "rose-pine*",
+        "nord"
+      ]
     },
     {
       "file": "sunset1.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "file": "sunset2.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "file": "sunset3.png",
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "file": "urban1.png",
@@ -85,7 +142,12 @@
     {
       "name": "Astronaut",
       "images": ["astronaut1.png", "astronaut2.png", "astronaut3.png"],
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "name": "Escape Velocity",
@@ -94,7 +156,12 @@
         "escape-velocity2.png",
         "escape-velocity3.png"
       ],
-      "palettes": ["rose-pine*", "catppuccin*"]
+      "palettes": [
+        "rose-pine*",
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato"
+      ]
     },
     {
       "name": "Everforest",
@@ -109,7 +176,13 @@
     {
       "name": "Kyoto",
       "images": ["lavender1.png", "lavender2.png"],
-      "palettes": ["rose-pine*", "catppuccin*"]
+      "palettes": [
+        "rose-pine*",
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "catppuccin-latte"
+      ]
     },
     {
       "name": "Mars Race",
@@ -119,12 +192,24 @@
     {
       "name": "Snowfield",
       "images": ["snowfield1.png", "snowfield2.png", "snowfield3.png"],
-      "palettes": ["catppuccin*", "rose-pine*", "nord"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "catppuccin-latte",
+        "rose-pine*",
+        "nord"
+      ]
     },
     {
       "name": "Sunset",
       "images": ["sunset1.png", "sunset2.png", "sunset3.png"],
-      "palettes": ["catppuccin*", "rose-pine*"]
+      "palettes": [
+        "catppuccin-mocha",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "rose-pine*"
+      ]
     },
     {
       "name": "Urban",
