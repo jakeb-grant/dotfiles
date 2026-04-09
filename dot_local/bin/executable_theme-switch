@@ -431,6 +431,14 @@ async def reload_chromium() -> None:
             print(f"    {browser} policy refreshed")
 
 
+async def reload_portal() -> None:
+    proc = await asyncio.create_subprocess_exec(
+        "systemctl", "--user", "restart", "xdg-desktop-portal-gtk",
+    )
+    await proc.wait()
+    print("    xdg-desktop-portal-gtk restarted")
+
+
 async def reload_all(palette_data: dict) -> None:
     print("==> Reloading applications...")
     await asyncio.gather(
@@ -439,6 +447,7 @@ async def reload_all(palette_data: dict) -> None:
         reload_btop(),
         set_gtk_theme(palette_data),
         reload_chromium(),
+        reload_portal(),
     )
 
 
@@ -480,6 +489,7 @@ async def main() -> None:
     # 3. Compute accent HSL for templates that need it (e.g. Obsidian)
     accent = palette_data.get("_quickshell", {}).get("accent") or palette_data.get("blue", "")
     if accent:
+        palette_data["_accent"] = accent
         h, s, l = hex_to_hsl(accent)
         palette_data["_accent_h"] = h
         palette_data["_accent_s"] = s

@@ -19,11 +19,11 @@
 @define-color sidebar_bg_color #11111b;
 @define-color sidebar_fg_color #cdd6f4;
 @define-color sidebar_backdrop_color #11111b;
-@define-color sidebar_shade_color rgba(0, 0, 0, 0.07);
+@define-color sidebar_shade_color rgba(17, 17, 27, 0.50);
 @define-color secondary_sidebar_bg_color #11111b;
 @define-color secondary_sidebar_fg_color #cdd6f4;
 @define-color secondary_sidebar_backdrop_color #11111b;
-@define-color secondary_sidebar_shade_color rgba(0, 0, 0, 0.07);
+@define-color secondary_sidebar_shade_color rgba(17, 17, 27, 0.50);
 
 /* Semantic colors */
 @define-color error_bg_color #f38ba8;
@@ -38,5 +38,279 @@
 
 /* Borders and separators */
 @define-color borders #45475a;
-@define-color shade_color rgba(0, 0, 0, 0.07);
+@define-color shade_color rgba(17, 17, 27, 0.50);
 @define-color scrollbar_outline_color #45475a;
+
+/* ===== GTK3 widget overrides (Adwaita doesn't use @define-color) ===== */
+
+/* Base window and dialog backgrounds */
+window, dialog, .background {
+  background-color: #11111b;
+  color: #cdd6f4;
+}
+
+/* Header bars */
+headerbar, .titlebar, headerbar .title {
+  background-color: #11111b;
+  background-image: none;
+  color: #cdd6f4;
+  border-color: #313244;
+  box-shadow: none;
+}
+
+headerbar:hover, .titlebar:hover {
+  background-color: #11111b;
+  background-image: none;
+}
+
+headerbar:backdrop, .titlebar:backdrop {
+  background-color: #11111b;
+  background-image: none;
+}
+
+headerbar button, .titlebar button {
+  background-color: #313244;
+  background-image: none;
+  color: #cdd6f4;
+  border-color: #45475a;
+  box-shadow: none;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+headerbar button:hover, .titlebar button:hover {
+  background-color: #45475a;
+  background-image: none;
+  box-shadow: none;
+}
+
+/* Sidebars / Places panel (file picker left panel) */
+.sidebar, placessidebar, .places-sidebar, placessidebar row {
+  background-color: #11111b;
+  color: #cdd6f4;
+}
+
+placessidebar row:selected {
+  background-color: #313244;
+  color: #cdd6f4;
+}
+
+placessidebar row:hover {
+  background-color: #313244;
+}
+
+/* Main content / file list area */
+treeview, treeview.view, .view {
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+}
+
+treeview header button, treeview.view header button {
+  background-color: #181825;
+  background-image: none;
+  color: #bac2de;
+  border-color: #313244;
+}
+
+/* Selection highlight */
+treeview:selected, treeview.view:selected, .view:selected,
+row:selected, *:selected {
+  background-color: #313244;
+  background-image: none;
+  color: #cdd6f4;
+}
+
+treeview:hover, row:hover {
+  background-color: #313244;
+}
+
+/* Path bar / breadcrumbs */
+.path-bar button, .linked.path-bar > button,
+.path-bar .slider-button,
+.linked.path-bar > button image,
+.nautilus-path-bar button,
+headerbar .path-bar button,
+headerbar .linked > button {
+  background-color: #313244;
+  background-image: none;
+  color: #cdd6f4;
+  border-color: #45475a;
+  box-shadow: none;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+.path-bar button:hover, .linked.path-bar > button:hover,
+headerbar .path-bar button:hover,
+headerbar .linked > button:hover {
+  background-color: #45475a;
+  background-image: none;
+  box-shadow: none;
+}
+
+.path-bar button:checked, .linked.path-bar > button:checked,
+headerbar .path-bar button:checked,
+headerbar .linked > button:checked {
+  background-color: #45475a;
+  background-image: none;
+  box-shadow: none;
+  color: #cdd6f4;
+}
+
+/* Text entries (filename input, search) */
+entry {
+  background-color: #1e1e2e;
+  color: #cdd6f4;
+  border-color: #45475a;
+  caret-color: #cdd6f4;
+}
+
+entry:focus {
+  border-color: #7f849c;
+}
+
+/* Buttons */
+button {
+  background-color: #313244;
+  background-image: none;
+  color: #cdd6f4;
+  border-color: #45475a;
+  box-shadow: none;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+button:hover {
+  background-color: #45475a;
+  background-image: none;
+  box-shadow: none;
+}
+
+button.suggested-action {
+  background-color: #89b4fa;
+  background-image: none;
+  color: #11111b;
+}
+
+button.suggested-action:hover {
+  background-color: #89b4fa;
+  background-image: none;
+  opacity: 0.8;
+}
+
+/* Scrollbars */
+scrollbar slider {
+  background-color: #45475a;
+}
+
+scrollbar slider:hover {
+  background-color: #585b70;
+}
+
+/* Separators and borders */
+separator {
+  background-color: #313244;
+}
+
+/* Pane borders */
+paned > separator {
+  background-color: #313244;
+  background-image: none;
+  border: none;
+  min-width: 1px;
+  min-height: 1px;
+}
+
+/* All borders/frames */
+frame > border, .frame {
+  border-color: #313244;
+}
+
+/* Headerbar bottom edge shadow/border */
+headerbar, .titlebar {
+  box-shadow: none;
+  border-bottom: 1px solid #313244;
+}
+
+headerbar:backdrop, .titlebar:backdrop {
+  box-shadow: none;
+  border-bottom: 1px solid #313244;
+}
+
+/* Column header borders */
+treeview header, treeview.view header {
+  border-bottom: 1px solid #313244;
+}
+
+treeview header button, treeview.view header button {
+  border-color: #313244;
+  box-shadow: none;
+}
+
+/* Window decoration border */
+decoration {
+  border-color: #313244;
+  box-shadow: none;
+}
+
+/* Scrolled window borders */
+scrolledwindow {
+  border-color: #313244;
+}
+
+scrolledwindow overshoot, scrolledwindow undershoot {
+  background: none;
+}
+
+/* File chooser specific */
+filechooser .view,
+filechooser scrolledwindow {
+  border-color: #313244;
+}
+
+/* Generic border override */
+*, *:backdrop {
+  -GtkWidget-separator-color: #313244;
+  outline-color: #45475a;
+  border-color: #313244;
+}
+
+/* Popovers and menus */
+popover, popover.background, menu {
+  background-color: #181825;
+  color: #cdd6f4;
+}
+
+menu menuitem:hover {
+  background-color: #313244;
+}
+
+/* Tooltips */
+tooltip, tooltip.background {
+  background-color: #313244;
+  color: #cdd6f4;
+}
+
+/* Status bar at the bottom */
+actionbar, .action-bar {
+  background-color: #11111b;
+  color: #cdd6f4;
+  border-top: 1px solid #313244;
+  box-shadow: none;
+}
+
+actionbar > revealer > box {
+  border-top-color: #313244;
+  box-shadow: none;
+}
+
+/* Check buttons */
+checkbutton check {
+  background-color: #1e1e2e;
+  border-color: #45475a;
+}
+
+checkbutton:checked check {
+  background-color: #89b4fa;
+  border-color: #89b4fa;
+}

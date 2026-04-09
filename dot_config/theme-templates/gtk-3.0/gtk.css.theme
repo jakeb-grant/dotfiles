@@ -19,11 +19,11 @@
 @define-color sidebar_bg_color {< crust >};
 @define-color sidebar_fg_color {< text >};
 @define-color sidebar_backdrop_color {< crust >};
-@define-color sidebar_shade_color rgba(0, 0, 0, 0.07);
+@define-color sidebar_shade_color {< crust | rgba(0.5) >};
 @define-color secondary_sidebar_bg_color {< crust >};
 @define-color secondary_sidebar_fg_color {< text >};
 @define-color secondary_sidebar_backdrop_color {< crust >};
-@define-color secondary_sidebar_shade_color rgba(0, 0, 0, 0.07);
+@define-color secondary_sidebar_shade_color {< crust | rgba(0.5) >};
 
 /* Semantic colors */
 @define-color error_bg_color {< red >};
@@ -38,5 +38,279 @@
 
 /* Borders and separators */
 @define-color borders {< surface1 >};
-@define-color shade_color rgba(0, 0, 0, 0.07);
+@define-color shade_color {< crust | rgba(0.5) >};
 @define-color scrollbar_outline_color {< surface1 >};
+
+/* ===== GTK3 widget overrides (Adwaita doesn't use @define-color) ===== */
+
+/* Base window and dialog backgrounds */
+window, dialog, .background {
+  background-color: {< crust >};
+  color: {< text >};
+}
+
+/* Header bars */
+headerbar, .titlebar, headerbar .title {
+  background-color: {< crust >};
+  background-image: none;
+  color: {< text >};
+  border-color: {< surface0 >};
+  box-shadow: none;
+}
+
+headerbar:hover, .titlebar:hover {
+  background-color: {< crust >};
+  background-image: none;
+}
+
+headerbar:backdrop, .titlebar:backdrop {
+  background-color: {< crust >};
+  background-image: none;
+}
+
+headerbar button, .titlebar button {
+  background-color: {< surface0 >};
+  background-image: none;
+  color: {< text >};
+  border-color: {< surface1 >};
+  box-shadow: none;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+headerbar button:hover, .titlebar button:hover {
+  background-color: {< surface1 >};
+  background-image: none;
+  box-shadow: none;
+}
+
+/* Sidebars / Places panel (file picker left panel) */
+.sidebar, placessidebar, .places-sidebar, placessidebar row {
+  background-color: {< crust >};
+  color: {< text >};
+}
+
+placessidebar row:selected {
+  background-color: {< surface0 >};
+  color: {< text >};
+}
+
+placessidebar row:hover {
+  background-color: {< surface0 >};
+}
+
+/* Main content / file list area */
+treeview, treeview.view, .view {
+  background-color: {< base >};
+  color: {< text >};
+}
+
+treeview header button, treeview.view header button {
+  background-color: {< mantle >};
+  background-image: none;
+  color: {< subtext1 >};
+  border-color: {< surface0 >};
+}
+
+/* Selection highlight */
+treeview:selected, treeview.view:selected, .view:selected,
+row:selected, *:selected {
+  background-color: {< surface0 >};
+  background-image: none;
+  color: {< text >};
+}
+
+treeview:hover, row:hover {
+  background-color: {< surface0 >};
+}
+
+/* Path bar / breadcrumbs */
+.path-bar button, .linked.path-bar > button,
+.path-bar .slider-button,
+.linked.path-bar > button image,
+.nautilus-path-bar button,
+headerbar .path-bar button,
+headerbar .linked > button {
+  background-color: {< surface0 >};
+  background-image: none;
+  color: {< text >};
+  border-color: {< surface1 >};
+  box-shadow: none;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+.path-bar button:hover, .linked.path-bar > button:hover,
+headerbar .path-bar button:hover,
+headerbar .linked > button:hover {
+  background-color: {< surface1 >};
+  background-image: none;
+  box-shadow: none;
+}
+
+.path-bar button:checked, .linked.path-bar > button:checked,
+headerbar .path-bar button:checked,
+headerbar .linked > button:checked {
+  background-color: {< surface1 >};
+  background-image: none;
+  box-shadow: none;
+  color: {< text >};
+}
+
+/* Text entries (filename input, search) */
+entry {
+  background-color: {< base >};
+  color: {< text >};
+  border-color: {< surface1 >};
+  caret-color: {< text >};
+}
+
+entry:focus {
+  border-color: {< overlay1 >};
+}
+
+/* Buttons */
+button {
+  background-color: {< surface0 >};
+  background-image: none;
+  color: {< text >};
+  border-color: {< surface1 >};
+  box-shadow: none;
+  -gtk-icon-shadow: none;
+  text-shadow: none;
+}
+
+button:hover {
+  background-color: {< surface1 >};
+  background-image: none;
+  box-shadow: none;
+}
+
+button.suggested-action {
+  background-color: {< _accent >};
+  background-image: none;
+  color: {< crust >};
+}
+
+button.suggested-action:hover {
+  background-color: {< _accent >};
+  background-image: none;
+  opacity: 0.8;
+}
+
+/* Scrollbars */
+scrollbar slider {
+  background-color: {< surface1 >};
+}
+
+scrollbar slider:hover {
+  background-color: {< surface2 >};
+}
+
+/* Separators and borders */
+separator {
+  background-color: {< surface0 >};
+}
+
+/* Pane borders */
+paned > separator {
+  background-color: {< surface0 >};
+  background-image: none;
+  border: none;
+  min-width: 1px;
+  min-height: 1px;
+}
+
+/* All borders/frames */
+frame > border, .frame {
+  border-color: {< surface0 >};
+}
+
+/* Headerbar bottom edge shadow/border */
+headerbar, .titlebar {
+  box-shadow: none;
+  border-bottom: 1px solid {< surface0 >};
+}
+
+headerbar:backdrop, .titlebar:backdrop {
+  box-shadow: none;
+  border-bottom: 1px solid {< surface0 >};
+}
+
+/* Column header borders */
+treeview header, treeview.view header {
+  border-bottom: 1px solid {< surface0 >};
+}
+
+treeview header button, treeview.view header button {
+  border-color: {< surface0 >};
+  box-shadow: none;
+}
+
+/* Window decoration border */
+decoration {
+  border-color: {< surface0 >};
+  box-shadow: none;
+}
+
+/* Scrolled window borders */
+scrolledwindow {
+  border-color: {< surface0 >};
+}
+
+scrolledwindow overshoot, scrolledwindow undershoot {
+  background: none;
+}
+
+/* File chooser specific */
+filechooser .view,
+filechooser scrolledwindow {
+  border-color: {< surface0 >};
+}
+
+/* Generic border override */
+*, *:backdrop {
+  -GtkWidget-separator-color: {< surface0 >};
+  outline-color: {< surface1 >};
+  border-color: {< surface0 >};
+}
+
+/* Popovers and menus */
+popover, popover.background, menu {
+  background-color: {< mantle >};
+  color: {< text >};
+}
+
+menu menuitem:hover {
+  background-color: {< surface0 >};
+}
+
+/* Tooltips */
+tooltip, tooltip.background {
+  background-color: {< surface0 >};
+  color: {< text >};
+}
+
+/* Status bar at the bottom */
+actionbar, .action-bar {
+  background-color: {< crust >};
+  color: {< text >};
+  border-top: 1px solid {< surface0 >};
+  box-shadow: none;
+}
+
+actionbar > revealer > box {
+  border-top-color: {< surface0 >};
+  box-shadow: none;
+}
+
+/* Check buttons */
+checkbutton check {
+  background-color: {< base >};
+  border-color: {< surface1 >};
+}
+
+checkbutton:checked check {
+  background-color: {< _accent >};
+  border-color: {< _accent >};
+}
