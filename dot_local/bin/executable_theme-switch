@@ -36,9 +36,15 @@ def notify(message: str, urgency: str = "normal") -> None:
 # Configuration
 # =============================================================================
 
-CHEZMOI_SOURCE_DIR = Path.home() / ".local/share/chezmoi/dot_config"
+CHEZMOI_ROOT = Path.home() / ".local/share/chezmoi"
+CHEZMOI_SOURCE_DIR = CHEZMOI_ROOT / "dot_config"
 PALETTE_DIR = CHEZMOI_SOURCE_DIR / "palette"
 TEMPLATE_DIR = CHEZMOI_SOURCE_DIR / "theme-templates"
+
+# Map template subdirectories to custom output base dirs (default: CHEZMOI_SOURCE_DIR)
+TEMPLATE_OUTPUT_OVERRIDES = {
+    "obsidian": CHEZMOI_ROOT / "knowledge" / "dot_obsidian" / "themes" / "Palette",
+}
 DEFAULT_THEME = "catppuccin-mocha"
 
 
@@ -104,6 +110,27 @@ def filter_strip(color: str) -> str:
     return strip_hash(color)
 
 
+def hex_to_hsl(color: str) -> tuple[int, int, int]:
+    r, g, b = (c / 255.0 for c in hex_to_rgb(color))
+    max_c, min_c = max(r, g, b), min(r, g, b)
+    l = (max_c + min_c) / 2.0
+
+    if max_c == min_c:
+        return (0, 0, round(l * 100))
+
+    d = max_c - min_c
+    s = d / (2.0 - max_c - min_c) if l > 0.5 else d / (max_c + min_c)
+
+    if max_c == r:
+        h = (g - b) / d + (6 if g < b else 0)
+    elif max_c == g:
+        h = (b - r) / d + 2
+    else:
+        h = (r - g) / d + 4
+
+    return (round(h * 60), round(s * 100), round(l * 100))
+
+
 # =============================================================================
 # Template Processing
 # =============================================================================
@@ -148,8 +175,13 @@ def load_palette(theme_name: str) -> dict:
 def process_templates(env: Environment, palette_data: dict) -> None:
     for template_file in TEMPLATE_DIR.rglob("*.theme"):
         relative = template_file.relative_to(TEMPLATE_DIR)
-        output_name = relative.with_suffix(".tmpl")
-        output_path = CHEZMOI_SOURCE_DIR / output_name
+        override_dir = TEMPLATE_OUTPUT_OVERRIDES.get(relative.parts[0])
+        if override_dir:
+            output_name = Path(*relative.parts[1:]).with_suffix("")
+            output_path = override_dir / output_name
+        else:
+            output_name = relative.with_suffix(".tmpl")
+            output_path = CHEZMOI_SOURCE_DIR / output_name
 
         print(f"    {relative} -> {output_name}")
 
@@ -445,12 +477,20 @@ async def main() -> None:
         with open(active_path, "w") as f:
             json.dump(new_palette, f, indent=2)
 
-    # 3. Process Jinja2 .theme templates → .tmpl files
+    # 3. Compute accent HSL for templates that need it (e.g. Obsidian)
+    accent = palette_data.get("_quickshell", {}).get("accent") or palette_data.get("blue", "")
+    if accent:
+        h, s, l = hex_to_hsl(accent)
+        palette_data["_accent_h"] = h
+        palette_data["_accent_s"] = s
+        palette_data["_accent_l"] = l
+
+    # 4. Process Jinja2 .theme templates → .tmpl files
     print("==> Processing theme templates...")
     env = create_jinja_env()
     process_templates(env, palette_data)
 
-    # 4. Apply chezmoi (only theme-dependent configs, not large static files)
+    # 5. Apply chezmoi (only theme-dependent configs, not large static files)
     print("==> Applying chezmoi (themed configs)...")
     themed_targets = [
         "~/.config/hypr",
@@ -461,13 +501,14 @@ async def main() -> None:
         "~/.config/zed/settings.json",
         "~/.config/pane-fm",
         "~/.config/palette/active.json",
+        "~/knowledge/.obsidian",
     ]
     proc = await asyncio.create_subprocess_exec(
         "chezmoi", "apply", "--force", *themed_targets
     )
     await proc.wait()
 
-    # 5. Write app configs directly (after chezmoi so they aren't overwritten)
+    # 6. Write app configs directly (after chezmoi so they aren't overwritten)
     print("==> Updating app configs...")
     update_ghostty(palette_data)
     update_btop(palette_data)
@@ -475,7 +516,7 @@ async def main() -> None:
     update_pane_fm(palette_data)
     update_chromium(palette_data)
 
-    # 6. Reload apps in parallel
+    # 7. Reload apps in parallel
     await reload_all(palette_data)
 
     notify(f"Switched to {theme_name.replace('-', ' ').title()}")

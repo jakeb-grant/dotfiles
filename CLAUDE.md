@@ -26,7 +26,7 @@ Catppuccin-style JSON files with named color roles:
 
 ### Theme Templates (`dot_config/theme-templates/`)
 
-Jinja2 templates with custom delimiters `{< >}` for apps where color substitution is appropriate (hyprland, hyprlock, gtk, phylax, yazi, zed settings):
+Jinja2 templates with custom delimiters `{< >}` for apps where color substitution is appropriate (hyprland, hyprlock, gtk, phylax, yazi, zed settings, obsidian):
 ```css
 background: {< background | rgba(0.9) >};
 ```

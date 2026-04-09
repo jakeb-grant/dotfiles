@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, GTK, Ghostty, Zed, Quickshell — so switching from Everforest to Catppuccin is a single command with live animated transitions.
+Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, GTK, Ghostty, Zed, Obsidian, Quickshell — so switching from Everforest to Catppuccin is a single command with live animated transitions.
 
 ## Preview
 
@@ -90,6 +90,10 @@ dot_config/
 ├── palette/            # Theme palette definitions (JSON)
 ├── theme-templates/    # Jinja2 theme templates
 └── wallpapers/         # Flat image pool + wallpapers.json config
+knowledge/
+└── dot_obsidian/           # Obsidian vault theme (~/knowledge/ must be the vault)
+    ├── appearance.json     # Selects "Palette" theme
+    └── themes/Palette/     # Generated theme CSS + manifest
 dot_local/bin/
 ├── theme-switch        # Theme switching utility
 ├── toggle-bar-mode     # Switch between sidebar and topbar layouts
@@ -108,7 +112,7 @@ Palette JSON              Theme Template                  Chezmoi Template      
 (everforest.json) --->   (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
                           theme-switch                    chezmoi apply
 ```
-Used by: Hyprland, GTK3/4, Phylax, Yazi, Zed settings
+Used by: Hyprland, GTK3/4, Phylax, Yazi, Zed settings, Obsidian
 
 **Direct-write apps** (built-in theme selection):
 ```

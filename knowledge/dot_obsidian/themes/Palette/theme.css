@@ -1,0 +1,77 @@
+/* Obsidian theme - Generated from palette by theme-switch */
+
+.theme-dark {
+  --color-base-00: #11111b;
+  --color-base-10: #181825;
+  --color-base-20: #1e1e2e;
+  --color-base-25: #313244;
+  --color-base-30: #45475a;
+  --color-base-35: #45475a;
+  --color-base-40: #585b70;
+  --color-base-50: #6c7086;
+  --color-base-60: #7f849c;
+  --color-base-70: #a6adc8;
+  --color-base-100: #cdd6f4;
+
+  --accent-h: 217;
+  --accent-s: 92%;
+  --accent-l: 76%;
+
+  --color-red: #f38ba8;
+  --color-red-rgb: 243, 139, 168;
+  --color-orange: #fab387;
+  --color-orange-rgb: 250, 179, 135;
+  --color-yellow: #f9e2af;
+  --color-yellow-rgb: 249, 226, 175;
+  --color-green: #a6e3a1;
+  --color-green-rgb: 166, 227, 161;
+  --color-cyan: #94e2d5;
+  --color-cyan-rgb: 148, 226, 213;
+  --color-blue: #89b4fa;
+  --color-blue-rgb: 137, 180, 250;
+  --color-purple: #cba6f7;
+  --color-purple-rgb: 203, 166, 247;
+  --color-pink: #f5c2e7;
+  --color-pink-rgb: 245, 194, 231;
+
+  --titlebar-background: #11111b;
+  --titlebar-background-focused: #11111b;
+}
+
+.theme-light {
+  --color-base-00: #cdd6f4;
+  --color-base-10: #a6adc8;
+  --color-base-20: #9399b2;
+  --color-base-25: #7f849c;
+  --color-base-30: #6c7086;
+  --color-base-35: #6c7086;
+  --color-base-40: #585b70;
+  --color-base-50: #45475a;
+  --color-base-60: #313244;
+  --color-base-70: #1e1e2e;
+  --color-base-100: #11111b;
+
+  --accent-h: 217;
+  --accent-s: 92%;
+  --accent-l: 76%;
+
+  --color-red: #f38ba8;
+  --color-red-rgb: 243, 139, 168;
+  --color-orange: #fab387;
+  --color-orange-rgb: 250, 179, 135;
+  --color-yellow: #f9e2af;
+  --color-yellow-rgb: 249, 226, 175;
+  --color-green: #a6e3a1;
+  --color-green-rgb: 166, 227, 161;
+  --color-cyan: #94e2d5;
+  --color-cyan-rgb: 148, 226, 213;
+  --color-blue: #89b4fa;
+  --color-blue-rgb: 137, 180, 250;
+  --color-purple: #cba6f7;
+  --color-purple-rgb: 203, 166, 247;
+  --color-pink: #f5c2e7;
+  --color-pink-rgb: 245, 194, 231;
+
+  --titlebar-background: #cdd6f4;
+  --titlebar-background-focused: #cdd6f4;
+}

@@ -1,0 +1,77 @@
+/* Obsidian theme - Generated from palette by theme-switch */
+
+.theme-dark {
+  --color-base-00: {< crust >};
+  --color-base-10: {< mantle >};
+  --color-base-20: {< base >};
+  --color-base-25: {< surface0 >};
+  --color-base-30: {< surface1 >};
+  --color-base-35: {< surface1 >};
+  --color-base-40: {< surface2 >};
+  --color-base-50: {< overlay0 >};
+  --color-base-60: {< overlay1 >};
+  --color-base-70: {< subtext0 >};
+  --color-base-100: {< text >};
+
+  --accent-h: {< _accent_h >};
+  --accent-s: {< _accent_s >}%;
+  --accent-l: {< _accent_l >}%;
+
+  --color-red: {< red >};
+  --color-red-rgb: {< red | rgb_values >};
+  --color-orange: {< peach >};
+  --color-orange-rgb: {< peach | rgb_values >};
+  --color-yellow: {< yellow >};
+  --color-yellow-rgb: {< yellow | rgb_values >};
+  --color-green: {< green >};
+  --color-green-rgb: {< green | rgb_values >};
+  --color-cyan: {< teal >};
+  --color-cyan-rgb: {< teal | rgb_values >};
+  --color-blue: {< blue >};
+  --color-blue-rgb: {< blue | rgb_values >};
+  --color-purple: {< mauve >};
+  --color-purple-rgb: {< mauve | rgb_values >};
+  --color-pink: {< pink >};
+  --color-pink-rgb: {< pink | rgb_values >};
+
+  --titlebar-background: {< crust >};
+  --titlebar-background-focused: {< crust >};
+}
+
+.theme-light {
+  --color-base-00: {< text >};
+  --color-base-10: {< subtext0 >};
+  --color-base-20: {< overlay2 >};
+  --color-base-25: {< overlay1 >};
+  --color-base-30: {< overlay0 >};
+  --color-base-35: {< overlay0 >};
+  --color-base-40: {< surface2 >};
+  --color-base-50: {< surface1 >};
+  --color-base-60: {< surface0 >};
+  --color-base-70: {< base >};
+  --color-base-100: {< crust >};
+
+  --accent-h: {< _accent_h >};
+  --accent-s: {< _accent_s >}%;
+  --accent-l: {< _accent_l >}%;
+
+  --color-red: {< red >};
+  --color-red-rgb: {< red | rgb_values >};
+  --color-orange: {< peach >};
+  --color-orange-rgb: {< peach | rgb_values >};
+  --color-yellow: {< yellow >};
+  --color-yellow-rgb: {< yellow | rgb_values >};
+  --color-green: {< green >};
+  --color-green-rgb: {< green | rgb_values >};
+  --color-cyan: {< teal >};
+  --color-cyan-rgb: {< teal | rgb_values >};
+  --color-blue: {< blue >};
+  --color-blue-rgb: {< blue | rgb_values >};
+  --color-purple: {< mauve >};
+  --color-purple-rgb: {< mauve | rgb_values >};
+  --color-pink: {< pink >};
+  --color-pink-rgb: {< pink | rgb_values >};
+
+  --titlebar-background: {< text >};
+  --titlebar-background-focused: {< text >};
+}
