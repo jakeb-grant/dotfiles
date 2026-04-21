@@ -5,26 +5,7 @@
       "palettes": [
         "catppuccin-mocha",
         "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
-      "file": "escape-velocity1.png",
-      "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
-      "file": "escape-velocity2.png",
-      "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
+        "catppuccin-macchiato"
       ]
     },
     {
@@ -143,21 +124,6 @@
       "name": "Astronaut",
       "images": ["astronaut1.png", "astronaut2.png", "astronaut3.png"],
       "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
-      "name": "Escape Velocity",
-      "images": [
-        "escape-velocity1.png",
-        "escape-velocity2.png",
-        "escape-velocity3.png"
-      ],
-      "palettes": [
-        "rose-pine*",
         "catppuccin-mocha",
         "catppuccin-frappe",
         "catppuccin-macchiato"
