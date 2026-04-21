@@ -13,10 +13,13 @@ Palette JSON          theme-switch          Theme Template           Chezmoi Tem
                                             theme-switch            chezmoi apply
 ```
 
-Some apps use built-in themes instead of templating:
-- **Ghostty**: `_ghostty_theme` in palette → `theme-switch` writes `theme = ...` to config
-- **Zed**: Hand-crafted theme files in `dot_config/zed/themes/` per palette; `_zed_theme_dark`/`_zed_theme_light` in palette → `theme-switch` writes active theme to Zed settings
-- **btop**: `_btop_theme` in palette → `theme-switch` writes `color_theme = ...` to config
+Some apps have their config direct-written by `theme-switch` rather than fully templated — precise updates to specific keys, not full-file substitution:
+- **Ghostty**: `_ghostty_theme` → writes `theme = ...` and `background-opacity = ...` to config
+- **btop**: `_btop_theme` → writes `color_theme = ...` to config. Per-palette `.theme` files live in `dot_config/btop/themes/`.
+- **pane-fm**: `_pane_fm_theme` → writes `theme = ...` and `light_icons = ...` to `config.toml`. Per-palette `.css` files live in `dot_config/pane-fm/themes/`.
+- **Chromium/Chrome**: `_chromium_seed_color` + `_variant` → writes a managed policy JSON under `/etc/chromium/policies/managed/` (and the Chrome equivalent).
+
+Zed is fully templated (`dot_config/theme-templates/zed/settings.json.theme` substitutes `_zed_theme_dark`/`_zed_theme_light`/`_variant` into `settings.json`), with per-palette Zed theme JSON in `dot_config/zed/themes/`.
 
 ### Palette Definitions (`dot_config/palette/`)
 
