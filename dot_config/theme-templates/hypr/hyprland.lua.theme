@@ -98,11 +98,12 @@ for key, d in pairs(dirs) do
   hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = d }))
 end
 
--- Resize windows
-hl.bind(mod .. " + equal",         hl.dsp.window.resize({ x =  50, y =   0 }), { repeating = true })
-hl.bind(mod .. " + minus",         hl.dsp.window.resize({ x = -50, y =   0 }), { repeating = true })
-hl.bind(mod .. " + SHIFT + equal", hl.dsp.window.resize({ x =   0, y =  50 }), { repeating = true })
-hl.bind(mod .. " + SHIFT + minus", hl.dsp.window.resize({ x =   0, y = -50 }), { repeating = true })
+-- Resize windows (relative = true for delta-style resize, matching the legacy
+-- `resizeactive 50 0` behavior; without the flag, x/y are treated as absolute).
+hl.bind(mod .. " + equal",         hl.dsp.window.resize({ x =  50, y =   0, relative = true }), { repeating = true })
+hl.bind(mod .. " + minus",         hl.dsp.window.resize({ x = -50, y =   0, relative = true }), { repeating = true })
+hl.bind(mod .. " + SHIFT + equal", hl.dsp.window.resize({ x =   0, y =  50, relative = true }), { repeating = true })
+hl.bind(mod .. " + SHIFT + minus", hl.dsp.window.resize({ x =   0, y = -50, relative = true }), { repeating = true })
 
 -- Switch workspaces + move active window to workspace
 for digit = 0, 9 do
