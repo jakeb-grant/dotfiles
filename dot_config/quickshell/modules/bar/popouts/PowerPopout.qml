@@ -50,7 +50,7 @@ ColumnLayout {
                 { label: "Restart", icon: "restart_alt", accent: "red", cmd: "systemctl reboot" },
                 { label: "Sleep", icon: "bedtime", accent: "subtleText", cmd: "systemctl suspend" },
                 { label: "Lock Screen", icon: "lock", accent: "subtleText", cmd: "loginctl lock-session" },
-                { label: "Log Out", icon: "logout", accent: "red", cmd: "hyprctl dispatch exit" },
+                { label: "Log Out", icon: "logout", accent: "red", cmd: "hyprctl dispatch 'hl.dsp.exit()'" },
             ]
 
             Rectangle {

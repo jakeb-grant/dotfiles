@@ -71,7 +71,7 @@ editor = "zeditor --wait"
 #
 # [[actions]]
 # name = "Set as Wallpaper"
-# command = "hyprctl hyprpaper wallpaper eDP-1,%f"
+# command = "awww img %f"
 # context = "file"
 # mime = "image/*"
 #

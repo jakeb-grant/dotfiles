@@ -93,7 +93,7 @@ title_error = { fg = "{< red >}" }
 [filetype]
 rules = [
     # Directories
-    { name = "*/", fg = "{< blue >}", bold = true },
+    { url = "*/", fg = "{< blue >}", bold = true },
 
     # Executables
     { mime = "application/x-executable", fg = "{< green >}" },
@@ -128,8 +128,8 @@ rules = [
     { mime = "application/x-yaml", fg = "{< teal >}" },
 
     # Symlinks
-    { name = "*", is = "link", fg = "{< teal >}", italic = true },
+    { url = "*", is = "link", fg = "{< teal >}", italic = true },
 
     # Orphan links
-    { name = "*", is = "orphan", fg = "{< red >}", italic = true },
+    { url = "*", is = "orphan", fg = "{< red >}", italic = true },
 ]
