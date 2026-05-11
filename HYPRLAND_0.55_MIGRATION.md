@@ -6,20 +6,20 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
 
 ---
 
-## 1. Architecture decisions (resolve before porting)
+## 1. Architecture decisions
 
-These shape every other section. Make these calls first.
+### Decided
 
-- [ ] **File extensions** — `*.conf.theme` → `*.lua.theme`, `*.conf.tmpl` → `*.lua.tmpl`. Confirms `theme-switch` output paths and the chezmoi destination filename `~/.config/hypr/hyprland.lua`.
-- [ ] **Template-layer count** — keep all three (chezmoi Go + Jinja2 colors + Lua), or collapse?
-  - **A — minimal change**: keep all three. `.theme` file Jinja2-templated to produce `.lua.tmpl`, chezmoi templates the GPU branch. Lowest risk.
-  - **B — collapse Go layer**: write per-machine graphics setting to a small `~/.config/hypr/machine.lua` at chezmoi-apply time, then `require("machine")` from `hyprland.lua`. Drops Go templating from the main file. Marginal gain. ❌ **Skip** — orthogonal complexity for negligible benefit.
-  - **C — collapse Jinja layer for Hyprland only** ✅ **RECOMMENDED (hybrid with A)**: theme-switch writes a `palette.lua` companion alongside its existing direct-writes (Ghostty, btop, pane-fm, Chromium). `hyprland.lua` does `local p = require("palette")` and references `p.surface0`. Jinja stays for non-Lua targets (GTK, Phylax, Yazi, Zed, Obsidian, hyprlock — all static-file consumers). Unlocks two wins: (1) `hyprctl reload` applies palette changes without re-running chezmoi; (2) Hyprland's own `animation = border` curve drives the color transition because the value changes inside a single reloaded process. Net theme-switch change is +1 direct-writer, ~30 LOC.
+- [x] **File extensions** — `*.conf.theme` → `*.lua.theme`, `*.conf.tmpl` → `*.lua.tmpl`. Chezmoi destination is `~/.config/hypr/hyprland.lua` (Hyprland 0.55 default per reference intro).
+- [x] **Template-layer architecture** — **Option C (hybrid with A)**. theme-switch gains a `palette.lua` direct-writer alongside its existing direct-writes (Ghostty, btop, pane-fm, Chromium). `hyprland.lua` does `local p = require("palette")` and references `p.surface0`. The Jinja layer stays for all non-Lua targets (GTK, Phylax, Yazi, Zed, Obsidian, hyprlock — static-file consumers). chezmoi Go templating stays for GPU branching. Unlocks: (1) `hyprctl reload` applies palette changes without re-running chezmoi; (2) Hyprland's own `animation = border` curve drives color transitions because the value changes inside a single reloaded process. Net theme-switch change: +1 direct-writer, ~30 LOC.
   
-  > **⚠️ Cross-section note**: §3 snippets currently show inline Jinja tokens (`{< surface0 | hypr_rgba(0.93) >}`) for color values. If Option C is taken, replace those at port time with `p.surface0_rgba(0.93)`-style helpers (the `hypr_rgba`/`hypr_rgb` filters get implemented once as Lua functions inside the generated `palette.lua`). §3 examples are kept in Jinja form so they're useful regardless of which option lands.
+  > **Cross-section note**: §3 snippets show inline Jinja tokens (`{< surface0 | hypr_rgba(0.93) >}`). Per Option C, replace those at port time with `p.surface0_rgba(0.93)`-style helpers. The `hypr_rgba`/`hypr_rgb` filters get re-implemented once as Lua functions inside the generated `palette.lua`. §3 examples remain in Jinja form so they're recognizable from the current `.theme` file.
+
+### Pending (blocked on §8.4 evidence)
+
 - [ ] **monitors.conf format** — stay as a sourced hyprlang file? Become `monitors.lua` calling `hl.monitor({...})`? Or fold into the main file as a `require`?
-- [ ] **hypridle fate** — keep external daemon, or fold idle/lock timers into `hyprland.lua` via `hl.timer` + `hl.on`? Reference §15 recommends `hl.timer` for delayed DPMS/idle dispatch.
-- [ ] **Sibling tool versions** — hyprlock, hypridle, hyprpaper, hyprcursor: do they also move to Lua in 0.55, or stay hyprlang on independent cadence?
+- [ ] **hypridle fate** — keep external daemon, or fold idle/lock timers into `hyprland.lua` via `hl.timer` + `hl.on`? Reference §15 recommends `hl.timer` for delayed DPMS/idle dispatch. Blocked on idle-event availability (see §7).
+- [ ] **Sibling tool versions** — hyprlock, hypridle, hyprpaper, hyprcursor: do they also move to Lua in 0.55, or stay hyprlang on independent cadence? Resolve via §8.4 evidence-gathering commands.
 
 ---
 
