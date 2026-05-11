@@ -8,7 +8,7 @@
 -- ------------------------------------------------------------------------------
 local terminal     = "ghostty +new-window"
 local editor       = "zeditor --wait"
-local file_manager = "ghostty -e yazi"
+local file_manager = "pane-fm"
 local mod          = "SUPER"
 
 -- ------------------------------------------------------------------------------

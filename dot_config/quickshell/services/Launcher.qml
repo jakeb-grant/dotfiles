@@ -29,7 +29,7 @@ Singleton {
         const items = [
             { name: "Terminal",            shortcut: "Super + Return",        command:  "ghostty",                                            keywords: ["ghostty","shell"] },
             { name: "Browser",             shortcut: "Super + Shift + B",     command:  "xdg-open https://",                                  keywords: ["firefox","web"] },
-            { name: "File Manager",        shortcut: "Super + Shift + F",     command:  "ghostty -e yazi",                                    keywords: ["yazi","files"] },
+            { name: "File Manager",        shortcut: "Super + Shift + F",     command:  "pane-fm",                                            keywords: ["panefm","files"] },
             { name: "Editor",              shortcut: "Super + Shift + Z",     command:  "zeditor",                                            keywords: ["zed","code"] },
             { name: "Close Window",        shortcut: "Super + W",             dispatch: 'hl.dsp.window.close()',                              keywords: ["kill","quit"] },
             { name: "Toggle Floating",     shortcut: "Super + T",             dispatch: 'hl.dsp.window.float({ action = "toggle" })',         keywords: ["tile","float"] },
