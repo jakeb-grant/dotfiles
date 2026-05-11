@@ -289,7 +289,7 @@ Rectangle {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: Services.Hypr.dispatch("workspace " + wsSlot.wsId)
+                    onClicked: Services.Hypr.dispatch("hl.dsp.focus({ workspace = " + wsSlot.wsId + " })")
                 }
             }
         }
