@@ -2,7 +2,7 @@
 
 Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55_LUA_REFERENCE.md` for the full API surface. Check items as they land.
 
-> **Status:** Inventory complete. Per-item Lua mappings drafted from the reference. Architecture decisions (§1) gate the port itself.
+> **Status:** Tier 1 ported and verified via `Hyprland --verify-config` (zero errors). Pending user logout/login to take over from running hyprlang session, then Tier 3 (Quickshell IPC) sweep. Option C palette.lua deferred as polish; Jinja-embedded colors work as-is.
 
 ---
 
@@ -15,21 +15,29 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   
   > **Cross-section note**: §3 snippets show inline Jinja tokens (`{< surface0 | hypr_rgba(0.93) >}`). Per Option C, replace those at port time with `p.surface0_rgba(0.93)`-style helpers. The `hypr_rgba`/`hypr_rgb` filters get re-implemented once as Lua functions inside the generated `palette.lua`. §3 examples remain in Jinja form so they're recognizable from the current `.theme` file.
 
-### Pending (blocked on §8.4 evidence)
+### Resolved (from §8.4 evidence — 2026-05-11)
 
-- [ ] **monitors.conf format** — stay as a sourced hyprlang file? Become `monitors.lua` calling `hl.monitor({...})`? Or fold into the main file as a `require`?
-- [ ] **hypridle fate** — keep external daemon, or fold idle/lock timers into `hyprland.lua` via `hl.timer` + `hl.on`? Reference §15 recommends `hl.timer` for delayed DPMS/idle dispatch. Blocked on idle-event availability (see §7).
-- [ ] **Sibling tool versions** — hyprlock, hypridle, hyprpaper, hyprcursor: do they also move to Lua in 0.55, or stay hyprlang on independent cadence? Resolve via §8.4 evidence-gathering commands.
+- [x] **monitors.conf format** → **monitors.lua + `pcall(require, "monitors")`**. Confirmed `require` works from `~/.config/hypr/` (shipped `/usr/share/hypr/hyprland.lua:10` advertises `require("myColors")`). Wrapped in `pcall` so a missing file doesn't abort config load.
+- [x] **hypridle fate** → **keep external daemon, unchanged**. `HL.EventName` in `/usr/share/hypr/stubs/hl.meta.lua:5–33` enumerates 27 events; **no idle event**. Polling via `hl.timer` would be strictly worse than the daemon. Defer fold-in until upstream adds an idle event.
+- [x] **Sibling tool versions** — installed: `hyprlock 0.9.5-2`, `hypridle 0.1.7-9`, `hyprcursor 0.1.13-6`. No `hyprpaper` (Quickshell handles wallpaper). hyprlock + hypridle stay hyprlang on independent cadence (their configs are not Lua in 0.55; they're separate daemons with their own grammars).
+
+**Other evidence captured:**
+- Running compositor: 0.54.3; on-disk binary: 0.55.0-3. Reboot required to test new config.
+- `start-hyprland` survives at `/usr/bin/start-hyprland` (owned by `hyprland 0.55.0-3`). Greetd path intact; `run_once_setup-greetd.sh.tmpl:16` needs no change.
+- `/usr/share/hypr/stubs/hl.meta.lua` (1250 lines) shipped — wire this into lua-language-server as `workspace.library`.
+- `/usr/share/hypr/hyprland.lua` (356 lines) is the shipped canonical example — strong reference for syntax patterns.
 
 ---
 
 ## 2. Prerequisites (verification)
 
 - [x] ~~Lua syntax reference~~ — captured in `HYPRLAND_0.55_LUA_REFERENCE.md`
-- [ ] Read `/usr/share/hypr/stubs/` to resolve ambiguities (see §7 Open Questions)
-- [ ] Verify installed Hyprland version (`hyprctl version`)
+- [x] ~~Read `/usr/share/hypr/stubs/`~~ — read `hl.meta.lua` (1250 lines); resolutions folded into §3 and §7.
+- [x] ~~Verify installed Hyprland version~~ — confirmed 0.55.0 running.
 - [ ] **Wire stubs into lua-language-server** — add `/usr/share/hypr/stubs/` to `workspace.library` in `.luarc.json` at the chezmoi repo root (or per-machine) so the editor gets completion/diagnostics on `hl.*` calls during the port.
-- [ ] **Determine Lua runtime** — Lua 5.1, 5.4, or LuaJIT? Affects available features (`goto`, integer division `//`, bitops). `hl.version()` may tell you; failing that, `print(_VERSION)` from a small test require.
+- [ ] **Determine Lua runtime** — Lua 5.1, 5.4, or LuaJIT? Affects available features (`goto`, integer division `//`, bitops). `hl.version()` may tell you; failing that, `print(_VERSION)` from a small test require. *Low priority — shipped config doesn't use any version-sensitive features.*
+
+**Discovered during evidence gathering**: Hyprland 0.55 still parses hyprlang grammar (the current `hyprland.conf` loaded with just three deprecation errors: `togglesplit` dispatcher removed, `dwindle:pseudotile` removed, `misc:vfr` moved to `debug.vfr`). The Lua migration is therefore voluntary, not forced. The branch continues as a clean architectural upgrade with rollback to `main` as a safe fallback.
 
 ---
 
@@ -37,7 +45,7 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
 
 ### `dot_config/theme-templates/hypr/hyprland.conf.theme` → `hyprland.lua.theme` (280 lines)
 
-- [ ] **Header / globals** (L1–14) — hyprlang `$var = ...` becomes Lua `local`:
+- [x] **Header / globals** (L1–14) — hyprlang `$var = ...` becomes Lua `local`:
   ```lua
   local terminal     = "ghostty +new-window"
   local editor       = "zeditor --wait"
@@ -45,7 +53,7 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   local mod          = "SUPER"
   ```
 
-- [ ] **Env vars** (L17–42) — `env = K,V` → `hl.env("K", "V")`. Keep GPU-conditional in chezmoi Go template, or move to `machine.lua` per §1.
+- [x] **Env vars** (L17–42) — `env = K,V` → `hl.env("K", "V")`. Keep GPU-conditional in chezmoi Go template, or move to `machine.lua` per §1.
   ```lua
   hl.env("EDITOR", "zeditor")
   hl.env("HYPRCURSOR_SIZE", "24")
@@ -54,9 +62,9 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   {{ end -}}
   ```
 
-- [ ] **Monitor source** (L48) — `source = $HOME/.config/hypr/monitors.conf` → `require("monitors")` (file rename: `monitors.conf` → `monitors.lua`).
+- [x] **Monitor source** (L48) — `source = $HOME/.config/hypr/monitors.conf` → `require("monitors")` (file rename: `monitors.conf` → `monitors.lua`).
 
-- [ ] **Autostart** (L53–61) — collapse 10 `exec-once` lines into one event handler. Reference §13 confirms `hl.exec_cmd` is async (no `& disown` needed).
+- [x] **Autostart** (L53–61) — collapse 10 `exec-once` lines into one event handler. Reference §13 confirms `hl.exec_cmd` is async (no `& disown` needed).
   ```lua
   local autostart = {
     "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_ID XDG_SESSION_TYPE",
@@ -74,7 +82,7 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   end)
   ```
 
-- [ ] **Keybinds** (L68–157) — four bind variants collapse to flags:
+- [x] **Keybinds** (L68–157) — four bind variants collapse to flags:
 
   | hyprlang | Lua flags |
   |---|---|
@@ -86,38 +94,40 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   Per-bind dispatcher mapping:
   - `bind = $mod, Space, global, quickshell:launcher` → `hl.bind("SUPER + Space", hl.dsp.global("quickshell:launcher"))`
   - `bind = $mod, Return, exec, $terminal` → `hl.bind("SUPER + Return", hl.dsp.exec_cmd(terminal))`
-  - `bind = $mod, W, killactive,` → `hl.bind("SUPER + W", hl.dsp.window.close())`
-  - `bind = $mod, T, togglefloating,` → `hl.bind("SUPER + T", hl.dsp.window.float())`
-  - `bind = $mod, O, pin,` → `hl.bind("SUPER + O", hl.dsp.window.pin())`
-  - `bind = $mod, P, pseudo,` → `hl.bind("SUPER + P", hl.dsp.window.pseudo())`
-  - `bind = $mod, J, togglesplit,` → `hl.bind("SUPER + J", hl.dsp.layout("togglesplit"))`
-  - `bind = $mod, F, fullscreen,` → `hl.bind("SUPER + F", hl.dsp.window.fullscreen())`
+  - `bind = $mod, W, killactive,` → `hl.bind(mod .. " + W", hl.dsp.window.close())`
+  - `bind = $mod, T, togglefloating,` → `hl.bind(mod .. " + T", hl.dsp.window.float({ action = "toggle" }))` — verified shape from shipped reference `:262`
+  - `bind = $mod, O, pin,` → `hl.bind(mod .. " + O", hl.dsp.window.pin())` — `pin()` exists in `HL.DspWindowNamespace`
+  - `bind = $mod, P, pseudo,` → `hl.bind(mod .. " + P", hl.dsp.window.pseudo())`
+  - `bind = $mod, J, togglesplit,` → `hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"))` — verified shipped `:265`
+  - `bind = $mod, F, fullscreen,` → `hl.bind(mod .. " + F", hl.dsp.window.fullscreen())`
   - `bind = $mod, L, global, quickshell:lock` → `hl.bind("SUPER + L", hl.dsp.global("quickshell:lock"))`
   - Workspace 1–10 + move-to-workspace: **collapse 20 lines into a loop** (§5).
   - movefocus / swapwindow direction: **collapse 8 lines into a loop** (§5).
-  - `bindm = $mod, mouse:272, movewindow` → `hl.bind("SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })`
-  - `bindm = $mod, mouse:273, resizewindow` → `hl.bind("SUPER + mouse:273", hl.dsp.window.resize(), { mouse = true })`
-  - `bindel = , XF86MonBrightnessUp, exec, brightnessctl set +5%` → `hl.bind(" + XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set +5%"), { repeating = true, locked = true })` (verify empty-mod syntax against stubs)
+  - `bindm = $mod, mouse:272, movewindow` → `hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })` — verified shipped `:290`
+  - `bindm = $mod, mouse:273, resizewindow` → `hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })` — verified shipped `:291`
+  - `bindel = , XF86MonBrightnessUp, exec, brightnessctl set +5%` → `hl.bind("XF86MonBrightnessUp", hl.dsp.exec_cmd("brightnessctl set +5%"), { repeating = true, locked = true })` — shipped reference `:298–299` uses bare keysym (no leading `" + "`) for empty-mod binds.
   - Screenshot binds (L148–150): consider extracting the inline `sh -c` to `~/.local/bin/screenshot` regardless (§5).
 
-- [ ] **`general` block** (L163–172):
+- [x] **`general` block** (L163–172) — `col` is a **nested table**, confirmed via shipped reference `:93–96` and stubs:
   ```lua
   hl.config({
     general = {
       gaps_in = 5,
       gaps_out = 10,
       border_size = 2,
-      ["col.active_border"]   = {< surface0 | hypr_rgba(0.93) >},
-      ["col.inactive_border"] = {< surface1 | hypr_rgba(0.5) >},
+      col = {
+        active_border   = {< surface0 | hypr_rgba(0.93) >},
+        inactive_border = {< surface1 | hypr_rgba(0.5) >},
+      },
       resize_on_border = false,
       allow_tearing = false,
       layout = "dwindle",
     },
   })
   ```
-  **⚠️ Verify** dotted-key syntax — reference §2 lists `col.active_border` but Lua identifiers can't contain dots. Either string-bracket form (above) or a flattened name (`active_border`) — stubs will tell.
+  Gradient form (if needed): `{ colors = {"rgba(...)", "rgba(...)"}, angle = 45 }`.
 
-- [ ] **`decoration` block** (L177–196) — nested tables:
+- [x] **`decoration` block** (L177–196) — nested tables:
   ```lua
   hl.config({
     decoration = {
@@ -131,19 +141,19 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   })
   ```
 
-- [ ] **`animations` block** (L201–226) — 5 beziers + 16 animations split between `hl.curve` + `hl.animation`. Reference §6 confirms speed is deciseconds.
+- [x] **`animations` block** (L201–226) — 5 beziers + 16 animations via `hl.curve` + `hl.animation`. Verified positional-name + table form via shipped reference `:136–161`.
   ```lua
-  hl.curve("easeOutQuint",   { type = "bezier", points = {{0.23, 1},   {0.32, 1}} })
-  hl.curve("easeInOutCubic", { type = "bezier", points = {{0.65, 0.05},{0.36, 1}} })
-  hl.curve("linear",         { type = "bezier", points = {{0, 0},     {1, 1}} })
-  hl.curve("almostLinear",   { type = "bezier", points = {{0.5, 0.5}, {0.75, 1.0}} })
-  hl.curve("quick",          { type = "bezier", points = {{0.15, 0},  {0.1, 1}} })
+  hl.curve("easeOutQuint",   { type = "bezier", points = {{0.23, 1},    {0.32, 1}} })
+  hl.curve("easeInOutCubic", { type = "bezier", points = {{0.65, 0.05}, {0.36, 1}} })
+  hl.curve("linear",         { type = "bezier", points = {{0, 0},       {1, 1}} })
+  hl.curve("almostLinear",   { type = "bezier", points = {{0.5, 0.5},   {0.75, 1.0}} })
+  hl.curve("quick",          { type = "bezier", points = {{0.15, 0},    {0.1, 1}} })
 
   hl.config({ animations = { enabled = true } })
-  -- See §5 for the table-driven version of the 16 animation lines.
+  -- See §5 for the table-driven 16-animation loop.
   ```
 
-- [ ] **`dwindle` + `master`** (L231–238):
+- [x] **`dwindle` + `master`** (L231–238):
   ```lua
   hl.config({
     dwindle = { preserve_split = true },
@@ -152,7 +162,7 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   ```
   **❌ Drop `pseudotile`** — confirmed not present in reference §12 dwindle options. Pseudo state is per-window only (via `hl.dsp.window.pseudo()` dispatcher and `pseudo` window-rule effect). The current hyprlang config's `pseudotile = true` line had no effect by 0.55's grammar.
 
-- [ ] **`input` block** (L244–252):
+- [x] **`input` block** (L244–252):
   ```lua
   hl.config({
     input = {
@@ -164,53 +174,52 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
   })
   ```
 
-- [ ] **Gesture** (L254) — `gesture = 3, horizontal, workspace`:
+- [x] **Gesture** (L254) — `gesture = 3, horizontal, workspace`:
   ```lua
   hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
   ```
 
-- [ ] **`cursor` block** (L259–263) — only emitted on nvidia/prime hosts (the current hyprlang block is fully wrapped in a chezmoi Go conditional, with the non-nvidia branch contributing nothing). Note: `no_hardware_cursors` is `0/1/2` in 0.55, not bool.
+- [x] **`cursor` block** (L259–263) — only emitted on nvidia/prime hosts (the current hyprlang block is fully wrapped in a chezmoi Go conditional, with the non-nvidia branch contributing nothing). Note: `no_hardware_cursors` is `0/1/2` in 0.55, not bool.
   ```lua
   {{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
   hl.config({ cursor = { no_hardware_cursors = 1 } })
   {{ end -}}
   ```
 
-- [ ] **`misc` block** (L268–273):
+- [x] **`misc` block** (L268–273) — `vfr` **moved to `debug.vfr`** in 0.55 (stubs `:95, :968`; current hyprlang load errors with `<misc:vfr> does not exist`):
   ```lua
   hl.config({
     misc = {
       disable_hyprland_logo    = true,
       disable_splash_rendering = true,
       force_default_wallpaper  = -1,
-      -- vfr handling: see verify note below before porting
+    },
+    debug = {
+      vfr = true,
     },
   })
   ```
-  **⚠️ Three-way uncertainty on `misc.vfr`**. The current hyprlang `vfr = true` controls *variable framerate rendering* (skip redraws when nothing changes). Reference §2 lists `misc.vrr` (0/1/2/3) — that's *variable refresh rate*, a different feature. Reference §2 also lists `debug.vfr` (dev-only). Three possibilities:
-  1. `misc.vfr` was renamed to `debug.vfr` (relocated)
-  2. `misc.vfr` was removed (behavior made implicit/default)
-  3. The current `vfr = true` was always wrong and the intended key was `misc.vrr` (less likely — different semantics)
-  
-  Resolve via `hyprctl descriptions -j | grep -i vfr` or stubs before deciding. Don't reflexively map to `vrr = 1`.
 
-- [ ] **Window rules** (L278–280):
+- [x] **Window rules** (L278–280) — `match` table + effect fields as siblings, confirmed via shipped reference `:317–356`:
   ```lua
   hl.window_rule({
-    match = { class = ".*" },
-    suppress_event = "maximize",  -- space-separated list ok: "fullscreen maximize activate ..."
+    name           = "suppress-maximize",
+    match          = { class = ".*" },
+    suppress_event = "maximize",
   })
   hl.window_rule({
-    match = { class = "^$", title = "^$", xwayland = true,
-              float = true, fullscreen = false, pin = false },
+    name     = "fix-xwayland-drags",
+    match    = { class = "^$", title = "^$", xwayland = true,
+                 float = true, fullscreen = false, pin = false },
     no_focus = true,
   })
   hl.window_rule({
+    name  = "phylax-pin",
     match = { class = "io.github.jakebgrant.phylax" },
-    pin = true,
+    pin   = true,
   })
   ```
-  **⚠️ Verify** `pin = true` shape — reference §10 lists `pin` as a static effect but doesn't show whether flag-style effects take `true` or a string value.
+  `name` is optional but lets `:set_enabled(false)` toggle the rule at runtime.
 
 ### `dot_config/theme-templates/hypr/hyprlock.conf.theme` (59 lines)
 
@@ -229,18 +238,15 @@ Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55
 - [ ] Delete `dot_config/hypr/hyprlock.conf.tmpl` (or keep if hyprlock stays hyprlang)
 - [ ] Regenerate via `theme-switch <current-theme>` after `.theme` files are ready
 
-### `~/.config/hypr/monitors.conf` (out-of-repo, per-machine)
+### `~/.config/hypr/monitors.lua` (out-of-repo, per-machine)
 
-- [ ] Decision per §1.
-- [ ] If moving to Lua: update `run_once_before_create-default-monitors-conf.sh` to emit:
+- [x] Decision: convert to `monitors.lua`, loaded from `hyprland.lua` via `pcall(require, "monitors")`.
+- [x] Renamed `run_once_before_create-default-monitors-conf.sh` → `run_once_before_create-default-monitors-lua.sh`, body now emits:
   ```lua
-  -- Default monitor configuration (auto-detect first connected output)
-  -- ⚠️ output = "" catchall is NOT documented as supported in reference §3.
-  -- Likely needs either an explicit per-host output name or a fallback such as:
-  --   for _, m in ipairs(hl.get_monitors()) do hl.monitor({ output = m.name, mode = "preferred", position = "auto", scale = 1.0 }) end
-  -- Resolve against /usr/share/hypr/stubs/ before shipping.
-  hl.monitor({ output = "<output-name>", mode = "preferred", position = "auto", scale = 1.0 })
+  -- Default monitor configuration (auto-detect)
+  hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" })
   ```
+  `output = ""` is the documented catchall and is used directly in the shipped Hyprland default config.
 
 ---
 
@@ -287,56 +293,56 @@ Reference §20 confirms the `hyprctl dispatch '<name>'` *form* is preserved (sho
 
 Doing these during the port is cheaper than as a follow-up.
 
-- [ ] **Workspace bind loop** — collapses 20 lines:
+- [x] **Workspace bind loop** — collapses 20 lines. Multi-mod is `+` between every mod, confirmed shipped reference `:278`.
   ```lua
   for digit = 0, 9 do
     local ws  = digit == 0 and 10 or digit
     local key = tostring(digit)
-    hl.bind(mod .. " + " .. key,       hl.dsp.focus({ workspace = ws }))
-    hl.bind(mod .. " SHIFT + " .. key, hl.dsp.window.move({ workspace = ws }))
+    hl.bind(mod .. " + " .. key,           hl.dsp.focus({ workspace = ws }))
+    hl.bind(mod .. " + SHIFT + " .. key,   hl.dsp.window.move({ workspace = ws }))
   end
   ```
 
-- [ ] **Directional bind loop** — collapses 8 focus+swap lines. **Note**: keysyms are capitalized (`Left`/`Right`/`Up`/`Down`), not lowercase.
+- [x] **Directional bind loop** — collapses 8 focus+swap lines. Lowercase `left/right/up/down` keysyms are used in the shipped config `:268–271` for arrow keys.
   ```lua
-  local dirs = { Left = "l", Right = "r", Up = "u", Down = "d" }
+  local dirs = { left = "l", right = "r", up = "u", down = "d" }
   for key, d in pairs(dirs) do
-    hl.bind(mod .. " + " .. key,       hl.dsp.focus({ direction = d }))
-    hl.bind(mod .. " SHIFT + " .. key, hl.dsp.window.swap({ direction = d }))
+    hl.bind(mod .. " + " .. key,         hl.dsp.focus({ direction = d }))
+    hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = d }))
   end
   ```
 
-- [ ] **Animations as a data table** — drop 16 repetitive calls into a loop. Full list from current `hyprland.conf.theme` L210–225:
+- [x] **Animations as a data table** — drop 16 repetitive calls into a loop. **Field name is `bezier`** (not `curve`), confirmed via shipped reference `:145–161`. Full list from current `hyprland.conf.theme` L210–225:
   ```lua
   local anim = {
-    { "global",         speed = 10 },
-    { "border",         speed = 5.39, curve = "easeOutQuint" },
-    { "windows",        speed = 4.79, curve = "easeOutQuint" },
-    { "windowsIn",      speed = 4.1,  curve = "easeOutQuint", style = "popin 87%" },
-    { "windowsOut",     speed = 1.49, curve = "linear",       style = "popin 87%" },
-    { "fadeIn",         speed = 1.73, curve = "almostLinear" },
-    { "fadeOut",        speed = 1.46, curve = "almostLinear" },
-    { "fade",           speed = 3.03, curve = "quick" },
-    { "layers",         speed = 3.81, curve = "easeOutQuint" },
-    { "layersIn",       speed = 4,    curve = "easeOutQuint", style = "fade" },
-    { "layersOut",      speed = 1.5,  curve = "linear",       style = "fade" },
-    { "fadeLayersIn",   speed = 1.79, curve = "almostLinear" },
-    { "fadeLayersOut",  speed = 1.39, curve = "almostLinear" },
-    { "workspaces",     speed = 1.94, curve = "almostLinear", style = "fade" },
-    { "workspacesIn",   speed = 1.21, curve = "almostLinear", style = "fade" },
-    { "workspacesOut",  speed = 1.94, curve = "almostLinear", style = "fade" },
+    { "global",        speed = 10 },
+    { "border",        speed = 5.39, bezier = "easeOutQuint" },
+    { "windows",       speed = 4.79, bezier = "easeOutQuint" },
+    { "windowsIn",     speed = 4.1,  bezier = "easeOutQuint", style = "popin 87%" },
+    { "windowsOut",    speed = 1.49, bezier = "linear",       style = "popin 87%" },
+    { "fadeIn",        speed = 1.73, bezier = "almostLinear" },
+    { "fadeOut",       speed = 1.46, bezier = "almostLinear" },
+    { "fade",          speed = 3.03, bezier = "quick" },
+    { "layers",        speed = 3.81, bezier = "easeOutQuint" },
+    { "layersIn",      speed = 4,    bezier = "easeOutQuint", style = "fade" },
+    { "layersOut",     speed = 1.5,  bezier = "linear",       style = "fade" },
+    { "fadeLayersIn",  speed = 1.79, bezier = "almostLinear" },
+    { "fadeLayersOut", speed = 1.39, bezier = "almostLinear" },
+    { "workspaces",    speed = 1.94, bezier = "almostLinear", style = "fade" },
+    { "workspacesIn",  speed = 1.21, bezier = "almostLinear", style = "fade" },
+    { "workspacesOut", speed = 1.94, bezier = "almostLinear", style = "fade" },
   }
   for _, a in ipairs(anim) do
     hl.animation({ leaf = a[1], enabled = true, speed = a.speed,
-                   curve = a.curve, style = a.style })
+                   bezier = a.bezier, style = a.style })
   end
   ```
 
-- [ ] **Autostart as a table** — already in §3 mapping.
+- [x] **Autostart as a table** — already in §3 mapping.
 
 - [ ] **Screenshot helper extraction** — move inline `sh -c` to `~/.local/bin/screenshot`. Independent of Lua migration but a good time.
 
-- [ ] **`mod` as a variable** — one-line Caps Lock / Hyper / Meta swap.
+- [x] **`mod` as a variable** — one-line Caps Lock / Hyper / Meta swap.
 
 - [ ] **Fold hypridle into `hyprland.lua`** — pending §1 + idle-event confirmation.
 
@@ -362,23 +368,28 @@ Doing these during the port is cheaper than as a follow-up.
 
 ## 7. Open questions
 
-Resolve against `/usr/share/hypr/stubs/` and `hyprctl descriptions` before porting.
+Most resolved against `/usr/share/hypr/stubs/hl.meta.lua` and `/usr/share/hypr/hyprland.lua` on 2026-05-11. Remaining items are post-port verification.
 
-- **Empty-mod bind syntax**: `" + XF86..."` vs `"XF86..."`?
-- **Multi-modifier bind syntax**: `"SUPER SHIFT + 1"` (hyprlang-style, single `+` before key) or `"SUPER + SHIFT + 1"` (`+` between every mod)?
-- **Mouse-keysym + `{ mouse = true }` flag combo**: reference §4 documents the flag for mouse helpers (`drag()`/`resize()`); the `mouse:272` keysym form is documented separately. Combining both (current §3 snippet for `bindm` mapping) is unverified — may be redundant or required.
-- **`col.*` keys**: bracket-string form `["col.active_border"]` (Lua dotted-key spelling) is the only valid expression — confirm reference §2 spelling is the actual API key, not a flattened `active_border`.
-- **`pin = true`** as a window-rule effect: `true` vs `"pin"` vs bare key presence?
-- ~~**`dwindle.pseudotile`**~~ — resolved: removed (not in §12 dwindle options).
-- **`misc.vfr`**: relocated to `debug.vfr`, removed, or something else? (NOT a simple rename to `misc.vrr` — different concepts.) See §3 misc block for the three-way ambiguity.
-- **`monitor` output catchall**: `output = ""` likely invalid; need stub-confirmed default-monitor idiom.
-- **`hyprctl dispatch <oldname>` string form alias**: does e.g. `killactive` still resolve to `hl.dsp.window.close()`, or only the new `hl.dsp.*` strings work? Affects Quickshell rewrite urgency.
-- **socket2 wire-protocol event names**: reference §13 lists Lua-API events only (`window.open`, `workspace.active`, etc.); the legacy socket2 names Quickshell's `Hypr.qml` subscribes to (`activewindowv2`, `openwindow`, `monitoraddedv2`, …) aren't enumerated. Compatibility unknown.
-- **`hyprctl <subcmd> -j` JSON shapes**: `workspacerules`, `monitors`, `clients`, `workspaces` — keys stable?
-- **Hyprlock / hypridle / hyprpaper**: version coupling with Hyprland 0.55? Decision framework in §8.4.
-- **`Quickshell.Hyprland` module**: pinned upstream release with 0.55 IPC support? Release-blocker.
-- **Idle events**: reference §13 doesn't enumerate; needed for folding hypridle. Without an idle event, hypridle can't be folded in pure Lua — would require polling, worse than keeping the daemon.
-- **`start-hyprland` wrapper**: still shipped by the `hyprland` package in 0.55, or replaced by uwsm? Greetd config hardcodes it.
+### Resolved
+
+- [x] **Empty-mod bind syntax** → bare keysym: `hl.bind("XF86MonBrightnessUp", ...)`. Shipped `:298–299`.
+- [x] **Multi-modifier bind syntax** → `+` between every mod: `"SUPER + SHIFT + 1"`. Shipped `:278, :283`.
+- [x] **Mouse-keysym + `{ mouse = true }` flag combo** → **both required**. Shipped `:290–291` uses keysym + flag together.
+- [x] **`col.*` keys** → nested table: `col = { active_border = ..., inactive_border = ... }`. Shipped `:93–96`, stubs `:1027–1030`.
+- [x] **`pin = true`** as window-rule effect → bare `true` (boolean) under the rule table. Shipped reference uses sibling-field pattern for effects.
+- [x] **`dwindle.pseudotile`** → removed; pseudo is per-window only via `hl.dsp.window.pseudo()`.
+- [x] **`misc.vfr`** → relocated to `debug.vfr` (boolean). Stubs `:95, :968`.
+- [x] **`monitor` output catchall** → `output = ""` is valid. Shipped `:19`.
+- [x] **Hyprlock / hypridle / hyprcursor** → independent cadence, stay hyprlang (hyprlock 0.9.5, hypridle 0.1.7, hyprcursor 0.1.13 installed; no hyprpaper, Quickshell handles wallpaper).
+- [x] **Idle events** → not exposed in 0.55. `HL.EventName` has 27 entries, no idle. Keep external hypridle.
+- [x] **`start-hyprland` wrapper** → still shipped by `hyprland 0.55.0-3` at `/usr/bin/start-hyprland`. Greetd path intact.
+
+### Remaining (post-port verification)
+
+- [ ] **`hyprctl dispatch <oldname>` string form alias**: does e.g. `killactive` still resolve, or only `hl.dsp.window.close()`? Affects Quickshell rewrite urgency. Test once we have a session running our `hyprland.lua`.
+- [ ] **socket2 wire-protocol event names**: stubs enumerate Lua-API events (`window.open`, `workspace.active`, etc.); legacy socket2 names Quickshell subscribes to (`activewindowv2`, `openwindow`, `monitoraddedv2`, …) aren't in that list. Test by tailing the socket once 0.55 is live: `socat -u UNIX-CONNECT:$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock -`.
+- [ ] **`hyprctl <subcmd> -j` JSON shapes**: `workspacerules`, `monitors`, `clients`, `workspaces` — diff against current Quickshell parsing assumptions in `Hypr.qml`.
+- [ ] **`Quickshell.Hyprland` module**: confirm upstream Quickshell release in use has 0.55 IPC support.
 
 ---
 
