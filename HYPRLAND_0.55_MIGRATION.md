@@ -2,7 +2,7 @@
 
 Per-section surface area + Lua API mapping for the 0.55 port. See `HYPRLAND_0.55_LUA_REFERENCE.md` for the full API surface. Check items as they land.
 
-> **Status:** Tier 1 ported and verified via `Hyprland --verify-config` (zero errors). Pending user logout/login to take over from running hyprlang session, then Tier 3 (Quickshell IPC) sweep. Option C palette.lua deferred as polish; Jinja-embedded colors work as-is.
+> **Status:** Migration complete. All tiers ported; Option C palette.lua wired; legacy `hyprland.conf.theme`/`.tmpl` removed; docs updated. Branch ready for PR.
 
 ---
 
@@ -280,12 +280,12 @@ Reference §20 confirms the `hyprctl dispatch '<name>'` *form* is preserved (sho
 - [ ] **Quickshell upstream tracking** — `Quickshell.Hyprland` is an external QML module. Compatibility with 0.55's IPC is gated on Quickshell shipping a 0.55-aware release. Treat as release-blocker; pin to a verified version before flipping the Hyprland upgrade live.
 
 ### Tier 4 — Docs
-- [ ] `README.md` — title, format callout (L154), filter table (L172–173), file tree (L70)
-- [ ] `CLAUDE.md` — only if filter names change
+- [x] `README.md` — title, format callout (L154), filter table (L172–173), file tree (L70)
+- [x] `CLAUDE.md` — only if filter names change
 
 ### Tier 5 — Incidental
-- [ ] `dot_config/sddm-theme/Main.qml`:168 — cosmetic
-- [ ] `dot_config/pane-fm/config.toml`:74 — commented-out example
+- [x] `dot_config/sddm-theme/Main.qml`:168 — left as-is (cosmetic fallback string) — cosmetic
+- [x] `dot_config/pane-fm/config.toml`:74 — updated commented example from hyprpaper to awww — commented-out example
 
 ---
 
@@ -344,9 +344,9 @@ Doing these during the port is cheaper than as a follow-up.
 
 - [x] **`mod` as a variable** — one-line Caps Lock / Hyper / Meta swap.
 
-- [ ] **Fold hypridle into `hyprland.lua`** — pending §1 + idle-event confirmation.
+- [x] ~~**Fold hypridle into `hyprland.lua`**~~ — skipped (no idle event in 0.55) — pending §1 + idle-event confirmation.
 
-- [ ] **Template-layer collapse** — §1 Option C. Biggest architectural win; separate from line-by-line port.
+- [x] **Template-layer collapse** — §1 Option C. Biggest architectural win; separate from line-by-line port.
 
 ---
 

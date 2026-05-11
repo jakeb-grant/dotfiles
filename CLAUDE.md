@@ -21,6 +21,8 @@ Some apps have their config direct-written by `theme-switch` rather than fully t
 
 Zed is fully templated (`dot_config/theme-templates/zed/settings.json.theme` substitutes `_zed_theme_dark`/`_zed_theme_light`/`_variant` into `settings.json`), with per-palette Zed theme JSON in `dot_config/zed/themes/`.
 
+**Hyprland** uses a Lua-require pattern (`hl.config({...})` API, 0.55+). `theme-switch` generates `dot_config/hypr/palette.lua` — a Lua module exposing role helpers like `p.surface0_rgba(0.93)`. `hyprland.lua.theme` does `local p = require("palette")` and references the helpers directly; no Jinja substitution inside the Lua file. `hyprlock` and `hypridle` stay on hyprlang and Jinja-templated.
+
 ### Palette Definitions (`dot_config/palette/`)
 
 Catppuccin-style JSON files with named color roles:
@@ -29,12 +31,14 @@ Catppuccin-style JSON files with named color roles:
 
 ### Theme Templates (`dot_config/theme-templates/`)
 
-Jinja2 templates with custom delimiters `{< >}` for apps where color substitution is appropriate (hyprland, hyprlock, gtk, phylax, yazi, zed settings, obsidian):
+Jinja2 templates with custom delimiters `{< >}` for apps where color substitution is appropriate (hyprlock, gtk, phylax, yazi, zed settings, obsidian):
 ```css
 background: {< background | rgba(0.9) >};
 ```
 
 Available filters: `hex`, `hex_alpha(0.9)`, `rgba(0.9)`, `rgb`, `rgb_values`, `hypr_rgb`, `hypr_rgba(0.9)`, `strip`
+
+`hyprland.lua.theme` is the exception — it uses `local p = require("palette")` and calls `p.<role>_rgba(opacity)` instead of Jinja tokens. See the Hyprland section above.
 
 ### Generated `.tmpl` Files
 

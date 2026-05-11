@@ -104,7 +104,7 @@ dot_local/bin/
 
 ## Theme System
 
-Palette JSONs are the single source of truth. `theme-switch` applies them across all apps via two methods:
+Palette JSONs are the single source of truth. `theme-switch` applies them across all apps via three methods:
 
 **Templated apps** (Jinja2 → chezmoi pipeline):
 ```
@@ -112,22 +112,29 @@ Palette JSON              Theme Template                  Chezmoi Template      
 (everforest.json) --->   (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
                           theme-switch                    chezmoi apply
 ```
-Used by: Hyprland, GTK3/4, Phylax, Yazi, Zed settings, Obsidian
+Used by: GTK3/4, Phylax, Yazi, Zed settings, Obsidian, hyprlock.
 
-**Direct-write apps** (built-in theme selection):
+**Direct-write apps** (built-in theme selection or generated config):
 ```
 Palette JSON              theme-switch                    Final Config
 (everforest.json) --->   reads _ghostty_theme   --->    writes theme = Everforest Dark Hard
 ```
-Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`), btop (`_btop_theme`), pane-fm (`_pane_fm_theme`)
+Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`), btop (`_btop_theme`), pane-fm (`_pane_fm_theme`).
+
+**Lua-required (Hyprland)**:
+```
+Palette JSON              theme-switch                    palette.lua            hyprland.lua
+(everforest.json) --->   generates palette.lua --->     local p = require()  ---> p.surface0_rgba(0.93)
+```
+`hyprland.lua` requires `palette.lua` and reads role-helpers like `p.surface0_rgba(0.93)`. Lets `hyprctl reload` pick up new colors without re-rendering a chezmoi template.
 
 **Quickshell** watches `active.json` directly for live animated transitions — no restart needed.
 
 ### How It Works
 
 1. **Palette files** (`dot_config/palette/*.json`) define color roles using Catppuccin-style naming
-2. **`theme-switch`** copies active palette, processes Jinja2 templates, updates direct-write apps
-3. **`chezmoi apply`** processes machine-specific variables (GPU config, hostname)
+2. **`theme-switch`** copies active palette, processes Jinja2 templates, generates `palette.lua`, updates direct-write apps
+3. **`chezmoi apply`** processes machine-specific variables (GPU config, hostname) and propagates generated artifacts
 4. **Quickshell** detects `active.json` change and animates to new colors instantly
 
 ### Available Palettes
@@ -147,14 +154,21 @@ Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`),
 
 ### Template Syntax
 
-Theme variables (processed by `theme-switch`):
+Theme variables (Jinja2, processed by `theme-switch`):
 ```
 {< crust >}                           # Direct color value
-{< crust | rgba(0.95) >}             # With filter and opacity
-{< surface0 | hypr_rgba(0.93) >}     # Hyprland format
+{< crust | rgba(0.95) >}              # With filter and opacity
+{< surface0 | hypr_rgba(0.93) >}      # Hyprland format (still used by hyprlock)
 ```
 
-Chezmoi variables (processed by `chezmoi apply`):
+Lua-side colors in `hyprland.lua.theme` (via `palette.lua`):
+```lua
+local p = require("palette")
+p.surface0_rgba(0.93)                 -- "rgba(313244ed)"
+p.crust_rgb()                         -- "rgb(11111b)"
+```
+
+Chezmoi variables (Go templates, processed by `chezmoi apply`):
 ```
 {{ .graphics }}                       # Machine-specific data
 {{ if eq .graphics "nvidia" }}...{{ end }}
