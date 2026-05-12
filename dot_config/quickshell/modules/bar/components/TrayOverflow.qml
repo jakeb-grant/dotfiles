@@ -14,7 +14,7 @@ Item {
 
     implicitWidth: Utils.Theme.isSide ? Utils.Theme.barInnerWidth : layout.implicitWidth
     implicitHeight: Utils.Theme.isTop ? Utils.Theme.barInnerWidth : layout.implicitHeight
-    visible: layout.visibleChildren.length > 0
+    visible: SystemTray.items.values.length > 0
 
     GridLayout {
         id: layout

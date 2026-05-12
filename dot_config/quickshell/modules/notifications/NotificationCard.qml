@@ -30,9 +30,12 @@ Rectangle {
     implicitHeight: content.implicitHeight + Utils.Theme.spacingLarge * 2
 
     // Collapse height during exit so the column shrinks alongside the fade —
-    // prevents clicks landing in the now-invisible gutter.
+    // prevents clicks landing in the now-invisible gutter. The Behavior is
+    // gated to the dismiss transition; without the gate it would animate on
+    // every implicitHeight change (image async load, body re-wrap).
     Layout.preferredHeight: dismissing ? 0 : implicitHeight
     Behavior on Layout.preferredHeight {
+        enabled: root.dismissing
         NumberAnimation { duration: root._exitDuration; easing.type: Easing.InCubic }
     }
 
@@ -50,22 +53,16 @@ Rectangle {
     }
 
     // Entrance one-shot: only freshly-arrived notifications animate in.
-    // Repeater-recreated cards (e.g., when an unrelated notif is dismissed) start
-    // fully visible. The service tracks the "new" bit per-id and we clear it
-    // here so subsequent recreations don't re-trigger the entrance.
+    // Repeater-recreated cards (e.g., when an unrelated notif is dismissed)
+    // start fully visible because markSeen() in onCompleted flips _wasNew
+    // false synchronously, causing the opacity/scale bindings to re-evaluate
+    // from 0/0.85 to 1/1 — the Behaviors carry the animation.
     readonly property bool _wasNew: Services.Notifications.isNew(notification)
     opacity: dismissing ? 0 : _wasNew ? 0 : 1
     scale: dismissing ? 0.85 : _wasNew ? 0.85 : 1
     transformOrigin: Item.Right
 
-    Component.onCompleted: {
-        Services.Notifications.markSeen(notification);
-        if (!dismissing) { opacity = 1; scale = 1 }
-    }
-
-    onDismissingChanged: {
-        if (dismissing) { opacity = 0; scale = 0.85 }
-    }
+    Component.onCompleted: Services.Notifications.markSeen(notification)
 
     Behavior on opacity {
         NumberAnimation {

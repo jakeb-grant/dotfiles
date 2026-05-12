@@ -36,7 +36,15 @@ Singleton {
             root._timestamps[notif.id] = Date.now();
             root._new[notif.id] = true;
             root._newRev++;
-            root.popups = [notif, ...root.popups.slice(0, 4)];
+            // Cap at 5 — clean state for anyone displaced past the window so
+            // _dismissing/_timestamps/_new don't accrete stale ids.
+            const kept = root.popups.slice(0, 4);
+            for (const dropped of root.popups.slice(4)) {
+                delete root._dismissing[dropped.id];
+                delete root._timestamps[dropped.id];
+                delete root._new[dropped.id];
+            }
+            root.popups = [notif, ...kept];
         }
     }
 
@@ -89,15 +97,11 @@ Singleton {
     }
 
     function dismissAll(): void {
-        const all = popups.slice();
-        popups = [];
-        _timestamps = {};
-        _dismissing = {};
-        _new = {};
+        // Mark every popup as dismissing so cards animate out together —
+        // clearing _dismissing here would snap mid-fade cards back to opacity 1.
+        for (const n of popups)
+            _dismissing[n.id] = "dismiss";
         _dismissRev++;
-        _newRev++;
-        for (const n of all)
-            n.dismiss();
     }
 
     function remainingTimeout(notif: Notification): int {

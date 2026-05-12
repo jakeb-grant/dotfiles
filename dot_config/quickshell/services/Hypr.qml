@@ -9,10 +9,7 @@ Singleton {
     id: root
 
     readonly property var workspaces: Hyprland.workspaces
-    readonly property var monitors: Hyprland.monitors
     readonly property var toplevels: Hyprland.toplevels
-    readonly property HyprlandMonitor focusedMonitor: Hyprland.focusedMonitor
-    readonly property int activeWsId: Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1
 
     // Configured workspace IDs per monitor name, from hyprctl workspacerules
     // e.g. { "DP-2": [1,2,3,4,5], "DP-6": [6,7,8,9,10] }
@@ -30,8 +27,6 @@ Singleton {
     function workspaceIdsFor(monitorName: string): list<int> {
         return root.workspaceRules[monitorName] ?? [];
     }
-
-    readonly property string activeWindowTitle: Hyprland.activeToplevel?.title ?? ""
 
     function refreshWorkspaceRules(): void {
         wsRulesProc.running = true;

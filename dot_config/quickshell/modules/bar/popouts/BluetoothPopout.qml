@@ -41,10 +41,10 @@ ColumnLayout {
         // Connected: device name + status
         ColumnLayout {
             id: connectedHeader
-            visible: headerRow.isConnected
+            opacity: headerRow.isConnected ? 1 : 0
+            visible: opacity > 0.001
             spacing: Utils.Theme.spacingTiny
             Layout.fillWidth: true
-            opacity: visible ? 1 : 0
 
             Behavior on opacity {
                 NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -78,7 +78,8 @@ ColumnLayout {
         // Disconnected: single centered label
         Text {
             id: disconnectedHeader
-            visible: !headerRow.isConnected
+            opacity: headerRow.isConnected ? 0 : 1
+            visible: opacity > 0.001
             text: Services.Bluetooth.powered ? "No device" : "Bluetooth off"
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.headerFontSize
@@ -86,7 +87,6 @@ ColumnLayout {
             color: Utils.Theme.text
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            opacity: visible ? 1 : 0
 
             Behavior on opacity {
                 NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }

@@ -23,16 +23,6 @@ Singleton {
         return result;
     }
 
-    function incrementVolume(): void {
-        if (sink?.audio)
-            sink.audio.volume = Math.min(1.0, volume + 0.05);
-    }
-
-    function decrementVolume(): void {
-        if (sink?.audio)
-            sink.audio.volume = Math.max(0.0, volume - 0.05);
-    }
-
     function toggleMute(): void {
         if (sink?.audio)
             sink.audio.muted = !sink.audio.muted;

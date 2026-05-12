@@ -132,7 +132,12 @@ Singleton {
         entries = result;
         selectedIndex = 0;
 
+        // Only consume the auto-set flag when entries are actually available;
+        // first _rebuildEntries() during startup may run with empty entries
+        // (config file not yet loaded) and we want the restore to fire when
+        // entries arrive.
         if (_autoSetOnRefresh && entries.length > 0) {
+            _autoSetOnRefresh = false;
             let restored = false;
             const saved = _savedWallpaper;
             _savedWallpaper = "";  // one-shot — consume regardless of match
@@ -150,7 +155,6 @@ Singleton {
                 applyEntry(entries[idx]);
             }
         }
-        _autoSetOnRefresh = false;
     }
 
     // ── Public functions ──

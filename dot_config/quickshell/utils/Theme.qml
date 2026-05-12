@@ -62,9 +62,8 @@ Singleton {
     Behavior on text     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
 
     // ── Palette: Accent Hues ──
-    property color rosewater: _p.rosewater ?? "#f5e0dc"
-    property color flamingo:  _p.flamingo  ?? "#f2cdcd"
-    property color pink:      _p.pink      ?? "#f5c2e7"
+    // rosewater/flamingo/pink/sky exist in the palette JSON but no Quickshell
+    // surface references them; drop from Theme.qml until a consumer appears.
     property color mauve:     _p.mauve     ?? "#cba6f7"
     property color red:       _p.red       ?? "#f38ba8"
     property color maroon:    _p.maroon    ?? "#eba0ac"
@@ -72,14 +71,10 @@ Singleton {
     property color yellow:    _p.yellow    ?? "#f9e2af"
     property color green:     _p.green     ?? "#a6e3a1"
     property color teal:      _p.teal      ?? "#94e2d5"
-    property color sky:       _p.sky       ?? "#89dceb"
     property color sapphire:  _p.sapphire  ?? "#74c7ec"
     property color blue:      _p.blue      ?? "#89b4fa"
     property color lavender:  _p.lavender  ?? "#b4befe"
 
-    Behavior on rosewater { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on flamingo  { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on pink      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on mauve     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on red       { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on maroon    { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
@@ -87,7 +82,6 @@ Singleton {
     Behavior on yellow    { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on green     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on teal      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on sky       { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on sapphire  { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on blue      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
     Behavior on lavender  { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
@@ -161,7 +155,6 @@ Singleton {
 
     // ── Popout Dimensions ──
     readonly property int popoutWidth: 280
-    readonly property int popoutWidthNarrow: 180
     readonly property int popoutListHeight: 180
 
     // ── Notifications ──

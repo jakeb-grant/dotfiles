@@ -17,10 +17,17 @@ ColumnLayout {
     readonly property int cellSize: 32
     readonly property int gridSpacing: 2
 
-    // View state — month/year being displayed
-    property int viewMonth: today.getMonth()
-    property int viewYear: today.getFullYear()
+    // View state — month/year being displayed. Initialized once; not bound to
+    // `today` so midnight rollover doesn't snap the view back when the user
+    // has navigated to a different month.
+    property int viewMonth: 0
+    property int viewYear: 1970
     readonly property date today: Services.Clock.date
+
+    Component.onCompleted: {
+        viewMonth = today.getMonth();
+        viewYear = today.getFullYear();
+    }
 
     // First day of the viewed month
     readonly property date firstOfMonth: new Date(viewYear, viewMonth, 1)

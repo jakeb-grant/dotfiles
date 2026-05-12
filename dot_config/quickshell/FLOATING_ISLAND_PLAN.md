@@ -93,7 +93,7 @@ Both done in Phase 0 alongside `islandShadowColor` seeding.
 - All popout *content* QMLs (`SystemPopout`, `VolumePopout`, `WifiPopout`, etc.) — they live inside the new container, untouched.
 - The per-popout `Popout` Loader component (PopoutWrapper.qml L452–526) with `opacity 0→1` + `scale 0.8→1` `OutBack` overshoot. This was always the actual bloom; it just stops being wrapped in a clip container. Same for the tray-menu Repeater (L275–384).
 - `Theme.qml` color system (palette + semantic roles + accents), color animations on theme switch, `frameGlow*` properties (repurposed as the bar-item active halo).
-- `Anim.qml`, all animation curves (MD3 spec), `popoutRounding`, all spacing/size tokens not listed above.
+- `Anim.qml`, the standard MD3 curve, all spacing/size tokens not listed above.
 - `Exclusions.qml` — bar still claims exclusive zone, just at a different geometry.
 - `LockScreen` (orthogonal, lives in its own `WlSessionLock`).
 
