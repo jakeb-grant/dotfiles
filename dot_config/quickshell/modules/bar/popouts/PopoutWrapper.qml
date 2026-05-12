@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Services.SystemTray
 import QtQuick
+import QtQuick.Effects
 import qs.services as Services
 import qs.utils as Utils
 
@@ -11,12 +12,35 @@ Item {
     required property real barHeight
     required property ShellScreen screen
 
-    // active tracks hasCurrent (controls width), NOT currentName
     readonly property bool active: Services.Popout.isOpen && Services.Popout.activeScreen === screen
 
-    // currentPopout and content sizes updated imperatively to avoid binding loops.
-    // (Declarative bindings created a cycle: currentPopout → contentSize → nonAnimSize →
-    //  container implicitSize → children relayout → popout implicitSize → contentSize)
+    // Switch gate — while user is rapidly hovering between bar items, suppress
+    // all popout content rendering until the cursor settles. Intermediate
+    // popouts never become "shouldBeActive", so no in-transit artifacts.
+    property bool switching: false
+    property string _prevName: ""
+    Timer {
+        id: switchSettleTimer
+        interval: 80
+        onTriggered: root.switching = false
+    }
+    Connections {
+        target: Services.Popout
+        function onCurrentNameChanged() {
+            const newName = Services.Popout.currentName;
+            // Suppress only on switches between two popouts (both names non-empty).
+            // Initial open ("" → x) and close (x → "") skip the gate.
+            if (root._prevName !== "" && newName !== "" && root._prevName !== newName) {
+                root.switching = true;
+                switchSettleTimer.restart();
+            }
+            root._prevName = newName;
+        }
+    }
+
+    // currentPopout / sizes updated imperatively to avoid binding-loop with
+    // size feedback (item.implicitSize → container.implicitSize → item layout
+    // → item.implicitSize). Signal-driven updates break the chain.
     property var currentPopout: null
     property real _contentWidth: 0
     property real _contentHeight: 0
@@ -34,13 +58,11 @@ Item {
         if (_contentHeight > 0) _lastContentHeight = _contentHeight;
     }
 
-    // Track currentName changes to find the right popout
     Connections {
         target: Services.Popout
         function onCurrentNameChanged() { root._updateCurrentPopout(); }
     }
 
-    // Track the current popout's size changes
     Connections {
         target: root.currentPopout
         function onImplicitWidthChanged() {
@@ -55,390 +77,45 @@ Item {
         }
     }
 
-    // Non-animated target sizes
-    // The animated axis goes to 0 when closed; the cross-axis stays at content size
-    // so content remains visible during the retraction clip animation.
-    // Side mode: width is animated, height is content-driven
-    // Top mode: height is animated, width is content-driven
+    // Effective content size — falls back to last-known so the panel keeps
+    // its shape during close-out animation.
     readonly property real _effectiveWidth: (_contentWidth > 0 ? _contentWidth : _lastContentWidth) || Utils.Theme.popoutWidth
     readonly property real _effectiveHeight: (_contentHeight > 0 ? _contentHeight : _lastContentHeight) || Utils.Theme.popoutWidth
 
-    readonly property real nonAnimWidth: Utils.Theme.isSide
-        ? (active ? _effectiveWidth + Utils.Theme.spacingLarge * 2 : 0)
-        : _effectiveWidth + Utils.Theme.spacingLarge * 2
-    readonly property real nonAnimHeight: Utils.Theme.isTop
-        ? (active ? _effectiveHeight + Utils.Theme.spacingLarge * 2 : 0)
-        : _effectiveHeight + Utils.Theme.spacingLarge * 2
+    readonly property real _pad: Utils.Theme.spacingLarge
+    readonly property real panelWidth: _effectiveWidth + _pad * 2
+    readonly property real panelHeight: _effectiveHeight + _pad * 2
 
-    // ── Side mode: vertical positioning (popout right of bar) ──
-    readonly property real targetY: {
-        if (!active && popoutContainer.implicitWidth <= 0) return 0;
-        const border = Utils.Theme.borderThickness;
-        const ideal = Services.Popout.centerY - nonAnimHeight / 2;
-        return Math.max(border, Math.min(ideal, root.height - nonAnimHeight - border));
-    }
+    // Panel position — perpendicular axis follows Popout.centerX/Y; parallel
+    // axis sits one islandGap beyond the bar's far edge.
+    readonly property real targetX: Utils.Theme.isSide
+        ? Utils.Theme.barMargin + barWidth + Utils.Theme.islandGap
+        : Math.max(Utils.Theme.barMargin,
+            Math.min(Services.Popout.centerX - panelWidth / 2,
+                root.width - panelWidth - Utils.Theme.barMargin))
 
-    readonly property bool flushTop: Utils.Theme.isSide && targetY <= Utils.Theme.borderThickness
-    readonly property bool flushBottom: Utils.Theme.isSide && targetY + nonAnimHeight >= root.height - Utils.Theme.borderThickness
+    readonly property real targetY: Utils.Theme.isTop
+        ? Utils.Theme.barMargin + barHeight + Utils.Theme.islandGap
+        : Math.max(Utils.Theme.barMargin,
+            Math.min(Services.Popout.centerY - panelHeight / 2,
+                root.height - panelHeight - Utils.Theme.barMargin))
 
-    // ── Top mode: horizontal positioning (popout below bar) ──
-    readonly property real targetX: {
-        if (!active && popoutContainer.implicitWidth <= 0) return 0;
-        const border = Utils.Theme.borderThickness;
-        const ideal = Services.Popout.centerX - nonAnimWidth / 2;
-        return Math.max(border, Math.min(ideal, root.width - nonAnimWidth - border));
-    }
+    anchors.fill: parent
 
-    readonly property bool flushLeft: Utils.Theme.isTop && targetX <= Utils.Theme.borderThickness
-    readonly property bool flushRight: Utils.Theme.isTop && targetX + nonAnimWidth >= root.width - Utils.Theme.borderThickness
-
-    // Expose geometry for Drawers.qml background + mask
-    readonly property real popoutX: Utils.Theme.isSide ? barWidth : popoutContainer.x
-    readonly property real popoutY: Utils.Theme.isTop ? barHeight : popoutContainer.y
-    readonly property real popoutWidth: popoutContainer.implicitWidth
-    readonly property real popoutHeight: Utils.Theme.isSide
-        ? (popoutContainer.implicitWidth > 0 ? popoutContainer.implicitHeight : 0)
-        : popoutContainer.implicitHeight
-
-    anchors.top: parent.top
-    anchors.bottom: parent.bottom
-    anchors.left: parent.left
-    anchors.right: parent.right
-
-    // Clip container — all sizing driven by Behaviors
-    Item {
-        id: popoutContainer
-        z: 1
-
-        x: Utils.Theme.isSide
-            ? root.barWidth
-            : (root.flushRight
-                ? root.width - implicitWidth - Utils.Theme.borderThickness
-                : root.flushLeft
-                    ? Utils.Theme.borderThickness
-                    : root.targetX)
-        y: Utils.Theme.isTop
-            ? root.barHeight
-            : (root.flushBottom
-                ? root.height - implicitHeight - Utils.Theme.borderThickness
-                : root.flushTop
-                    ? Utils.Theme.borderThickness
-                    : root.targetY)
-        width: implicitWidth
-        height: implicitHeight
-        clip: true
-        visible: Utils.Theme.isSide ? implicitWidth > 0 : implicitHeight > 0
-
-        // Mutable curve/duration — swapped for close to decelerate at the end
-        property var animCurve: Utils.Theme.animCurveEmphasized
-        property int animDuration: Utils.Theme.animDuration
-        // Separate duration for height/Y during switches (faster reshape)
-        property int reshapeDuration: Utils.Theme.animDuration
-
-        implicitWidth: root.nonAnimWidth
-        implicitHeight: root.nonAnimHeight
-
-        // When retraction completes, clean up the service state and reset curve.
-        // Only the instance whose screen matches activeScreen (or null) may cleanup,
-        // so non-active monitors don't wipe state set by show().
-        function _checkRetracted() {
-            const retracted = Utils.Theme.isSide ? implicitWidth <= 0 : implicitHeight <= 0;
-            if (retracted && !root.active
-                    && (Services.Popout.activeScreen === root.screen || Services.Popout.activeScreen === null)) {
-                Services.Popout.cleanup();
-                animCurve = Utils.Theme.animCurveEmphasized;
-                animDuration = Utils.Theme.animDuration;
-                reshapeDuration = Utils.Theme.animDuration;
-            }
-        }
-        onImplicitWidthChanged: _checkRetracted()
-        onImplicitHeightChanged: _checkRetracted()
-
-        // React to close and switch events
-        Connections {
-            target: root
-            function onActiveChanged() {
-                if (!root.active) {
-                    // Swap to decel curve on close for a slow finish
-                    popoutContainer.animCurve = Utils.Theme.animCurveEmphasizedDecel;
-                    popoutContainer.animDuration = Utils.Theme.animDuration + 100;
-                    popoutContainer.reshapeDuration = Utils.Theme.animDuration + 100;
-                } else {
-                    // Reset to normal curve on reopen (e.g. hovering during close animation)
-                    popoutContainer.animCurve = Utils.Theme.animCurveEmphasized;
-                    popoutContainer.animDuration = Utils.Theme.animDuration;
-                    popoutContainer.reshapeDuration = Utils.Theme.animDuration;
-                }
-            }
-        }
-
-        Connections {
-            target: Services.Popout
-            function onCurrentNameChanged() {
-                // If switching while open, use fast reshape for height/Y
-                if (root.active && Services.Popout.currentName !== "") {
-                    popoutContainer.animCurve = Utils.Theme.animCurveEmphasized;
-                    popoutContainer.animDuration = Utils.Theme.animDuration;
-                    popoutContainer.reshapeDuration = Utils.Theme.animDurationFast;
-                }
-            }
-        }
-
-        Behavior on implicitWidth {
-            enabled: Utils.Theme.isSide ? true : popoutContainer.implicitHeight > 0
-
-            NumberAnimation {
-                duration: Utils.Theme.isSide ? popoutContainer.animDuration : popoutContainer.reshapeDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: popoutContainer.animCurve
-            }
-        }
-
-        Behavior on implicitHeight {
-            enabled: Utils.Theme.isTop ? true : popoutContainer.implicitWidth > 0
-
-            NumberAnimation {
-                duration: Utils.Theme.isTop ? popoutContainer.animDuration : popoutContainer.reshapeDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: popoutContainer.animCurve
-            }
-        }
-
-        Behavior on x {
-            enabled: Utils.Theme.isTop && popoutContainer.implicitWidth > 0 && !root.flushLeft && !root.flushRight
-
-            NumberAnimation {
-                duration: popoutContainer.reshapeDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: popoutContainer.animCurve
-            }
-        }
-
-        Behavior on y {
-            enabled: Utils.Theme.isSide && popoutContainer.implicitWidth > 0 && !root.flushTop && !root.flushBottom
-
-            NumberAnimation {
-                duration: popoutContainer.reshapeDuration
-                easing.type: Easing.BezierSpline
-                easing.bezierCurve: popoutContainer.animCurve
-            }
-        }
-
-        // Content area — fills container with padding
-        Item {
-            id: contentArea
-
-            anchors.fill: parent
-            anchors.margins: Utils.Theme.spacingLarge
-
-            Popout {
-                name: "system"
-                sourceComponent: systemComponent
-            }
-
-            Popout {
-                name: "volume"
-                sourceComponent: volumeComponent
-            }
-
-            Popout {
-                name: "brightness"
-                sourceComponent: brightnessComponent
-            }
-
-            Popout {
-                name: "battery"
-                sourceComponent: batteryComponent
-            }
-
-            Popout {
-                name: "calendar"
-                sourceComponent: calendarComponent
-            }
-
-            Popout {
-                name: "wifi"
-                sourceComponent: wifiComponent
-            }
-
-            Popout {
-                name: "bluetooth"
-                sourceComponent: bluetoothComponent
-            }
-
-            Popout {
-                name: "power"
-                sourceComponent: powerComponent
-            }
-
-            // Per-tray-item popout menus (one per SystemTray item)
-            Repeater {
-                model: SystemTray.items
-
-                Item {
-                    id: trayWrapper
-
-                    required property SystemTrayItem modelData
-                    required property int index
-
-                    readonly property string popoutName: `traymenu${index}`
-                    readonly property bool shouldBeActive: Services.Popout.currentName === popoutName
-                        && Services.Popout.activeScreen === root.screen
-
-                    // Expose for currentPopout lookup
-                    implicitWidth: trayLoader.item?.implicitWidth ?? 0
-                    implicitHeight: trayLoader.item?.implicitHeight ?? 0
-
-                    anchors.verticalCenter: parent?.verticalCenter
-                    anchors.right: parent?.right
-
-                    opacity: 0
-                    scale: 0.8
-
-                    Loader {
-                        id: trayLoader
-                        active: false
-                        sourceComponent: trayMenuComp
-
-                        // Force recreation on open
-                        Connections {
-                            target: Services.Popout
-
-                            function onIsOpenChanged() {
-                                if (Services.Popout.isOpen && trayWrapper.shouldBeActive) {
-                                    trayLoader.sourceComponent = null;
-                                    trayLoader.sourceComponent = trayMenuComp;
-                                }
-                            }
-                        }
-
-                        Component {
-                            id: trayMenuComp
-                            TrayMenuPopout {
-                                trayItem: trayWrapper.modelData
-                            }
-                        }
-                    }
-
-                    states: State {
-                        name: "active"
-                        when: trayWrapper.shouldBeActive
-
-                        PropertyChanges {
-                            trayLoader.active: true
-                            trayWrapper.opacity: 1
-                            trayWrapper.scale: 1
-                        }
-                    }
-
-                    transitions: [
-                        Transition {
-                            from: ""
-                            to: "active"
-
-                            SequentialAnimation {
-                                PropertyAction {
-                                    target: trayLoader
-                                    property: "active"
-                                }
-                                ParallelAnimation {
-                                    NumberAnimation {
-                                        property: "opacity"
-                                        duration: Utils.Theme.animDuration
-                                        easing.type: Easing.OutCubic
-                                    }
-                                    NumberAnimation {
-                                        property: "scale"
-                                        duration: Utils.Theme.animDuration
-                                        easing.type: Easing.OutBack
-                                        easing.overshoot: 1.2
-                                    }
-                                }
-                            }
-                        },
-                        Transition {
-                            from: "active"
-                            to: ""
-
-                            SequentialAnimation {
-                                ParallelAnimation {
-                                    NumberAnimation {
-                                        property: "opacity"
-                                        duration: Utils.Theme.animDurationSmall
-                                        easing.type: Easing.InCubic
-                                    }
-                                    NumberAnimation {
-                                        property: "scale"
-                                        duration: Utils.Theme.animDurationSmall
-                                        easing.type: Easing.InCubic
-                                    }
-                                }
-                                PropertyAction {
-                                    target: trayLoader
-                                    property: "active"
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-
-            // Hover area — full container
-            HoverHandler {
-                id: popoutHover
-                onHoveredChanged: {
-                    if (hovered) {
-                        Services.Popout.popoutHovered = true;
-                    } else {
-                        Services.Popout.popoutHovered = false;
-                        Services.Popout.requestClose();
-                    }
-                }
-            }
+    // Aggregate hover state across panel and bridge — close only when both unhovered.
+    property bool panelHovered: false
+    property bool bridgeHovered: false
+    readonly property bool anyHovered: panelHovered || bridgeHovered
+    onAnyHoveredChanged: {
+        if (anyHovered) {
+            Services.Popout.popoutHovered = true;
+        } else {
+            Services.Popout.popoutHovered = false;
+            Services.Popout.requestClose();
         }
     }
 
-    Component {
-        id: systemComponent
-        SystemPopout {}
-    }
-
-    Component {
-        id: volumeComponent
-        VolumePopout {}
-    }
-
-    Component {
-        id: brightnessComponent
-        BrightnessPopout {}
-    }
-
-    Component {
-        id: batteryComponent
-        BatteryPopout {}
-    }
-
-    Component {
-        id: calendarComponent
-        CalendarPopout {}
-    }
-
-    Component {
-        id: wifiComponent
-        WifiPopout {}
-    }
-
-    Component {
-        id: bluetoothComponent
-        BluetoothPopout {}
-    }
-
-    Component {
-        id: powerComponent
-        PowerPopout {}
-    }
-
-    // Click-outside-to-close overlay
+    // Click-outside-to-close (full window when popout active)
     MouseArea {
         anchors.fill: parent
         visible: root.active
@@ -446,80 +123,263 @@ Item {
         z: 0
     }
 
-    // Popout component — individual Loader with scale+opacity transitions
-    // On close: content stays visible, clipped by wrapper retraction.
-    // Fade+scale only fires on popout SWITCH (currentName changes).
+    // Hover bridge — invisible Item spanning the islandGap so the cursor can
+    // traverse from bar to panel without un-hovering.
+    Item {
+        id: hoverBridge
+        x: Utils.Theme.isSide
+            ? Utils.Theme.barMargin + root.barWidth
+            : root.targetX
+        y: Utils.Theme.isTop
+            ? Utils.Theme.barMargin + root.barHeight
+            : root.targetY
+        width: Utils.Theme.isSide ? Utils.Theme.islandGap : root.panelWidth
+        height: Utils.Theme.isTop ? Utils.Theme.islandGap : root.panelHeight
+        visible: root.active
+        z: 1
+
+        HoverHandler {
+            onHoveredChanged: root.bridgeHovered = hovered
+        }
+    }
+
+    // Floating panel — rounded mantle rect, drop shadow, blooms from source.
+    Rectangle {
+        id: popoutContainer
+        x: root.targetX
+        y: root.targetY
+        width: root.panelWidth
+        height: root.panelHeight
+        color: Utils.Theme.mantle
+        radius: Utils.Theme.islandRounding
+        z: 2
+
+        property real animatedScale: root.active ? 1 : 0.8
+        opacity: root.active ? 1 : 0
+        visible: opacity > 0.001
+
+        // Scale origin = source bar item center, in container-local coords.
+        transform: Scale {
+            origin.x: Services.Popout.centerX - popoutContainer.x
+            origin.y: Services.Popout.centerY - popoutContainer.y
+            xScale: popoutContainer.animatedScale
+            yScale: popoutContainer.animatedScale
+        }
+
+        Behavior on animatedScale {
+            NumberAnimation {
+                duration: Utils.Theme.animDuration
+                easing.type: root.active ? Easing.OutBack : Easing.InCubic
+                easing.overshoot: 1.2
+            }
+        }
+
+        Behavior on opacity {
+            SequentialAnimation {
+                NumberAnimation {
+                    duration: Utils.Theme.animDurationSmall
+                    easing.type: root.active ? Easing.OutCubic : Easing.InCubic
+                }
+                ScriptAction {
+                    script: {
+                        if (!root.active
+                                && (Services.Popout.activeScreen === root.screen
+                                    || Services.Popout.activeScreen === null)) {
+                            Services.Popout.cleanup();
+                        }
+                    }
+                }
+            }
+        }
+
+        Behavior on x {
+            enabled: Utils.Theme.isTop && root.active
+            NumberAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on y {
+            enabled: Utils.Theme.isSide && root.active
+            NumberAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
+        }
+        // Smooth size morph on switch — old popout shrinks/grows in step
+        // with the new one's appearance, eliminating cross-fade ghosts.
+        Behavior on width {
+            enabled: root.active && popoutContainer.opacity > 0.9
+            NumberAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on height {
+            enabled: root.active && popoutContainer.opacity > 0.9
+            NumberAnimation {
+                duration: 140
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        layer.enabled: true
+        layer.smooth: true
+        layer.effect: MultiEffect {
+            shadowEnabled: true
+            shadowColor: Utils.Theme.islandShadowColor
+            shadowOpacity: Utils.Theme.islandShadowOpacity
+            blurMax: Utils.Theme.islandShadowBlur
+            shadowVerticalOffset: Utils.Theme.islandShadowY
+            shadowHorizontalOffset: 0
+            autoPaddingEnabled: true
+        }
+
+        HoverHandler {
+            onHoveredChanged: root.panelHovered = hovered
+        }
+
+        // Content area — Popouts overlap here, cross-fading between active ones.
+        Item {
+            id: contentArea
+            anchors.fill: parent
+            anchors.margins: root._pad
+
+            Popout { name: "system";     sourceComponent: systemComponent }
+            Popout { name: "volume";     sourceComponent: volumeComponent }
+            Popout { name: "brightness"; sourceComponent: brightnessComponent }
+            Popout { name: "battery";    sourceComponent: batteryComponent }
+            Popout { name: "calendar";   sourceComponent: calendarComponent }
+            Popout { name: "wifi";       sourceComponent: wifiComponent }
+            Popout { name: "bluetooth";  sourceComponent: bluetoothComponent }
+            Popout { name: "power";      sourceComponent: powerComponent }
+
+            // Per-tray-item popout menus (one per SystemTray item)
+            Repeater {
+                model: SystemTray.items
+
+                Loader {
+                    id: trayLoader
+
+                    required property SystemTrayItem modelData
+                    required property int index
+
+                    readonly property string popoutName: `traymenu${index}`
+                    readonly property bool shouldBeActive: !root.switching
+                        && Services.Popout.currentName === popoutName
+                        && Services.Popout.activeScreen === root.screen
+
+                    anchors.centerIn: parent
+
+                    active: false
+                    opacity: 0
+                    visible: opacity > 0.001
+
+                    sourceComponent: TrayMenuPopout {
+                        trayItem: trayLoader.modelData
+                    }
+
+                    // Force recreation when reopening (per-instance menu state)
+                    Connections {
+                        target: Services.Popout
+                        function onIsOpenChanged() {
+                            if (Services.Popout.isOpen && trayLoader.shouldBeActive) {
+                                trayLoader.active = false;
+                                trayLoader.active = true;
+                            }
+                        }
+                    }
+
+                    states: State {
+                        name: "active"
+                        when: trayLoader.shouldBeActive
+                        PropertyChanges {
+                            trayLoader.active: true
+                            trayLoader.opacity: 1
+                        }
+                    }
+
+                    transitions: [
+                        Transition {
+                            from: ""
+                            to: "active"
+                            SequentialAnimation {
+                                PropertyAction { target: trayLoader; property: "active" }
+                                PauseAnimation { duration: 16 }
+                                PropertyAction { target: trayLoader; property: "opacity" }
+                            }
+                        },
+                        Transition {
+                            from: "active"
+                            to: ""
+                            SequentialAnimation {
+                                PropertyAction { target: trayLoader; property: "opacity" }
+                                PauseAnimation { duration: 50 }
+                                PropertyAction { target: trayLoader; property: "active" }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    }
+
+    Component { id: systemComponent;     SystemPopout {} }
+    Component { id: volumeComponent;     VolumePopout {} }
+    Component { id: brightnessComponent; BrightnessPopout {} }
+    Component { id: batteryComponent;    BatteryPopout {} }
+    Component { id: calendarComponent;   CalendarPopout {} }
+    Component { id: wifiComponent;       WifiPopout {} }
+    Component { id: bluetoothComponent;  BluetoothPopout {} }
+    Component { id: powerComponent;      PowerPopout {} }
+
+    // Popout primitive — Loader that opacity-fades when active. The scale
+    // bloom lives on the container, not here, to avoid double-animation.
     component Popout: Loader {
         id: popout
 
         required property string name
-        readonly property bool shouldBeActive: Services.Popout.currentName === name
+        readonly property bool shouldBeActive: !root.switching
+            && Services.Popout.currentName === name
             && Services.Popout.activeScreen === root.screen
 
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.right: parent.right
+        anchors.centerIn: parent
 
-        opacity: 0
-        scale: 0.8
         active: false
+        opacity: 0
+        visible: opacity > 0.001
 
         states: State {
             name: "active"
             when: popout.shouldBeActive
-
             PropertyChanges {
                 popout.active: true
                 popout.opacity: 1
-                popout.scale: 1
             }
         }
 
         transitions: [
+            // Switch IN: load, give one frame for layout, then snap opacity to 1.
+            // The container's scale/fade handles visible "appearance" — content
+            // inside snaps so fast hovers don't leave fade trails.
             Transition {
                 from: ""
                 to: "active"
-
                 SequentialAnimation {
-                    PropertyAction {
-                        target: popout
-                        property: "active"
-                    }
-                    ParallelAnimation {
-                        NumberAnimation {
-                            property: "opacity"
-                            duration: Utils.Theme.animDuration
-                            easing.type: Easing.OutCubic
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            duration: Utils.Theme.animDuration
-                            easing.type: Easing.OutBack
-                            easing.overshoot: 1.2
-                        }
-                    }
+                    PropertyAction { target: popout; property: "active" }
+                    PauseAnimation { duration: 16 }
+                    PropertyAction { target: popout; property: "opacity" }
                 }
             },
+            // Switch OUT: snap opacity to 0 instantly, then unload after a short
+            // grace period so any final renders complete.
             Transition {
                 from: "active"
                 to: ""
-
                 SequentialAnimation {
-                    ParallelAnimation {
-                        NumberAnimation {
-                            property: "opacity"
-                            duration: Utils.Theme.animDurationSmall
-                            easing.type: Easing.InCubic
-                        }
-                        NumberAnimation {
-                            property: "scale"
-                            duration: Utils.Theme.animDurationSmall
-                            easing.type: Easing.InCubic
-                        }
-                    }
-                    PropertyAction {
-                        target: popout
-                        property: "active"
-                    }
+                    PropertyAction { target: popout; property: "opacity" }
+                    PauseAnimation { duration: 50 }
+                    PropertyAction { target: popout; property: "active" }
                 }
             }
         ]

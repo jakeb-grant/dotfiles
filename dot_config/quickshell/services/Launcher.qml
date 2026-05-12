@@ -41,7 +41,6 @@ Singleton {
             { name: "Scratchpad",          shortcut: "Super + S",             dispatch: 'hl.dsp.workspace.toggle_special("magic")',           keywords: ["hidden","stash"] },
             { name: "Dismiss Notification",shortcut: "Super + ,",             dispatch: 'hl.dsp.global("quickshell:notif-dismiss")',          keywords: ["close","clear"] },
             { name: "Dismiss All",         shortcut: "Super + Shift + ,",     dispatch: 'hl.dsp.global("quickshell:notif-dismiss-all")',      keywords: ["clear","close"] },
-            { name: "Notification Panel",  shortcut: "Super + Alt + ,",       dispatch: 'hl.dsp.global("quickshell:notif-panel")',            keywords: ["center"] },
             { name: "Screenshot (Area)",   shortcut: "Print",                 command:  "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim -g \"$(slurp)\" \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","snip"] },
             { name: "Screenshot (Full)",   shortcut: "Shift + Print",         command:  "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","screen"] },
             { name: "Color Picker",        shortcut: "Super + Print",         command:  "hyprpicker -a",                                      keywords: ["pick","eyedropper"] },

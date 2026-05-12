@@ -42,9 +42,6 @@ Rectangle {
             implicitWidth: volumeIcon.implicitWidth
             implicitHeight: volumeIcon.implicitHeight
 
-            scale: volumeMouse.containsMouse ? 1.15 : 1.0
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-
             Utils.MaterialIcon {
                 id: volumeIcon
                 anchors.centerIn: parent
@@ -85,9 +82,6 @@ Rectangle {
             visible: Services.Brightness.available
             implicitWidth: brightnessIcon.implicitWidth
             implicitHeight: brightnessIcon.implicitHeight
-
-            scale: brightnessMouse.containsMouse ? 1.15 : 1.0
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
             Utils.MaterialIcon {
                 id: brightnessIcon
@@ -132,9 +126,6 @@ Rectangle {
             implicitWidth: wifiIcon.implicitWidth
             implicitHeight: wifiIcon.implicitHeight
 
-            scale: wifiMouse.containsMouse ? 1.15 : 1.0
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
-
             Text {
                 id: wifiIcon
                 anchors.centerIn: parent
@@ -172,9 +163,6 @@ Rectangle {
             Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
             implicitWidth: bluetoothIcon.implicitWidth
             implicitHeight: bluetoothIcon.implicitHeight
-
-            scale: bluetoothMouse.containsMouse ? 1.15 : 1.0
-            Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutBack } }
 
             Utils.MaterialIcon {
                 id: bluetoothIcon
@@ -221,13 +209,13 @@ Rectangle {
             SequentialAnimation on scale {
                 loops: Animation.Infinite; running: true
                 NumberAnimation {
-                    to: batteryMouse.containsMouse ? 1.05 : (batteryItem._isDanger ? 1.04 : 1.01)
-                    duration: batteryMouse.containsMouse ? 1200 : (batteryItem._isDanger ? 600 : 2500)
+                    to: batteryItem._isDanger ? 1.04 : 1.01
+                    duration: batteryItem._isDanger ? 600 : 2500
                     easing.type: Easing.InOutSine
                 }
                 NumberAnimation {
                     to: 1.0
-                    duration: batteryMouse.containsMouse ? 1200 : (batteryItem._isDanger ? 600 : 2500)
+                    duration: batteryItem._isDanger ? 600 : 2500
                     easing.type: Easing.InOutSine
                 }
             }

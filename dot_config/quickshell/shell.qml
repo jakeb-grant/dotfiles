@@ -49,11 +49,5 @@ ShellRoot {
         onPressed: Services.Notifications.dismissAll()
     }
 
-    GlobalShortcut {
-        name: "notif-panel"
-        description: "Toggle notification panel"
-        onPressed: Services.Notifications.toggleExpanded()
-    }
-
     Drawers {}
 }

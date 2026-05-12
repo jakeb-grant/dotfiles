@@ -46,8 +46,7 @@
     "separator": "#E0DCC7",
     "pillBg": "#EFEBD4",
     "hoverBg": "#E6E2CC",
-    "frameShadow": "#A6B0A0",
-    "bezelIntensity": 1,
+    "islandShadowColor": "#A6B0A0",
     "barMode": "side"
   }
 }

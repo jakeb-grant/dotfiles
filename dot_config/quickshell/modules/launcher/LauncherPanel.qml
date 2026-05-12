@@ -115,6 +115,8 @@ ColumnLayout {
                     required property var modelData
 
                     Layout.fillWidth: true
+                    Layout.leftMargin: Utils.Theme.spacingTiny
+                    Layout.rightMargin: Utils.Theme.spacingTiny
                     height: Utils.Theme.launcherItemHeight
                     radius: Utils.Theme.listItemRadius
                     color: index === Services.Launcher.selectedIndex
@@ -135,7 +137,7 @@ ColumnLayout {
                     }
 
                     transform: Translate {
-                        x: (item._entered ? 0 : 8) + ((item.index === Services.Launcher.selectedIndex || itemMouse.containsMouse) ? 4 : 0)
+                        x: item._entered ? 0 : 8
                         Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutExpo } }
                     }
 

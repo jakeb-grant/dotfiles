@@ -25,12 +25,12 @@ These have consistent *names* across all variants but different *values*. On Moc
 **2. Semantic roles** — purpose-driven aliases that map to different palette positions per variant:
 ```qml
 // Theme.qml
-readonly property color disabledText: _qs.disabledText ?? overlay0
-readonly property color subtleText:   _qs.subtleText   ?? overlay1
-readonly property color separator:    _qs.separator    ?? surface1
-readonly property color pillBg:       _qs.pillBg       ?? base
-readonly property color hoverBg:      _qs.hoverBg      ?? surface1
-readonly property color frameShadow:  _qs.frameShadow  ?? crust
+readonly property color disabledText:      _qs.disabledText      ?? overlay0
+readonly property color subtleText:        _qs.subtleText        ?? overlay1
+readonly property color separator:         _qs.separator         ?? surface1
+readonly property color pillBg:            _qs.pillBg            ?? base
+readonly property color hoverBg:           _qs.hoverBg           ?? surface1
+readonly property color islandShadowColor: _qs.islandShadowColor ?? crust
 ```
 
 The `??` fallback is the default (works well on dark variants). Light variants override via `_quickshell` in their palette JSON to maintain contrast. For example, `pillBg` defaults to `base` (dark on Mocha) but Latte overrides it to `crust` (darker than `base` on light themes, creating the needed contrast inversion).
@@ -263,6 +263,60 @@ Item {
 }
 ```
 
+## Floating Island Design Language
+
+Every shell surface (bar, popouts, notifications, launcher) is a self-contained rounded `Rectangle` grounded by a soft drop shadow. No painted frames, no concave-curve seams. Islands sit in space with `barMargin` breathing room from the screen edges.
+
+### Drop-shadow pattern
+
+The shadow primitive lives on the Rectangle's `layer.effect: MultiEffect`. `autoPaddingEnabled: true` expands the layer's allocated texture so the shadow renders without clipping at the Rectangle's bounds.
+
+```qml
+Rectangle {
+    color: Utils.Theme.mantle
+    radius: Utils.Theme.islandRounding
+
+    layer.enabled: true
+    layer.smooth: true
+    layer.effect: MultiEffect {
+        shadowEnabled: true
+        shadowColor: Utils.Theme.islandShadowColor
+        shadowOpacity: Utils.Theme.islandShadowOpacity
+        blurMax: Utils.Theme.islandShadowBlur
+        shadowVerticalOffset: Utils.Theme.islandShadowY
+        shadowHorizontalOffset: 0
+        autoPaddingEnabled: true
+    }
+}
+```
+
+Tokens: `islandRounding`, `islandGap`, `islandShadowBlur`, `islandShadowOpacity`, `islandShadowY`, `islandShadowColor`.
+
+For ephemeral surfaces, prefer `layer.enabled: visible` over `layer.enabled: true` so the offscreen surface is only allocated while the layer is being drawn.
+
+### Bar-item hover
+
+The bar deliberately has *no* hover decoration on its items — no scale grow, no backdrop pill, no glow. Hovering a popout-source icon (volume, brightness, calendar, etc.) opens its popout; the cursor's position plus the open popout is the only feedback. If you add a new bar item that spawns a popout, mirror the existing pattern: a `MouseArea` with `onEntered: root._showPopout(...)` and `onExited` clearing `Services.Popout.barItemHovered + requestClose()`, and nothing else.
+
+### Invisible hover bridge
+
+Popouts sit `islandGap` away from the bar, so the cursor traverses transparent space when moving from a bar item to its popout. To prevent dismissal during traversal, `PopoutWrapper.qml` renders an invisible `Item` of width/height equal to `islandGap`, anchored between the bar item's edge and the popout's near edge, with its own `HoverHandler` setting a `bridgeHovered` flag. The popout closes only when *neither* the panel nor the bridge is hovered.
+
+### Scale.origin pivot
+
+Popouts bloom from the source bar item with an `OutBack` overshoot. The bloom point lives on `Scale.origin`, not `transformOrigin`:
+
+```qml
+transform: Scale {
+    origin.x: bloomX   // local x of the bar item center inside the container
+    origin.y: bloomY   // local y
+    xScale: animatedScale
+    yScale: animatedScale
+}
+```
+
+`Scale.origin` accepts pivots outside the item's bounds with no clipping or warping, which is what makes "popouts that visibly spring from the bar item that spawned them" work even when the popout has been clamped to screen edges away from its natural origin.
+
 ## Common Mistakes
 
 **Hardcoded colors** — never write `color: "#89b4fa"`. Use `Utils.Theme.blue`.
@@ -304,7 +358,7 @@ The palette system supports four Catppuccin variants: Mocha (dark), Macchiato (d
 
 - Semantic roles provide sufficient contrast on both light and dark
 - Accent colors remain readable against both dark and light backgrounds
-- Shadows are visible (dark variants use `crust`, Latte overrides to `overlay0`)
+- Island shadows are visible (dark variants use `crust`, light variants override `islandShadowColor` to a darker neutral like `overlay0`)
 - Hover/active states are distinguishable from resting state
 
 Switch variants with: `theme-switch catppuccin-<variant>`

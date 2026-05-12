@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Services.Notifications
@@ -44,6 +45,21 @@ Rectangle {
         ColorAnimation { duration: Utils.Theme.animDurationFast }
     }
     implicitHeight: content.implicitHeight + Utils.Theme.spacingLarge * 2
+
+    // Drop shadow — each card is its own floating island (no container wrapper).
+    // Layer toggles off once the card has fully faded out so we don't render an
+    // invisible shadowed texture during the brief gap between dismissal and removal.
+    layer.enabled: opacity > 0.05
+    layer.smooth: true
+    layer.effect: MultiEffect {
+        shadowEnabled: true
+        shadowColor: Utils.Theme.islandShadowColor
+        shadowOpacity: Utils.Theme.islandShadowOpacity
+        blurMax: Utils.Theme.islandShadowBlur
+        shadowVerticalOffset: Utils.Theme.islandShadowY
+        shadowHorizontalOffset: 0
+        autoPaddingEnabled: true
+    }
 
     // Entrance: new cards start transparent+small; recreated cards start full.
     // Dismissing cards start invisible (exit animation already ran or will skip).
