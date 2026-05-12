@@ -29,14 +29,21 @@ Rectangle {
     }
     implicitHeight: content.implicitHeight + Utils.Theme.spacingLarge * 2
 
-    // Collapse height during exit so the column shrinks alongside the fade —
-    // prevents clicks landing in the now-invisible gutter. The Behavior is
-    // gated to the dismiss transition; without the gate it would animate on
-    // every implicitHeight change (image async load, body re-wrap).
-    Layout.preferredHeight: dismissing ? 0 : implicitHeight
-    Behavior on Layout.preferredHeight {
-        enabled: root.dismissing
-        NumberAnimation { duration: root._exitDuration; easing.type: Easing.InCubic }
+    // Layout.preferredHeight tracks implicitHeight while alive; on dismiss we
+    // animate it down to 0 explicitly (no Behavior — that would either fire
+    // on async implicitHeight changes during entrance, or race with its own
+    // enabled-gate). Once collapseAnim starts, the binding is severed for
+    // the card's remaining lifetime, which is fine — it's about to be
+    // destroyed by finishRemoval.
+    Layout.preferredHeight: implicitHeight
+
+    NumberAnimation {
+        id: collapseAnim
+        target: root
+        property: "Layout.preferredHeight"
+        to: 0
+        duration: root._exitDuration
+        easing.type: Easing.InCubic
     }
 
     // Drop shadow — each card is its own floating island (no container wrapper).
@@ -52,17 +59,35 @@ Rectangle {
         autoPaddingEnabled: true
     }
 
-    // Entrance one-shot: only freshly-arrived notifications animate in.
-    // Repeater-recreated cards (e.g., when an unrelated notif is dismissed)
-    // start fully visible because markSeen() in onCompleted flips _wasNew
-    // false synchronously, causing the opacity/scale bindings to re-evaluate
-    // from 0/0.85 to 1/1 — the Behaviors carry the animation.
+    // Entrance one-shot: fresh notifications start at 0/0.85 from the binding
+    // eval, then Component.onCompleted imperatively assigns 1/1 which is what
+    // the Behaviors animate. Repeater-recreated cards (markSeen already ran)
+    // skip the imperative writes and just stay at 1/1 from the binding.
+    //
+    // The imperative writes are necessary: a binding re-evaluation triggered
+    // synchronously inside Component.onCompleted is treated by Qt as part of
+    // initialization and the Behavior does NOT fire — so a pure-binding
+    // approach silently skips the entrance animation.
     readonly property bool _wasNew: Services.Notifications.isNew(notification)
     opacity: dismissing ? 0 : _wasNew ? 0 : 1
     scale: dismissing ? 0.85 : _wasNew ? 0.85 : 1
     transformOrigin: Item.Right
 
-    Component.onCompleted: Services.Notifications.markSeen(notification)
+    Component.onCompleted: {
+        Services.Notifications.markSeen(notification);
+        if (!dismissing) { opacity = 1; scale = 1 }
+    }
+
+    // Exit imperatives — triggering them via onDismissingChanged guarantees
+    // the Behaviors fire (binding-driven changes inside the dismissal flow
+    // are reliable, but going imperative is consistent with the entrance).
+    onDismissingChanged: {
+        if (dismissing) {
+            opacity = 0;
+            scale = 0.85;
+            collapseAnim.start();
+        }
+    }
 
     Behavior on opacity {
         NumberAnimation {
