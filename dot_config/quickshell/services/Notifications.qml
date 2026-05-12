@@ -33,16 +33,24 @@ Singleton {
 
         onNotification: notif => {
             if (notif.lastGeneration) return;
+            // tracked=true keeps the Notification object alive (and its
+            // text/body queryable) for as long as we hold a reference. Without
+            // it the server invalidates older notifications when new ones
+            // arrive — text goes empty and onClosed fires prematurely,
+            // bypassing our expireTimer. We undo this in finishRemoval by
+            // calling notif.dismiss().
+            notif.tracked = true;
             root._timestamps[notif.id] = Date.now();
             root._new[notif.id] = true;
             root._newRev++;
-            // Cap at 5 — clean state for anyone displaced past the window so
-            // _dismissing/_timestamps/_new don't accrete stale ids.
+            // Cap at 5 — anything displaced past the window is no longer ours
+            // to track. Dismiss it (releases tracked=true) and clean local state.
             const kept = root.popups.slice(0, 4);
             for (const dropped of root.popups.slice(4)) {
                 delete root._dismissing[dropped.id];
                 delete root._timestamps[dropped.id];
                 delete root._new[dropped.id];
+                dropped.dismiss();
             }
             root.popups = [notif, ...kept];
         }
@@ -79,16 +87,16 @@ Singleton {
         _dismissRev++;
     }
 
-    // Called by card after exit animation completes
+    // Called by card after exit animation completes. Always dismiss — there's
+    // no history bucket to keep auto-expired notifications in, so we release
+    // the tracked=true reference here.
     function finishRemoval(notif: Notification): void {
         if (!_dismissing[notif.id]) return;
-        const action = _dismissing[notif.id];
         delete _dismissing[notif.id];
         delete _timestamps[notif.id];
         delete _new[notif.id];
         popups = popups.filter(n => n !== notif);
-        if (action === "dismiss")
-            notif.dismiss();
+        notif.dismiss();
     }
 
     function dismissLatest(): void {
