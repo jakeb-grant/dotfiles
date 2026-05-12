@@ -135,18 +135,28 @@ Singleton {
     // ── Floating Islands (popouts/notifs/launcher) ──
     // islandRounding:      island corner radius (px)
     // islandGap:           distance between bar and floating island (px)
+    // islandOpacity:       fill alpha for island surfaces (0.0–1.0). Pair with
+    //                      Hyprland's layer_rule blur for frosted-glass look.
+    //                      Keep ≥ Hyprland's ignore_alpha threshold (0.5) so
+    //                      the blur actually applies behind the island body.
     // islandShadowBlur:    drop shadow blur radius (px)
     // islandShadowOpacity: drop shadow opacity 0.0–1.0
     // islandShadowY:       drop shadow vertical offset (px)
     // islandShadowColor:   drop shadow color (defaults to crust; light variants override to overlay0)
     readonly property int islandRounding: _qs.islandRounding ?? 20
     readonly property int islandGap: _qs.islandGap ?? 8
+    readonly property real islandOpacity: _qs.islandOpacity ?? 0.9
     readonly property int islandShadowBlur: _qs.islandShadowBlur ?? 24
     readonly property real islandShadowOpacity: _qs.islandShadowOpacity ?? 0.35
     readonly property int islandShadowY: _qs.islandShadowY ?? 6
     property color islandShadowColor: _qs.islandShadowColor ?? (_p.crust ?? "#11111b")
 
     Behavior on islandShadowColor { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
+
+    // Island fill helpers — mantle and surface0 with islandOpacity applied.
+    // Bindings track theme transitions because mantle/surface0 are animated.
+    readonly property color mantleAlpha: Qt.rgba(mantle.r, mantle.g, mantle.b, islandOpacity)
+    readonly property color surface0Alpha: Qt.rgba(surface0.r, surface0.g, surface0.b, islandOpacity)
 
     // ── Rounding ──
     readonly property int roundingSmall: 10

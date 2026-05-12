@@ -283,3 +283,16 @@ hl.window_rule({
   match = { class = "io.github.jakebgrant.phylax" },
   pin   = true,
 })
+
+-- ------------------------------------------------------------------------------
+-- Layer Rules
+-- ------------------------------------------------------------------------------
+-- Frosted-glass blur behind Quickshell surfaces. `ignore_alpha = 0.5` clips
+-- blur to the island bodies (alpha ~0.9) without leaking into the shadow halo
+-- (alpha ~0.35) or the click-through gaps (alpha 0).
+hl.layer_rule({
+  name         = "quickshell-blur",
+  match        = { namespace = "^quickshell-" },
+  blur         = true,
+  ignore_alpha = 0.5,
+})

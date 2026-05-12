@@ -147,7 +147,7 @@ Item {
         y: root.targetY
         width: root.panelWidth
         height: root.panelHeight
-        color: Utils.Theme.mantle
+        color: Utils.Theme.mantleAlpha
         radius: Utils.Theme.islandRounding
         z: 2
 

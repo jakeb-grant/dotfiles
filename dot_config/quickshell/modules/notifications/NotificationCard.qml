@@ -21,7 +21,7 @@ Rectangle {
     readonly property int _exitDuration: Utils.Theme.animDurationSmall
     readonly property int _enterDuration: Utils.Theme.animDuration - 100
 
-    color: cardHover.hovered ? Utils.Theme.surface0 : Utils.Theme.mantle
+    color: cardHover.hovered ? Utils.Theme.surface0Alpha : Utils.Theme.mantleAlpha
     radius: Utils.Theme.islandRounding
 
     Behavior on color {

@@ -15,7 +15,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: Utils.Theme.mantle
+        color: Utils.Theme.mantleAlpha
         radius: Utils.Theme.barRounding
 
         layer.enabled: true
