@@ -24,20 +24,6 @@ Item {
         interval: 80
         onTriggered: root.switching = false
     }
-    Connections {
-        target: Services.Popout
-        function onCurrentNameChanged() {
-            const newName = Services.Popout.currentName;
-            // Suppress only on switches between two popouts (both names non-empty).
-            // Initial open ("" → x) and close (x → "") skip the gate.
-            if (root._prevName !== "" && newName !== "" && root._prevName !== newName) {
-                root.switching = true;
-                switchSettleTimer.restart();
-            }
-            root._prevName = newName;
-        }
-    }
-
     // currentPopout / sizes updated imperatively to avoid binding-loop with
     // size feedback (item.implicitSize → container.implicitSize → item layout
     // → item.implicitSize). Signal-driven updates break the chain.
@@ -60,7 +46,17 @@ Item {
 
     Connections {
         target: Services.Popout
-        function onCurrentNameChanged() { root._updateCurrentPopout(); }
+        function onCurrentNameChanged() {
+            const newName = Services.Popout.currentName;
+            // Suppress only on switches between two popouts (both names non-empty).
+            // Initial open ("" → x) and close (x → "") skip the gate.
+            if (root._prevName !== "" && newName !== "" && root._prevName !== newName) {
+                root.switching = true;
+                switchSettleTimer.restart();
+            }
+            root._prevName = newName;
+            root._updateCurrentPopout();
+        }
     }
 
     Connections {
@@ -78,9 +74,10 @@ Item {
     }
 
     // Effective content size — falls back to last-known so the panel keeps
-    // its shape during close-out animation.
+    // its shape during close-out animation. First-open fallback is the
+    // typical popout dimensions; once content arrives it takes over.
     readonly property real _effectiveWidth: (_contentWidth > 0 ? _contentWidth : _lastContentWidth) || Utils.Theme.popoutWidth
-    readonly property real _effectiveHeight: (_contentHeight > 0 ? _contentHeight : _lastContentHeight) || Utils.Theme.popoutWidth
+    readonly property real _effectiveHeight: (_contentHeight > 0 ? _contentHeight : _lastContentHeight) || Utils.Theme.popoutListHeight
 
     readonly property real _pad: Utils.Theme.spacingLarge
     readonly property real panelWidth: _effectiveWidth + _pad * 2

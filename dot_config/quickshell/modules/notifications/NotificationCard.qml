@@ -10,46 +10,34 @@ Rectangle {
     id: root
 
     required property Notification notification
-    property bool historyMode: false
 
     readonly property bool isCritical: notification.urgency === NotificationUrgency.Critical
 
-    // Relative timestamp for history mode
-    readonly property string _relativeTime: {
-        if (!historyMode) return "";
-        const created = Services.Notifications._timestamps[notification.id];
-        if (!created) return "";
-        const delta = Math.floor((Date.now() - created) / 1000);
-        if (delta < 60) return "now";
-        if (delta < 3600) return Math.floor(delta / 60) + "m ago";
-        if (delta < 86400) return Math.floor(delta / 3600) + "h ago";
-        return Math.floor(delta / 86400) + "d ago";
-    }
-
-    // Refresh timestamp every 30s
-    Timer {
-        running: root.historyMode
-        interval: 30000
-        repeat: true
-        onTriggered: root._relativeTimeChanged()
-    }
-
     // Dismissal state — driven by service, survives Repeater recreation
-    // In history mode, cards are never in dismissing state
-    readonly property bool dismissing: !historyMode && Services.Notifications.isDismissing(notification)
+    readonly property bool dismissing: Services.Notifications.isDismissing(notification)
 
-    color: cardHover.hovered ? Utils.Theme.surface1 : Utils.Theme.surface0
-    radius: Utils.Theme.roundingSmall
+    // Exit duration must match the Behaviors below so the layout collapse and
+    // the visual fade end together.
+    readonly property int _exitDuration: Utils.Theme.animDurationSmall
+    readonly property int _enterDuration: Utils.Theme.animDuration - 100
+
+    color: cardHover.hovered ? Utils.Theme.surface0 : Utils.Theme.mantle
+    radius: Utils.Theme.islandRounding
 
     Behavior on color {
         ColorAnimation { duration: Utils.Theme.animDurationFast }
     }
     implicitHeight: content.implicitHeight + Utils.Theme.spacingLarge * 2
 
+    // Collapse height during exit so the column shrinks alongside the fade —
+    // prevents clicks landing in the now-invisible gutter.
+    Layout.preferredHeight: dismissing ? 0 : implicitHeight
+    Behavior on Layout.preferredHeight {
+        NumberAnimation { duration: root._exitDuration; easing.type: Easing.InCubic }
+    }
+
     // Drop shadow — each card is its own floating island (no container wrapper).
-    // Layer toggles off once the card has fully faded out so we don't render an
-    // invisible shadowed texture during the brief gap between dismissal and removal.
-    layer.enabled: opacity > 0.05
+    layer.enabled: visible
     layer.smooth: true
     layer.effect: MultiEffect {
         shadowEnabled: true
@@ -61,42 +49,44 @@ Rectangle {
         autoPaddingEnabled: true
     }
 
-    // Entrance: new cards start transparent+small; recreated cards start full.
-    // Dismissing cards start invisible (exit animation already ran or will skip).
-    readonly property bool _isNew: Services.Notifications.isNew(notification)
-
-    opacity: dismissing ? 0 : _isNew ? 0 : 1
-    scale: dismissing ? 0.85 : _isNew ? 0.85 : 1
+    // Entrance one-shot: only freshly-arrived notifications animate in.
+    // Repeater-recreated cards (e.g., when an unrelated notif is dismissed) start
+    // fully visible. The service tracks the "new" bit per-id and we clear it
+    // here so subsequent recreations don't re-trigger the entrance.
+    readonly property bool _wasNew: Services.Notifications.isNew(notification)
+    opacity: dismissing ? 0 : _wasNew ? 0 : 1
+    scale: dismissing ? 0.85 : _wasNew ? 0.85 : 1
     transformOrigin: Item.Right
 
     Component.onCompleted: {
+        Services.Notifications.markSeen(notification);
         if (!dismissing) { opacity = 1; scale = 1 }
     }
 
-    // Exit: fade out + scale down
     onDismissingChanged: {
         if (dismissing) { opacity = 0; scale = 0.85 }
     }
 
     Behavior on opacity {
         NumberAnimation {
-            duration: root.dismissing ? 200 : 300
+            duration: root.dismissing ? root._exitDuration : root._enterDuration
             easing.type: root.dismissing ? Easing.InCubic : Easing.OutCubic
         }
     }
 
     Behavior on scale {
         NumberAnimation {
-            duration: root.dismissing ? 200 : 300
+            duration: root.dismissing ? root._exitDuration : root._enterDuration
             easing.type: root.dismissing ? Easing.InCubic : Easing.OutCubic
         }
     }
 
-    // Finish removal after exit animation completes
+    // Finish removal after exit animation completes (small grace for the layout
+    // collapse to finish too).
     Timer {
         id: finishTimer
         running: root.dismissing
-        interval: Utils.Theme.animDurationSmall + 20
+        interval: root._exitDuration + 40
         onTriggered: Services.Notifications.finishRemoval(root.notification)
         Component.onDestruction: stop()
     }
@@ -115,18 +105,17 @@ Rectangle {
         color: Utils.Theme.red
     }
 
-    // Auto-dismiss timer (disabled in history/expanded mode)
+    // Auto-dismiss timer
     Timer {
         id: expireTimer
         interval: Services.Notifications.remainingTimeout(root.notification)
-        running: !root.dismissing && !root.historyMode
+        running: !root.dismissing
         onTriggered: Services.Notifications.animatedRemove(root.notification)
     }
 
-    // Remove if app closes the notification (not in history mode)
+    // Remove if app closes the notification
     Connections {
         target: root.notification
-        enabled: !root.historyMode
         function onClosed() {
             if (!root.dismissing)
                 Services.Notifications.animatedRemove(root.notification);
@@ -205,30 +194,16 @@ Rectangle {
             Layout.fillWidth: true
             spacing: Utils.Theme.spacingTiny
 
-            // App name + timestamp row
-            RowLayout {
+            // App name
+            Text {
                 Layout.fillWidth: true
-                visible: root.notification.appName !== "" || root.historyMode
-                spacing: Utils.Theme.spacingSmall
-
-                Text {
-                    Layout.fillWidth: true
-                    text: root.notification.appName
-                    font.family: Utils.Theme.fontFamily
-                    font.pixelSize: Utils.Theme.fontSizeSmall
-                    color: Utils.Theme.subtext1
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    visible: text !== ""
-                }
-
-                Text {
-                    visible: root.historyMode
-                    text: root._relativeTime
-                    font.family: Utils.Theme.fontFamily
-                    font.pixelSize: Utils.Theme.fontSizeXSmall
-                    color: Utils.Theme.overlay1
-                }
+                text: root.notification.appName
+                font.family: Utils.Theme.fontFamily
+                font.pixelSize: Utils.Theme.fontSizeSmall
+                color: Utils.Theme.subtext1
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                visible: text !== ""
             }
 
             // Summary
@@ -320,9 +295,7 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    if (root.historyMode)
-                        Services.Notifications.dismissFromHistory(root.notification);
-                    else if (!root.dismissing)
+                    if (!root.dismissing)
                         Services.Notifications.animatedDismiss(root.notification);
                 }
             }

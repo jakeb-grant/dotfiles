@@ -76,6 +76,4 @@ Singleton {
             if (!running) profileProc.running = true;
         }
     }
-
-    Component.onCompleted: profileProc.running = true
 }

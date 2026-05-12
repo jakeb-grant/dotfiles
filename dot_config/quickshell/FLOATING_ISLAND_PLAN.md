@@ -316,7 +316,6 @@ Resolve as we go; flag in commit messages when locked in. (Decisions already mad
 After each phase, on the dev machine:
 
 - [ ] Open every popout (volume, brightness, system, battery, calendar, wifi, bluetooth, power) and confirm bloom + close animation.
-- [ ] `placeholder` popout — confirm bloom or, if dead code, remove it (currently in `modules/bar/popouts/PlaceholderPopout.qml`).
 - [ ] Open a tray menu and confirm origin point makes sense for that specific tray item.
 - [ ] Move cursor from a bar item across the `islandGap` to its open popout — confirm the popout does **not** close mid-traverse (hover bridge working).
 - [ ] Trigger a notification (e.g. `notify-send test`) and confirm float + drop shadow.

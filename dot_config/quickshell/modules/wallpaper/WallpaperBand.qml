@@ -15,6 +15,8 @@ Rectangle {
     property int selectedIndex: -1
     property bool isActiveBand: false
 
+    signal activateRequested()
+
     readonly property int bandHeight: 120
     readonly property int cellWidth: 200
     readonly property int slant: 30
@@ -195,7 +197,7 @@ Rectangle {
                         }
                         onContainsMouseChanged: {
                             if (containsMouse) {
-                                band.isActiveBand = true;
+                                band.activateRequested();
                                 band.selectedIndex = cell.index;
                             }
                         }

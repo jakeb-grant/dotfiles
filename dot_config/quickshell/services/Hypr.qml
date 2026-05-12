@@ -31,14 +31,7 @@ Singleton {
         return root.workspaceRules[monitorName] ?? [];
     }
 
-    readonly property string activeWindowTitle: {
-        const toplevels = Hyprland.toplevels?.values ?? [];
-        for (const t of toplevels) {
-            if (t.lastIpcObject?.focus > 0)
-                return t.lastIpcObject.title ?? "";
-        }
-        return "";
-    }
+    readonly property string activeWindowTitle: Hyprland.activeToplevel?.title ?? ""
 
     function refreshWorkspaceRules(): void {
         wsRulesProc.running = true;

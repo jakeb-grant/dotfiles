@@ -34,15 +34,10 @@ ColumnLayout {
     readonly property var _activeEntries: activeRow === 0 ? singleEntries : setEntries
 
     function _switchRow(dir: int): void {
-        if (dir < 0 && activeRow === 1 && singleEntries.length > 0) {
-            setsBand.isActiveBand = false;
+        if (dir < 0 && activeRow === 1 && singleEntries.length > 0)
             activeRow = 0;
-            singlesBand.isActiveBand = true;
-        } else if (dir > 0 && activeRow === 0 && setEntries.length > 0) {
-            singlesBand.isActiveBand = false;
+        else if (dir > 0 && activeRow === 0 && setEntries.length > 0)
             activeRow = 1;
-            setsBand.isActiveBand = true;
-        }
     }
 
     Keys.onPressed: event => {
@@ -154,10 +149,7 @@ ColumnLayout {
         Layout.fillWidth: true
         entries: root.singleEntries
         isActiveBand: root.activeRow === 0
-        onIsActiveBandChanged: {
-            if (isActiveBand)
-                root.activeRow = 0;
-        }
+        onActivateRequested: root.activeRow = 0
     }
 
     // ── Sets section ──
@@ -175,10 +167,7 @@ ColumnLayout {
         Layout.fillWidth: true
         entries: root.setEntries
         isActiveBand: root.activeRow === 1
-        onIsActiveBandChanged: {
-            if (isActiveBand)
-                root.activeRow = 1;
-        }
+        onActivateRequested: root.activeRow = 1
     }
 
     // ── Empty state ──

@@ -138,6 +138,7 @@ Singleton {
     }
 
     property int _gpuLineIndex: 0
+    property real _gpuRawUsed: 0  // raw bytes, AMD percent calc
 
     function _parseGpu(line: string): void {
         if (gpuType === "nvidia") {
@@ -165,13 +166,13 @@ Singleton {
             if (idx === 0) gpuPercent = val;
             else if (idx === 1) gpuTemp = Math.round(val / 1000);
             else if (idx === 2) {
+                _gpuRawUsed = val;
                 const mb = val / 1048576;
                 gpuMemUsed = mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : Math.round(mb) + " MB";
             } else if (idx === 3) {
                 const mb = val / 1048576;
                 gpuMemTotal = mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : Math.round(mb) + " MB";
-                const used = parseInt(gpuMemUsed);
-                gpuMemPercent = mb > 0 ? Math.round(parseInt(gpuMemUsed) / Math.round(mb) * 100) : 0;
+                gpuMemPercent = val > 0 ? Math.round(_gpuRawUsed / val * 100) : 0;
             }
         }
     }

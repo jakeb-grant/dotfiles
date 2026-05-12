@@ -52,8 +52,8 @@ Item {
         brightness: Utils.Theme.isDark ? -0.25 : 0.25
         saturation: Utils.Theme.isDark ? -0.1 : -0.25
 
-        Behavior on brightness { NumberAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
-        Behavior on saturation { NumberAnimation { duration: Utils.Theme._tt; easing.type: Easing.OutCubic } }
+        Behavior on brightness { NumberAnimation { duration: Utils.Theme.animDuration; easing.type: Easing.OutCubic } }
+        Behavior on saturation { NumberAnimation { duration: Utils.Theme.animDuration; easing.type: Easing.OutCubic } }
     }
 
     // Fallback solid when no wallpaper
@@ -347,7 +347,8 @@ Item {
                     Component.onCompleted: forceActiveFocus()
 
                     onActiveFocusChanged: {
-                        if (!activeFocus) forceActiveFocus()
+                        if (!activeFocus && Services.LockScreen.locked)
+                            forceActiveFocus()
                     }
 
                     Keys.onPressed: event => {

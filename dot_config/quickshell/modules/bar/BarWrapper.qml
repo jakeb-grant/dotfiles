@@ -10,7 +10,6 @@ Item {
 
     readonly property int exclusiveZone: Utils.Theme.barMargin + Utils.Theme.barWidth
 
-    // Used by Drawers.qml/PopoutWrapper.qml to find the bar's thickness axis.
     implicitWidth: Utils.Theme.isSide ? Utils.Theme.barWidth : parent.width
     implicitHeight: Utils.Theme.isTop ? Utils.Theme.barWidth : parent.height
 

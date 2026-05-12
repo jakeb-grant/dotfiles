@@ -20,7 +20,7 @@ Neutrals:  crust → mantle → base → surface0/1/2 → overlay0/1/2 → subte
 Accents:   rosewater, flamingo, pink, mauve, red, maroon, peach, yellow, green, teal, sky, sapphire, blue, lavender
 ```
 
-These have consistent *names* across all variants but different *values*. On Mocha (dark), `crust` is near-black; on Latte (light), `crust` is near-white. The neutral scale always goes dark-to-light within any given variant.
+These have consistent *names* across all variants but different *values*. On Mocha (dark), `crust` is near-black; on Latte (light), `crust` is near-white. The scale always runs from the background anchor (`crust`) to the foreground/text anchor (`text`) — dark-to-light on dark variants, light-to-dark on light ones.
 
 **2. Semantic roles** — purpose-driven aliases that map to different palette positions per variant:
 ```qml
@@ -77,6 +77,10 @@ readonly property color myRole: _qs.myRole ?? surface0  // default for dark
 | Destructive | `red` | Power button, disconnect |
 | Popout titles | `text` | Not accent — titles use primary text |
 | Header icons | `subtleText` | Popout header icons (non-interactive) |
+| Floating island corners | `islandRounding` | Popouts, launcher, notifications, bar |
+| Island ↔ bar/neighbor gap | `islandGap` | Spacing between floating surfaces |
+| Bar ↔ screen edge | `barMargin` | Bar's breathing room |
+| Island drop shadow | `islandShadow*` | Shadow color/blur/opacity/Y offset |
 
 ## Dimensions & Spacing
 
@@ -95,7 +99,11 @@ spacingNormal: 8      spacingLarge: 12
 
 // Rounding
 roundingSmall: 10     roundingNormal: 16     roundingFull: 999
-popoutRounding: 20
+
+// Floating islands
+islandRounding: 20    islandGap: 8
+islandShadowBlur: 24  islandShadowOpacity: 0.35    islandShadowY: 6
+barMargin: 4          barRounding: 16
 
 // Popouts
 popoutWidth: 280      popoutWidthNarrow: 180

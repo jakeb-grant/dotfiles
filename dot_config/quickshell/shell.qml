@@ -37,10 +37,7 @@ ShellRoot {
     GlobalShortcut {
         name: "notif-dismiss"
         description: "Dismiss latest notification"
-        onPressed: {
-            if (Services.Notifications.popups.length > 0)
-                Services.Notifications.animatedDismiss(Services.Notifications.popups[0]);
-        }
+        onPressed: Services.Notifications.dismissLatest()
     }
 
     GlobalShortcut {

@@ -134,15 +134,16 @@ Singleton {
 
         if (_autoSetOnRefresh && entries.length > 0) {
             let restored = false;
-            if (_savedWallpaper) {
+            const saved = _savedWallpaper;
+            _savedWallpaper = "";  // one-shot — consume regardless of match
+            if (saved) {
                 for (let i = 0; i < entries.length; i++) {
-                    if (entries[i].name === _savedWallpaper) {
+                    if (entries[i].name === saved) {
                         applyEntry(entries[i]);
                         restored = true;
                         break;
                     }
                 }
-                _savedWallpaper = "";
             }
             if (!restored) {
                 const idx = Math.floor(Math.random() * entries.length);

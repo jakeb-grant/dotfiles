@@ -118,7 +118,6 @@ Singleton {
     readonly property int barWidth: 36
     readonly property int barInnerWidth: 28
     readonly property int barPadding: 4
-    readonly property int barThickness: barWidth  // mode-agnostic: width for side, height for top
 
     // ── Sizes ──
     readonly property int iconSize: 20
@@ -159,7 +158,6 @@ Singleton {
     readonly property int roundingSmall: 10
     readonly property int roundingNormal: 16
     readonly property int roundingFull: 999
-    readonly property int popoutRounding: 20
 
     // ── Popout Dimensions ──
     readonly property int popoutWidth: 280
@@ -168,7 +166,6 @@ Singleton {
 
     // ── Notifications ──
     readonly property int notificationWidth: 360
-    readonly property int notificationCenterMaxHeight: 480
 
     // ── Launcher ──
     readonly property int launcherWidth: 560
@@ -219,10 +216,7 @@ Singleton {
     readonly property string iconFontFamily: "Material Symbols Rounded"
 
     // ── Animation Curves (MD3 BezierSpline) ──
-    readonly property var animCurveEmphasized: [0.05, 0, 2 / 15, 0.06, 1 / 6, 0.4, 5 / 24, 0.82, 0.25, 1, 1, 1]
     readonly property var animCurveStandard: [0.2, 0, 0, 1, 1, 1]
-    readonly property var animCurveEmphasizedAccel: [0.3, 0, 0.8, 0.15, 1, 1]
-    readonly property var animCurveEmphasizedDecel: [0.05, 0.7, 0.1, 1, 1, 1]
 
     // ── Animation Durations ──
     readonly property int animDuration: 400

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import QtQuick
+import qs.services as Services
 import qs.utils as Utils
 
 Singleton {
@@ -274,7 +275,7 @@ Singleton {
             _debounce.stop();
             _submenu = "wallpaper";
             query = "";
-            Wallpaper.refreshForLauncher();
+            Services.Wallpaper.refreshForLauncher();
             return;
         case "keybind":
         case "action":

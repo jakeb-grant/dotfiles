@@ -51,10 +51,7 @@ ColumnLayout {
             visible: headerRow.isConnected && Services.Network.ssid !== ""
             spacing: Utils.Theme.spacingTiny
             Layout.fillWidth: true
-            opacity: 0
-
-            Component.onCompleted: opacity = visible ? 1 : 0
-            onVisibleChanged: opacity = visible ? 1 : 0
+            opacity: visible ? 1 : 0
 
             Behavior on opacity {
                 NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
@@ -96,10 +93,7 @@ ColumnLayout {
             color: Utils.Theme.text
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
-            opacity: 0
-
-            Component.onCompleted: opacity = visible ? 1 : 0
-            onVisibleChanged: opacity = visible ? 1 : 0
+            opacity: visible ? 1 : 0
 
             Behavior on opacity {
                 NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }

@@ -41,7 +41,7 @@ Singleton {
     property real _lastTimestamp: 0
 
     Timer {
-        interval: 250
+        interval: 1000
         running: root.isPlaying
         repeat: true
         onTriggered: {

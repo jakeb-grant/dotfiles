@@ -171,7 +171,7 @@ Variants {
                     ? (Utils.Theme.barMargin + Utils.Theme.barWidth + Utils.Theme.islandGap)
                     : Utils.Theme.barMargin
                 width: Utils.Theme.notificationWidth
-                spacing: Utils.Theme.spacingNormal
+                spacing: Utils.Theme.islandGap
 
                 Repeater {
                     model: Services.Notifications.popups
