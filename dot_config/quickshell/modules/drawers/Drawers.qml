@@ -124,7 +124,7 @@ Variants {
                 width: lw
                 height: lh
                 visible: lh > 1
-                color: Utils.Theme.mantleAlpha
+                color: Utils.Theme.launcherBg
                 radius: Utils.Theme.islandRounding
 
                 Behavior on width {

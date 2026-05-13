@@ -146,6 +146,10 @@ Singleton {
     readonly property int islandRounding: _qs.islandRounding ?? 20
     readonly property int islandGap: _qs.islandGap ?? 8
     readonly property real islandOpacity: _qs.islandOpacity ?? 0.9
+    // launcherOpacity: separate knob because the launcher overlaps more
+    // content than the other islands; defaults higher so its body stays
+    // readable.
+    readonly property real launcherOpacity: _qs.launcherOpacity ?? 0.95
     readonly property int islandShadowBlur: _qs.islandShadowBlur ?? 24
     readonly property real islandShadowOpacity: _qs.islandShadowOpacity ?? 0.35
     readonly property int islandShadowY: _qs.islandShadowY ?? 6
@@ -157,6 +161,7 @@ Singleton {
     // Bindings track theme transitions because mantle/surface0 are animated.
     readonly property color mantleAlpha: Qt.rgba(mantle.r, mantle.g, mantle.b, islandOpacity)
     readonly property color surface0Alpha: Qt.rgba(surface0.r, surface0.g, surface0.b, islandOpacity)
+    readonly property color launcherBg: Qt.rgba(mantle.r, mantle.g, mantle.b, launcherOpacity)
 
     // ── Rounding ──
     readonly property int roundingSmall: 10
