@@ -27,8 +27,10 @@ Rectangle {
     readonly property HyprlandMonitor monitor: Services.Hypr.monitorFor(screen)
     readonly property int activeWsId: monitor?.activeWorkspace?.id ?? -1
 
-    // Configured workspace IDs for this monitor from hyprctl workspacerules
-    readonly property var configuredIds: Services.Hypr.workspaceIdsFor(monitor?.name ?? "")
+    // Configured workspace IDs for this monitor from hyprctl workspacerules.
+    // Reference workspaceRules directly so the binding re-evaluates when the
+    // map updates (a function call would hide the dependency from QML).
+    readonly property var configuredIds: Services.Hypr.workspaceRules[monitor?.name ?? ""] ?? []
 
     // Set of occupied workspace IDs (workspaces that actually exist right now)
     readonly property var occupiedIds: (Services.Hypr.workspaces?.values ?? [])
