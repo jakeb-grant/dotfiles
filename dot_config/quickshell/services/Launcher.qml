@@ -215,6 +215,16 @@ Singleton {
         onTriggered: root._filter()
     }
 
+    // Force a pending debounced filter to run now. Without this, hitting Enter
+    // within the debounce window launches stale/empty results — the "didn't
+    // launch on the first try" symptom for fast typists.
+    function flush(): void {
+        if (_debounce.running) {
+            _debounce.stop();
+            _filter();
+        }
+    }
+
     function toggle(): void {
         visible = !visible;
     }
@@ -228,6 +238,19 @@ Singleton {
             return true;
         }
         return false;
+    }
+
+    // Launch through Hyprland's own exec so the new window inherits the
+    // workspace active at launch time (Hyprland tracks the spawned PID).
+    // Spawning detached (execDetached / DesktopEntry.execute) skips this,
+    // leaving the window to land on whatever workspace is focused at map time.
+    // Dispatch strings are evaluated as Lua by this Hyprland, so call the
+    // hl.dsp.exec_cmd API. Each argv item is shell-quoted, then the whole
+    // command line is escaped for the Lua double-quoted string literal.
+    function _execTracked(argv): void {
+        const cmd = argv.map(a => "'" + String(a).replace(/'/g, "'\\''") + "'").join(" ");
+        const lua = cmd.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        Hyprland.dispatch('hl.dsp.exec_cmd("' + lua + '")');
     }
 
     function launch(result): void {
@@ -250,9 +273,9 @@ Singleton {
             return;
         case "app":
             if (result._data.runInTerminal) {
-                Quickshell.execDetached(["ghostty", "-e", ...result._data.command]);
+                _execTracked(["ghostty", "-e", ...result._data.command]);
             } else {
-                result._data.execute();
+                _execTracked(result._data.command);
             }
             break;
         case "window":

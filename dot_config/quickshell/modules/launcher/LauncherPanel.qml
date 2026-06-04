@@ -338,6 +338,7 @@ ColumnLayout {
                         break;
                     case Qt.Key_Return:
                     case Qt.Key_Enter: {
+                        Services.Launcher.flush();
                         const len = Services.Launcher.results.length;
                         if (len > 0) {
                             const idx = Math.min(Services.Launcher.selectedIndex, len - 1);
