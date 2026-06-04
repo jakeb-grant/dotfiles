@@ -17,4 +17,5 @@ services:
       - 3389:3389/udp
     volumes:
       - $HOME/Windows:/storage
+      - $HOME/WinShared:/shared   # host <-> VM file exchange ("Shared" on Win desktop)
     stop_grace_period: 2m

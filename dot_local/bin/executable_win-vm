@@ -24,6 +24,11 @@ ensure_docker() {
         notify "Starting docker daemon..."
         pkexec systemctl start docker
     fi
+
+    # Ensure the host-side shared folder exists before the bind mount. Creating
+    # it here (vs. letting Docker auto-create it) keeps it owned by us, and makes
+    # the setup reproducible on a fresh machine without tracking its contents.
+    mkdir -p "$HOME/WinShared"
 }
 
 is_running() {
@@ -89,13 +94,13 @@ case "${1:-start-and-open}" in
         fi
         ;;
     open)
-        sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+        sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
         ;;
     start-and-open)
         ensure_docker
         if is_running; then
             notify "Connecting to VM..."
-            sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+            sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
         else
             docker compose -f "$COMPOSE_FILE" up -d
             notify "Starting VM... Waiting for RDP to become available"
@@ -103,7 +108,7 @@ case "${1:-start-and-open}" in
                 if timeout 1 bash -c 'echo > /dev/tcp/localhost/3389' 2>/dev/null; then
                     sleep 2  # Brief settle after port opens
                     notify "Connecting to VM..."
-                    sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:tofu +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+                    sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
                     exit 0
                 fi
                 sleep 2
