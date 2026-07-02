@@ -19,4 +19,4 @@ alias ls='ls --color=auto'
 alias grep='grep --color=auto'
 
 # fnm (Fast Node Manager)
-eval "$(fnm env)"
+command -v fnm >/dev/null && eval "$(fnm env)"

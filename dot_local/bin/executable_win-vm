@@ -15,7 +15,7 @@ ensure_docker() {
     if ! groups | grep -q '\bdocker\b'; then
         notify "Adding $USER to docker group..."
         pkexec usermod -aG docker "$USER"
-        notify "Added to docker group. Please restart your system, then run this again." critical
+        notify "Added to docker group. Log out and back in, then run this again." critical
         exit 1
     fi
 

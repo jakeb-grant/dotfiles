@@ -6,7 +6,8 @@ general {
 
 background {
     monitor =
-    path = ~/.config/wallpapers/{< _wallpaper >}
+    path = screenshot
+    color = {< base | hypr_rgb >}
     blur_passes = 3
     blur_size = 6
     noise = 0.02

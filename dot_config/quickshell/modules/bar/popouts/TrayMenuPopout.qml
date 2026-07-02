@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
-import Quickshell.Io
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import QtQuick
@@ -14,24 +13,6 @@ ColumnLayout {
     id: root
 
     property SystemTrayItem trayItem
-
-    // Cache of icon names that exist in installed icon themes
-    property var _iconCache: ({})
-
-    Component.onCompleted: iconCacheProc.running = true
-
-    Process {
-        id: iconCacheProc
-        // Collect all icon filenames across all installed themes
-        command: ["sh", "-c", "find /usr/share/icons -type f \\( -name '*.svg' -o -name '*.png' \\) -printf '%f\\n' | sort -u"]
-
-        stdout: SplitParser {
-            onRead: data => {
-                const name = data.trim().replace(/\.(svg|png)$/, "");
-                if (name !== "") root._iconCache[name] = true;
-            }
-        }
-    }
 
     function navigateWithGrace() {
         Services.Popout.graceActive = true;
@@ -275,7 +256,7 @@ ColumnLayout {
                                 }
                                 return s;
                             }
-                            readonly property bool knownIcon: iconSrc !== "" && (iconName in root._iconCache || iconSrc.startsWith("image://qsimage/"))
+                            readonly property bool knownIcon: iconSrc !== "" && (iconName in Services.IconCache.icons || iconSrc.startsWith("image://qsimage/"))
                             visible: knownIcon
                             source: knownIcon ? iconSrc : ""
                             anchors.fill: parent

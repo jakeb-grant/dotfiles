@@ -6,9 +6,6 @@
 {{-   $igpu_pci = output "sh" "-c" "lspci -d ::03xx | grep -viE 'nvidia' | head -1 | cut -d' ' -f1 | sed 's/^/0000:/'" | trim -}}
 {{- end -}}
 [data]
-    # email = {{ promptStringOnce . "email" "Your email address" "86214494+jakeb-grant@users.noreply.github.com" | quote }}
-    # name = {{ promptStringOnce . "name" "Your name" "jacob" | quote }}
-    # hostname = {{ .chezmoi.hostname | quote }}
     graphics = {{ $graphics | quote }}
 {{- if eq $graphics "prime" }}
     igpu_pci = {{ promptStringOnce . "igpu_pci" (printf "Integrated GPU PCI ID [detected: %s]" $igpu_pci) $igpu_pci | quote }}

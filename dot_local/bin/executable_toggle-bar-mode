@@ -2,18 +2,21 @@
 """Toggle Quickshell bar between sidebar and topbar mode."""
 
 import json
-import os
+from pathlib import Path
 
-palette = os.path.expanduser("~/.config/palette/active.json")
+# Write both copies like theme-switch does, so `chezmoi apply` doesn't revert the toggle
+live = Path.home() / ".config/palette/active.json"
+source = Path.home() / ".local/share/chezmoi/dot_config/palette/active.json"
 
-with open(palette) as f:
+with open(live) as f:
     data = json.load(f)
 
 qs = data.setdefault("_quickshell", {})
 current = qs.get("barMode", "side")
 qs["barMode"] = "top" if current == "side" else "side"
 
-with open(palette, "w") as f:
-    json.dump(data, f, indent=2)
+for palette in (live, source):
+    with open(palette, "w") as f:
+        json.dump(data, f, indent=2)
 
 print(f"Bar mode: {qs['barMode']}")

@@ -161,7 +161,7 @@ Theme variables (Jinja2, processed by `theme-switch`):
 {< surface0 | hypr_rgba(0.93) >}      # Hyprland format (still used by hyprlock)
 ```
 
-Lua-side colors in `hyprland.lua.theme` (via `palette.lua`):
+Lua-side colors in `hyprland.lua.tmpl` (via `palette.lua`):
 ```lua
 local p = require("palette")
 p.surface0_rgba(0.93)                 -- "rgba(313244ed)"
@@ -236,7 +236,7 @@ On first run, chezmoi prompts for machine-specific settings stored in `~/.config
 
 | Variable | Options | Description |
 |----------|---------|-------------|
-| `graphics` | `amd`, `prime`, `nvidia` | GPU driver configuration |
+| `graphics` | `amd`, `intel`, `prime`, `nvidia` | GPU driver configuration |
 | `igpu_pci` | PCI ID (auto-detected) | Integrated GPU — only prompted for `prime` |
 | `dgpu_pci` | PCI ID (auto-detected) | Discrete GPU — only prompted for `prime` |
 

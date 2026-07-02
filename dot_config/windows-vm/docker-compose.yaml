@@ -12,9 +12,10 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - 8006:8006      # Web viewer
-      - 3389:3389/tcp  # RDP
-      - 3389:3389/udp
+      # Localhost only — the VM runs with dockurr default creds
+      - 127.0.0.1:8006:8006      # Web viewer
+      - 127.0.0.1:3389:3389/tcp  # RDP
+      - 127.0.0.1:3389:3389/udp
     volumes:
       - $HOME/Windows:/storage
       - $HOME/WinShared:/shared   # host <-> VM file exchange ("Shared" on Win desktop)
