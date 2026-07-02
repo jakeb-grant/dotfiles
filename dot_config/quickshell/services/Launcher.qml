@@ -24,81 +24,7 @@ Singleton {
     property var _themes: []
     property var _themeBuffer: []
 
-    // ── Static data ──
-
-    readonly property var _keybinds: (function() {
-        const items = [
-            { name: "Terminal",            shortcut: "Super + Return",        command:  "ghostty",                                            keywords: ["ghostty","shell"] },
-            { name: "Browser",             shortcut: "Super + Shift + B",     command:  "xdg-open https://",                                  keywords: ["firefox","web"] },
-            { name: "File Manager",        shortcut: "Super + Shift + F",     command:  "pane-fm",                                            keywords: ["panefm","files"] },
-            { name: "Editor",              shortcut: "Super + Shift + Z",     command:  "zeditor",                                            keywords: ["zed","code"] },
-            { name: "Close Window",        shortcut: "Super + W",             dispatch: 'hl.dsp.window.close()',                              keywords: ["kill","quit"] },
-            { name: "Toggle Floating",     shortcut: "Super + T",             dispatch: 'hl.dsp.window.float({ action = "toggle" })',         keywords: ["tile","float"] },
-            { name: "Fullscreen",          shortcut: "Super + F",             dispatch: 'hl.dsp.window.fullscreen()',                         keywords: ["maximize"] },
-            { name: "Pin Window",          shortcut: "Super + O",             dispatch: 'hl.dsp.window.pin()',                                keywords: ["sticky"] },
-            { name: "Next Workspace",      shortcut: "Super + Tab",           dispatch: 'hl.dsp.focus({ workspace = "e+1" })',                keywords: ["switch"] },
-            { name: "Previous Workspace",  shortcut: "Super + Shift + Tab",   dispatch: 'hl.dsp.focus({ workspace = "e-1" })',                keywords: ["switch"] },
-            { name: "Last Workspace",      shortcut: "Super + Ctrl + Tab",    dispatch: 'hl.dsp.focus({ workspace = "previous" })',           keywords: ["switch","previous","back"] },
-            { name: "Scratchpad",          shortcut: "Super + S",             dispatch: 'hl.dsp.workspace.toggle_special("magic")',           keywords: ["hidden","stash"] },
-            { name: "Dismiss Notification",shortcut: "Super + ,",             dispatch: 'hl.dsp.global("quickshell:notif-dismiss")',          keywords: ["close","clear"] },
-            { name: "Dismiss All",         shortcut: "Super + Shift + ,",     dispatch: 'hl.dsp.global("quickshell:notif-dismiss-all")',      keywords: ["clear","close"] },
-            { name: "Screenshot (Area)",   shortcut: "Print",                 command:  "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim -g \"$(slurp)\" \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","snip"] },
-            { name: "Screenshot (Full)",   shortcut: "Shift + Print",         command:  "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","screen"] },
-            { name: "Color Picker",        shortcut: "Super + Print",         command:  "hyprpicker -a",                                      keywords: ["pick","eyedropper"] },
-            { name: "Lock Screen",         shortcut: "Super + L",             dispatch: 'hl.dsp.global("quickshell:lock")',                   keywords: ["lock"] },
-            { name: "Toggle Bar Mode",     shortcut: "Super + Shift + T",     command:  "toggle-bar-mode",                                    keywords: ["sidebar","topbar","bar","layout","swap"] },
-            { name: "Logout",              shortcut: "",                      dispatch: 'hl.dsp.exit()',                                      keywords: ["exit"] },
-            { name: "Suspend",             shortcut: "",                      command:  "systemctl suspend",                                  keywords: ["sleep"] },
-            { name: "Reboot",              shortcut: "",                      command:  "systemctl reboot",                                   keywords: ["restart"] },
-            { name: "Shutdown",            shortcut: "",                      command:  "systemctl poweroff",                                 keywords: ["poweroff"] },
-        ];
-        for (const d of [{key:"Left",dir:"l"},{key:"Right",dir:"r"},{key:"Up",dir:"u"},{key:"Down",dir:"d"}]) {
-            items.push({ name: "Swap Window " + d.key, shortcut: "Super + Shift + " + d.key,
-                         dispatch: 'hl.dsp.window.swap({ direction = "' + d.dir + '" })', keywords: ["move","swap"] });
-        }
-        for (const r of [{name:"Wider",sc:"=",x:50,y:0,kw:"grow"},{name:"Narrower",sc:"-",x:-50,y:0,kw:"shrink"},
-                         {name:"Taller",sc:"Shift + =",x:0,y:50,kw:"grow"},{name:"Shorter",sc:"Shift + -",x:0,y:-50,kw:"shrink"}]) {
-            items.push({ name: "Resize " + r.name, shortcut: "Super + " + r.sc,
-                         dispatch: 'hl.dsp.window.resize({ x = ' + r.x + ', y = ' + r.y + ', relative = true })', keywords: [r.kw,"resize"] });
-        }
-        return items;
-    })()
-
-    readonly property var _actions: [
-        { name: "Upkeep", icon: "", materialIcon: "system_update", command: "ghostty -e upkeep", keywords: ["update","upgrade","rebuild","maintenance"] },
-        { name: "Display", icon: "", materialIcon: "monitor", command: "ghostty -e hyprpier mgr", keywords: ["monitor","screen","resolution"] },
-        { name: "About", icon: "", materialIcon: "info", command: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'", keywords: ["info","specs","hardware","fastfetch"] },
-        { name: "Process Manager", icon: "", materialIcon: "monitoring", command: "ghostty -e btop", keywords: ["htop","btop","cpu","memory","task"] },
-        { name: "Windows VM", icon: "", materialIcon: "computer", command: "win-vm", keywords: ["vm","virtual","machine","windows"] },
-    ]
-
-    readonly property var _mainItems: [
-        { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds" },
-        { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard" },
-        { type: "submenu", name: "Themes", subtitle: "", icon: "", materialIcon: "palette", score: 0, _data: "themes" },
-        { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "" },
-        { type: "action", name: "Upkeep", subtitle: "", icon: "", materialIcon: "system_update", score: 0, _data: "ghostty -e upkeep" },
-        { type: "action", name: "Display", subtitle: "", icon: "", materialIcon: "monitor", score: 0, _data: "ghostty -e hyprpier mgr" },
-        { type: "action", name: "About", subtitle: "", icon: "", materialIcon: "info", score: 0, _data: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" },
-        { type: "action", name: "Windows VM", subtitle: "", icon: "", materialIcon: "computer", score: 0, _data: "win-vm" },
-    ]
-
-    readonly property var _allKeybindItems: {
-        const out = [];
-        for (const kb of _keybinds) {
-            out.push({
-                type: "keybind",
-                name: kb.name,
-                subtitle: kb.shortcut,
-                icon: "",
-                materialIcon: "keyboard",
-                score: 0,
-                _data: kb.dispatch ?? kb.command,
-                _isDispatch: !!kb.dispatch,
-            });
-        }
-        return out;
-    }
+    // Static keybind/action/main-menu tables live in LauncherProviders.qml.
 
     // ── Process children ──
 
@@ -158,20 +84,7 @@ Singleton {
 
     function _scanThemes(): void {
         _themeScanProc.running = false;
-        _themeScanProc.command = ["python3", "-c",
-            "import json, os\n" +
-            "d = '" + Utils.Theme.palettePath + "'\n" +
-            "for f in sorted(os.listdir(d)):\n" +
-            "    if f == 'active.json' or not f.endswith('.json'): continue\n" +
-            "    try:\n" +
-            "        p = json.load(open(os.path.join(d, f)))\n" +
-            "        name = p.get('_name','')\n" +
-            "        if not name: continue\n" +
-            "        qs = p.get('_quickshell', {})\n" +
-            "        accent = qs.get('accent', p.get('blue',''))\n" +
-            "        sw = '|'.join([p.get('base',''), accent, p.get('red',''), p.get('green',''), p.get('yellow',''), p.get('mauve','')])\n" +
-            "        print(f'{f}|{name}|{sw}')\n" +
-            "    except: pass\n"];
+        _themeScanProc.command = ["theme-switch", "--list"];
         _themeScanProc.running = true;
     }
 
@@ -198,7 +111,7 @@ Singleton {
             query = "";
             selectedIndex = 0;
             _submenu = "";
-            results = _mainItems;
+            results = Services.LauncherProviders.mainItems;
             _clipboardEntries = [];
             _clipListProc.running = true;
             activeScreen = Hyprland.focusedMonitor?.name ?? "";
@@ -233,7 +146,7 @@ Singleton {
         if (_submenu !== "") {
             _submenu = "";
             query = "";
-            results = _mainItems;
+            results = Services.LauncherProviders.mainItems;
             selectedIndex = 0;
             return true;
         }
@@ -260,7 +173,7 @@ Singleton {
             _submenu = result._data;
             query = "";
             if (result._data === "keybinds") {
-                results = _allKeybindItems;
+                results = Services.LauncherProviders.keybindItems;
                 selectedIndex = 0;
             } else if (result._data === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
@@ -316,29 +229,36 @@ Singleton {
 
     // ── Provider functions ──
 
+    // Shared scoring pass: `primary` earns the startsWith/includes ladder
+    // (w[0]/w[1]), `secondary` only the catch-all tier (w[2]). Any term that
+    // misses both fields disqualifies the candidate. Both fields must already
+    // be lowercased; terms never contain whitespace (query is split on it),
+    // so secondary can safely be several fields joined with spaces.
+    function _score(terms, primary, secondary, w): real {
+        let score = 0;
+        for (const term of terms) {
+            if (primary.startsWith(term)) score += w[0];
+            else if (primary.includes(term)) score += w[1];
+            else if (secondary.includes(term)) score += w[2];
+            else return 0;
+        }
+        return score;
+    }
+
     function _filterApps(terms): var {
-        const apps = DesktopEntries.applications.values;
         const out = [];
-        for (const app of apps) {
+        for (const app of DesktopEntries.applications.values) {
             const name = (app.name ?? "").toLowerCase();
-            const comment = (app.comment ?? "").toLowerCase();
-            const cats = (app.categories ?? []).join(" ").toLowerCase();
-            let score = 0;
-            for (const term of terms) {
-                if (name.startsWith(term)) score += 3;
-                else if (name.includes(term)) score += 2;
-                else if (comment.includes(term) || cats.includes(term)) score += 1;
-                else { score = 0; break; }
-            }
+            const rest = ((app.comment ?? "") + " " + (app.categories ?? []).join(" ")).toLowerCase();
+            const score = _score(terms, name, rest, [3, 2, 1]);
             if (score > 0) {
-                const lengthPenalty = name.length / 100;
                 out.push({
                     type: "app",
                     name: app.name ?? "",
                     subtitle: app.comment ?? "",
                     icon: app.icon ?? "",
                     materialIcon: "",
-                    score: score - lengthPenalty,
+                    score: score - name.length / 100,
                     _data: app,
                 });
             }
@@ -347,19 +267,11 @@ Singleton {
     }
 
     function _filterWindows(terms): var {
-        const toplevels = Hyprland.toplevels?.values ?? [];
         const out = [];
-        for (const t of toplevels) {
+        for (const t of Hyprland.toplevels?.values ?? []) {
             const title = (t.lastIpcObject?.title ?? "").toLowerCase();
             const cls = (t.lastIpcObject?.class ?? "").toLowerCase();
-            const addr = t.lastIpcObject?.address ?? "";
-            let score = 0;
-            for (const term of terms) {
-                if (title.startsWith(term)) score += 3;
-                else if (title.includes(term)) score += 2;
-                else if (cls.includes(term)) score += 1;
-                else { score = 0; break; }
-            }
+            const score = _score(terms, title, cls, [3, 2, 1]);
             if (score > 0) {
                 out.push({
                     type: "window",
@@ -368,7 +280,7 @@ Singleton {
                     icon: "",
                     materialIcon: "desktop_windows",
                     score: score,
-                    _data: addr,
+                    _data: t.lastIpcObject?.address ?? "",
                 });
             }
         }
@@ -377,17 +289,9 @@ Singleton {
 
     function _filterKeybinds(terms): var {
         const out = [];
-        for (const kb of _keybinds) {
-            const name = kb.name.toLowerCase();
-            const shortcut = kb.shortcut.toLowerCase();
-            const kw = kb.keywords.join(" ");
-            let score = 0;
-            for (const term of terms) {
-                if (name.startsWith(term)) score += 2.5;
-                else if (name.includes(term)) score += 1.5;
-                else if (shortcut.includes(term) || kw.includes(term)) score += 0.5;
-                else { score = 0; break; }
-            }
+        for (const kb of Services.LauncherProviders.keybinds) {
+            const rest = (kb.shortcut + " " + kb.keywords.join(" ")).toLowerCase();
+            const score = _score(terms, kb.name.toLowerCase(), rest, [2.5, 1.5, 0.5]);
             if (score > 0) {
                 out.push({
                     type: "keybind",
@@ -406,16 +310,9 @@ Singleton {
 
     function _filterActions(terms): var {
         const out = [];
-        for (const act of _actions) {
-            const name = act.name.toLowerCase();
-            const kw = act.keywords.join(" ");
-            let score = 0;
-            for (const term of terms) {
-                if (name.startsWith(term)) score += 2.5;
-                else if (name.includes(term)) score += 1.5;
-                else if (kw.includes(term)) score += 0.5;
-                else { score = 0; break; }
-            }
+        for (const act of Services.LauncherProviders.actions) {
+            const score = _score(terms, act.name.toLowerCase(),
+                                 act.keywords.join(" "), [2.5, 1.5, 0.5]);
             if (score > 0) {
                 out.push({
                     type: "action",
@@ -479,15 +376,13 @@ Singleton {
         return out;
     }
 
+    // Boolean filter, not the ladder: every term must appear, fixed score 1
+    // (clipboard entries rank below any real ladder hit in the unified list).
     function _filterClipboard(terms): var {
         const out = [];
         for (const entry of _clipboardEntries) {
             const text = entry.text.toLowerCase();
-            let match = true;
-            for (const term of terms) {
-                if (!text.includes(term)) { match = false; break; }
-            }
-            if (match) {
+            if (terms.every(term => text.includes(term))) {
                 const fmt = _formatClipEntry(entry);
                 out.push({
                     type: "clipboard",
@@ -531,13 +426,13 @@ Singleton {
     function _filter(): void {
         if (effectiveQuery.length === 0) {
             if (_submenu === "keybinds") {
-                results = _allKeybindItems;
+                results = Services.LauncherProviders.keybindItems;
             } else if (_submenu === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
             } else if (_submenu === "themes") {
                 results = _themesToResults();
             } else {
-                results = _mainItems;
+                results = Services.LauncherProviders.mainItems;
             }
             selectedIndex = 0;
             return;

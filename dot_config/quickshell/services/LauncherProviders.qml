@@ -1,0 +1,83 @@
+pragma Singleton
+
+import Quickshell
+import QtQuick
+
+// Static launcher data — keybind/action tables and the main menu. The state
+// machine, filtering, and dispatch live in Launcher.qml; this file is only
+// edited to add or change entries.
+Singleton {
+    readonly property var keybinds: (function() {
+        const items = [
+            { name: "Terminal",            shortcut: "Super + Return",        command:  "ghostty",                                            keywords: ["ghostty","shell"] },
+            { name: "Browser",             shortcut: "Super + Shift + B",     command:  "xdg-open https://",                                  keywords: ["firefox","web"] },
+            { name: "File Manager",        shortcut: "Super + Shift + F",     command:  "pane-fm",                                            keywords: ["panefm","files"] },
+            { name: "Editor",              shortcut: "Super + Shift + Z",     command:  "zeditor",                                            keywords: ["zed","code"] },
+            { name: "Close Window",        shortcut: "Super + W",             dispatch: 'hl.dsp.window.close()',                              keywords: ["kill","quit"] },
+            { name: "Toggle Floating",     shortcut: "Super + T",             dispatch: 'hl.dsp.window.float({ action = "toggle" })',         keywords: ["tile","float"] },
+            { name: "Fullscreen",          shortcut: "Super + F",             dispatch: 'hl.dsp.window.fullscreen()',                         keywords: ["maximize"] },
+            { name: "Pin Window",          shortcut: "Super + O",             dispatch: 'hl.dsp.window.pin()',                                keywords: ["sticky"] },
+            { name: "Next Workspace",      shortcut: "Super + Tab",           dispatch: 'hl.dsp.focus({ workspace = "e+1" })',                keywords: ["switch"] },
+            { name: "Previous Workspace",  shortcut: "Super + Shift + Tab",   dispatch: 'hl.dsp.focus({ workspace = "e-1" })',                keywords: ["switch"] },
+            { name: "Last Workspace",      shortcut: "Super + Ctrl + Tab",    dispatch: 'hl.dsp.focus({ workspace = "previous" })',           keywords: ["switch","previous","back"] },
+            { name: "Scratchpad",          shortcut: "Super + S",             dispatch: 'hl.dsp.workspace.toggle_special("magic")',           keywords: ["hidden","stash"] },
+            { name: "Dismiss Notification",shortcut: "Super + ,",             dispatch: 'hl.dsp.global("quickshell:notif-dismiss")',          keywords: ["close","clear"] },
+            { name: "Dismiss All",         shortcut: "Super + Shift + ,",     dispatch: 'hl.dsp.global("quickshell:notif-dismiss-all")',      keywords: ["clear","close"] },
+            { name: "Screenshot (Area)",   shortcut: "Print",                 command:  "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim -g \"$(slurp)\" \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","snip"] },
+            { name: "Screenshot (Full)",   shortcut: "Shift + Print",         command:  "sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && grim \"$f\" && wl-copy < \"$f\"'", keywords: ["capture","screen"] },
+            { name: "Color Picker",        shortcut: "Super + Print",         command:  "hyprpicker -a",                                      keywords: ["pick","eyedropper"] },
+            { name: "Lock Screen",         shortcut: "Super + L",             dispatch: 'hl.dsp.global("quickshell:lock")',                   keywords: ["lock"] },
+            { name: "Toggle Bar Mode",     shortcut: "Super + Shift + T",     command:  "toggle-bar-mode",                                    keywords: ["sidebar","topbar","bar","layout","swap"] },
+            { name: "Logout",              shortcut: "",                      dispatch: 'hl.dsp.exit()',                                      keywords: ["exit"] },
+            { name: "Suspend",             shortcut: "",                      command:  "systemctl suspend",                                  keywords: ["sleep"] },
+            { name: "Reboot",              shortcut: "",                      command:  "systemctl reboot",                                   keywords: ["restart"] },
+            { name: "Shutdown",            shortcut: "",                      command:  "systemctl poweroff",                                 keywords: ["poweroff"] },
+        ];
+        for (const d of [{key:"Left",dir:"l"},{key:"Right",dir:"r"},{key:"Up",dir:"u"},{key:"Down",dir:"d"}]) {
+            items.push({ name: "Swap Window " + d.key, shortcut: "Super + Shift + " + d.key,
+                         dispatch: 'hl.dsp.window.swap({ direction = "' + d.dir + '" })', keywords: ["move","swap"] });
+        }
+        for (const r of [{name:"Wider",sc:"=",x:50,y:0,kw:"grow"},{name:"Narrower",sc:"-",x:-50,y:0,kw:"shrink"},
+                         {name:"Taller",sc:"Shift + =",x:0,y:50,kw:"grow"},{name:"Shorter",sc:"Shift + -",x:0,y:-50,kw:"shrink"}]) {
+            items.push({ name: "Resize " + r.name, shortcut: "Super + " + r.sc,
+                         dispatch: 'hl.dsp.window.resize({ x = ' + r.x + ', y = ' + r.y + ', relative = true })', keywords: [r.kw,"resize"] });
+        }
+        return items;
+    })()
+
+    readonly property var actions: [
+        { name: "Upkeep", icon: "", materialIcon: "system_update", command: "ghostty -e upkeep", keywords: ["update","upgrade","rebuild","maintenance"] },
+        { name: "Display", icon: "", materialIcon: "monitor", command: "ghostty -e hyprpier mgr", keywords: ["monitor","screen","resolution"] },
+        { name: "About", icon: "", materialIcon: "info", command: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'", keywords: ["info","specs","hardware","fastfetch"] },
+        { name: "Process Manager", icon: "", materialIcon: "monitoring", command: "ghostty -e btop", keywords: ["htop","btop","cpu","memory","task"] },
+        { name: "Windows VM", icon: "", materialIcon: "computer", command: "win-vm", keywords: ["vm","virtual","machine","windows"] },
+    ]
+
+    readonly property var mainItems: [
+        { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds" },
+        { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard" },
+        { type: "submenu", name: "Themes", subtitle: "", icon: "", materialIcon: "palette", score: 0, _data: "themes" },
+        { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "" },
+        { type: "action", name: "Upkeep", subtitle: "", icon: "", materialIcon: "system_update", score: 0, _data: "ghostty -e upkeep" },
+        { type: "action", name: "Display", subtitle: "", icon: "", materialIcon: "monitor", score: 0, _data: "ghostty -e hyprpier mgr" },
+        { type: "action", name: "About", subtitle: "", icon: "", materialIcon: "info", score: 0, _data: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" },
+        { type: "action", name: "Windows VM", subtitle: "", icon: "", materialIcon: "computer", score: 0, _data: "win-vm" },
+    ]
+
+    readonly property var keybindItems: {
+        const out = [];
+        for (const kb of keybinds) {
+            out.push({
+                type: "keybind",
+                name: kb.name,
+                subtitle: kb.shortcut,
+                icon: "",
+                materialIcon: "keyboard",
+                score: 0,
+                _data: kb.dispatch ?? kb.command,
+                _isDispatch: !!kb.dispatch,
+            });
+        }
+        return out;
+    }
+}

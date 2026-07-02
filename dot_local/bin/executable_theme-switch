@@ -187,6 +187,29 @@ def load_palette(theme_name: str) -> dict:
         return json.load(f)
 
 
+def list_themes() -> None:
+    """Print one `file|name|swatch...` line per palette (Quickshell launcher
+    themes menu). Swatch order: base, accent, red, green, yellow, mauve."""
+    for palette_file in sorted(PALETTE_DIR.glob("*.json")):
+        if palette_file.name == "active.json":
+            continue
+        try:
+            p = json.loads(palette_file.read_text())
+            name = p.get("_name", "")
+            if not name:
+                continue
+            accent = p.get("_quickshell", {}).get("accent", p.get("blue", ""))
+            swatches = "|".join([
+                p.get("base", ""), accent, p.get("red", ""),
+                p.get("green", ""), p.get("yellow", ""), p.get("mauve", ""),
+            ])
+        except Exception:
+            # A malformed palette should drop itself from the menu, not the
+            # files sorted after it.
+            continue
+        print(f"{palette_file.name}|{name}|{swatches}")
+
+
 # The 26 color roles every palette must define (Catppuccin naming).
 REQUIRED_ROLES = [
     "crust", "mantle", "base", "surface0", "surface1", "surface2",
@@ -619,4 +642,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    if len(sys.argv) > 1 and sys.argv[1] == "--list":
+        list_themes()
+    else:
+        asyncio.run(main())
