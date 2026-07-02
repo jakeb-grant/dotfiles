@@ -116,7 +116,20 @@ Singleton {
             results = Services.LauncherProviders.mainItems;
             _clipboardEntries = [];
             _clipListProc.running = true;
-            activeScreen = Hyprland.focusedMonitor?.screen ?? null;
+            // Resolve to the Quickshell.screens instance — Drawers compares by
+            // object identity, and HyprlandMonitor.screen is a distinct wrapper
+            // for the same screen. focusedMonitor can also be null before any
+            // focus event, so fall back to the first screen.
+            const focusedName = Hyprland.focusedMonitor?.name ?? "";
+            const screens = Quickshell.screens;
+            let scr = null;
+            for (let i = 0; i < screens.length; i++) {
+                if (screens[i].name === focusedName) {
+                    scr = screens[i];
+                    break;
+                }
+            }
+            activeScreen = scr ?? screens[0] ?? null;
         } else {
             activeScreen = null;
         }
