@@ -140,12 +140,9 @@ hl.bind(mod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
 hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
 
--- Screenshots (save to ~/Pictures/Screenshots/ and copy to clipboard)
-local function screenshot(grab)
-  return hl.dsp.exec_cmd([[sh -c 'f=~/Pictures/Screenshots/$(date +%Y%m%d_%H%M%S).png && mkdir -p ~/Pictures/Screenshots && ]] .. grab .. [[ "$f" && wl-copy < "$f"']])
-end
-hl.bind("Print",         screenshot('grim -g "$(slurp)"'))
-hl.bind("SHIFT + Print", screenshot("grim"))
+-- Screenshots (~/.local/bin/screenshot: capture, clipboard, notification)
+hl.bind("Print",         hl.dsp.exec_cmd("screenshot region"))
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("screenshot full"))
 hl.bind(mod .. " + Print", hl.dsp.exec_cmd("hyprpicker -a"))
 
 -- Laptop function keys

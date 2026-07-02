@@ -111,6 +111,7 @@ knowledge/
     ├── appearance.json     # Selects "Palette" theme
     └── themes/Palette/     # Theme CSS template + manifest
 dot_local/bin/
+├── screenshot          # Capture (region/full) + clipboard + notification
 ├── theme-switch        # Theme switching utility
 ├── toggle-bar-mode     # Switch between sidebar and topbar layouts
 ├── wallpaper-split     # Split wide/panoramic images into per-monitor sets

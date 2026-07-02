@@ -1,0 +1,49 @@
+#!/bin/bash
+# Screenshot capture with clipboard copy and notification feedback.
+# Usage: screenshot region|full
+
+# no -e: every failure path is handled explicitly with || fail
+set -uo pipefail
+
+dir="$HOME/Pictures/Screenshots"
+
+fail() {
+    # || true: no notification daemon shouldn't kill the script
+    notify-send -a Screenshot -u critical "Screenshot failed" "$1" || true
+    exit 1
+}
+
+mkdir -p "$dir" || fail "Could not create $dir."
+
+# Stamp after slurp settles, not at launch — a second invocation queued
+# behind an open selection would otherwise reuse the same second.
+stamp() { file="$dir/$(date +%Y%m%d_%H%M%S).png"; }
+
+case "${1:-region}" in
+    region)
+        # Cancelled selection (Escape, exit 1) is deliberate — stay silent
+        geom=$(slurp) || { [ $? -eq 1 ] && exit 0 || fail "slurp could not start a selection."; }
+        stamp
+        grim -g "$geom" "$file" || fail "grim could not capture the selection."
+        ;;
+    full)
+        stamp
+        grim "$file" || fail "grim could not capture the screen."
+        ;;
+    *)
+        echo "usage: screenshot region|full" >&2
+        exit 2
+        ;;
+esac
+
+if ! wl-copy < "$file"; then
+    notify-send -a Screenshot -u critical "Screenshot saved, clipboard copy failed" "$file" || true
+    exit 1
+fi
+
+# image-path hint renders the capture as the card's thumbnail; -A implies
+# --wait, so the action id comes back on stdout when the button is pressed
+action=$(notify-send -a Screenshot -h "string:image-path:$file" -A open=Open \
+    "Screenshot captured" "Copied to clipboard · $(basename "$file")") || true
+[ "${action:-}" = "open" ] && exec xdg-open "$file"
+exit 0
