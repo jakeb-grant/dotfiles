@@ -99,6 +99,9 @@ dot_config/
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
 ├── grub/               # GRUB bootloader theme
+├── age/                # age recipients (public key) — ~/knowledge's git clean
+│                       #   filter encrypts personal/finance/** to this key
+│                       #   (decrypt side reads the private key from 1Password)
 ├── windows-vm/         # Windows VM (docker-compose)
 ├── palette/            # Theme palette definitions (JSON)
 └── wallpapers/         # Flat image pool + wallpapers.json config

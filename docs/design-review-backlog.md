@@ -207,7 +207,7 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 ### CHZ-5 · P2 · S — Vestigial and legacy pieces ✅ session 10
 
-- [x] ✅ session 10 — deleted from source (zero consumers confirmed again). Deployed `~/.config/age` left on disk, now unmanaged — remove by hand if unwanted.
+- [x] ~~✅ session 10 — deleted from source (zero consumers confirmed again)~~ **REVERTED session 10b — the "zero consumers" finding was wrong.** The consumer lives outside this repo: `~/knowledge`'s `.gitattributes` runs `personal/finance/**` through an age clean/smudge filter, and the clean script (`~/knowledge/scripts/age-encrypt.sh`) encrypts to `$HOME/.config/age/recipients`. (The smudge side pulls the private key from 1Password, which is why the recipient matched nothing in `~/.ssh`.) File restored and its consumer documented in the README tree so no future cleanup re-deletes it.
 - [x] ✅ session 10 — removed from source + README tree (git history preserves it). Deployed `~/.config/sddm-theme` left on disk, now unmanaged — remove by hand.
 - [x] ✅ session 10 — deleted.
 
