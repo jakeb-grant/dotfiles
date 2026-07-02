@@ -1,12 +1,14 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
 # pane-fm configuration
 # ~/.config/pane-fm/config.toml
 #
 # Changes are applied automatically (hot-reload).
 
 [general]
-# theme and light_icons are managed by theme-switch
-theme = "catppuccin-mocha"
-light_icons = false
+# Always the generated palette theme (themes/palette.css, rendered from
+# palette/active.json by chezmoi); light_icons follows the palette variant
+theme = "palette"
+light_icons = {{ eq $p._variant "light" }}
 
 # Terminal emulator for "Open Terminal Here" (` keybind)
 terminal = "ghostty"

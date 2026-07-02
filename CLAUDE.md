@@ -19,15 +19,15 @@ Palette JSON          theme-switch              Chezmoi Template            Fina
 - `{{ template "rgba" (list $p.crust 0.5) }}` → `rgba(17, 17, 27, 0.50)` (CSS)
 - `{{ template "rgb_values" $p.red }}` → `243, 139, 168` (CSS custom props)
 
-Templated this way: gtk-3.0, gtk-4.0, phylax, zed `settings.json`, yazi, hyprlock, and obsidian (`knowledge/dot_obsidian/themes/Palette/theme.css.tmpl` → `~/knowledge/.obsidian/...`).
+Templated this way: gtk-3.0, gtk-4.0, phylax, zed `settings.json`, yazi, hyprlock, obsidian (`knowledge/dot_obsidian/themes/Palette/theme.css.tmpl` → `~/knowledge/.obsidian/...`), btop (`btop/themes/palette.theme.tmpl` — a single templated theme file; `color_theme = "palette"` is static in `btop.conf`), and pane-fm (`pane-fm/themes/palette.css.tmpl`, plus `config.toml.tmpl` for the variant-driven `light_icons`; `theme = "palette"` is static).
 
 Some apps have their config direct-written by `theme-switch` rather than fully templated — precise updates to specific keys, not full-file substitution:
 - **Ghostty**: `_ghostty_theme` → writes `theme = ...` and `background-opacity = ...` to config
-- **btop**: `_btop_theme` → writes `color_theme = ...` to config. Per-palette `.theme` files live in `dot_config/btop/themes/`.
-- **pane-fm**: `_pane_fm_theme` → writes `theme = ...` and `light_icons = ...` to `config.toml`. Per-palette `.css` files live in `dot_config/pane-fm/themes/`.
 - **Chromium/Chrome**: `_chromium_seed_color` + `_variant` → writes a managed policy JSON under `/etc/chromium/policies/managed/` (and the Chrome equivalent).
 
-Zed's template substitutes the `_zed_theme_dark`/`_zed_theme_light`/`_variant` meta keys into `settings.json`, with per-palette Zed theme JSON in `dot_config/zed/themes/`.
+Zed's template substitutes the `_zed_theme_dark`/`_zed_theme_light`/`_variant` meta keys into `settings.json`, with per-palette Zed theme JSON in `dot_config/zed/themes/` (Zed themes stay hand-made — per-role alpha nuance earns it).
+
+Two targets are hot-reloaded by their apps via inotify watches on the file's *inode* — Zed `settings.json` and pane-fm `themes/palette.css`. chezmoi applies by atomic rename, which replaces the inode and kills such watches, so `theme-switch` renders these via `chezmoi cat` and syncs them in place *before* apply (apply then sees no diff and never touches them). The list lives in `INODE_WATCHED_TARGETS` in theme-switch.
 
 **Hyprland** uses a Lua-require pattern (`hl.config({...})` API, 0.55+). `theme-switch` generates `dot_config/hypr/palette.lua` — a Lua module exposing role helpers like `p.surface0_rgba(0.93)`. `dot_config/hypr/hyprland.lua.tmpl` does `local p = require("palette")`, so it carries no palette tokens itself; its `{{ }}` blocks are real Go template conditionals for machine-specific GPU config. `hyprlock` stays on hyprlang, themed like the other `.tmpl` configs; `hypridle` is a plain config with no templating.
 

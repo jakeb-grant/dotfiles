@@ -111,14 +111,14 @@ Palette JSON              active.json                     Chezmoi Template      
 (everforest.json) --->   written by theme-switch --->   (style.css.tmpl reads  ---> (style.css)
                                                           active.json) chezmoi apply
 ```
-Used by: GTK3/4, Phylax, Yazi, Zed settings, Obsidian, hyprlock.
+Used by: GTK3/4, Phylax, Yazi, Zed settings, Obsidian, hyprlock, btop, pane-fm. btop and pane-fm each get a single generated theme (`palette.theme` / `palette.css`) that always matches the active palette — their configs point at it statically.
 
 **Direct-write apps** (built-in theme selection or generated config):
 ```
 Palette JSON              theme-switch                    Final Config
 (everforest.json) --->   reads _ghostty_theme   --->    writes theme = Everforest Dark Hard
 ```
-Used by: Ghostty (`_ghostty_theme`), btop (`_btop_theme`), pane-fm (`_pane_fm_theme`). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch only syncs the rendered file in place so Zed's hot reload survives.)
+Used by: Ghostty (`_ghostty_theme`) and Chromium/Chrome (managed color policy). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch syncs Zed's settings and pane-fm's theme CSS in place before apply so their inode-level hot-reload watches survive.)
 
 **Lua-required (Hyprland)**:
 ```

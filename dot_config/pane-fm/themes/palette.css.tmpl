@@ -1,0 +1,20 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+/* Generated from palette/active.json (chezmoi template). theme-switch also
+   syncs this file in place before `chezmoi apply` so pane-fm's inode-level
+   theme watcher survives (apply's atomic rename would kill it). */
+:root {
+  --bg-primary: {{ $p.crust }};
+  --bg-secondary: {{ $p.mantle }};
+  --bg-surface: {{ $p.base }};
+  --bg-hover: {{ $p.surface0 }};
+  --text-primary: {{ $p.text }};
+  --text-secondary: {{ $p.subtext1 }};
+  --text-muted: {{ $p.overlay1 }};
+  --accent: {{ $p._accent }};
+  --accent-hover: {{ $p.sapphire }};
+  --border: {{ $p.surface1 }};
+  --danger: {{ $p.red }};
+  --success: {{ $p.green }};
+  --warning: {{ $p.yellow }};
+  --overlay-bg: {{ template "rgba" (list $p.crust 0.7) }};
+}

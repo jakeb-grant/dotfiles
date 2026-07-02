@@ -158,14 +158,6 @@ def validate_palette(theme_name: str, palette_data: dict) -> None:
         elif not isinstance(value, str) or not HEX_RE.match(value):
             errors.append(f"bad hex for {role}: {value!r}")
 
-    btop_theme = palette_data.get("_btop_theme", "")
-    if btop_theme and not (CHEZMOI_SOURCE_DIR / "btop" / "themes" / f"{btop_theme}.theme").exists():
-        errors.append(f"_btop_theme {btop_theme!r} has no btop/themes/{btop_theme}.theme")
-
-    pane_fm_theme = palette_data.get("_pane_fm_theme", "")
-    if pane_fm_theme and not (CHEZMOI_SOURCE_DIR / "pane-fm" / "themes" / f"{pane_fm_theme}.css").exists():
-        errors.append(f"_pane_fm_theme {pane_fm_theme!r} has no pane-fm/themes/{pane_fm_theme}.css")
-
     zed_names = installed_zed_themes()
     variant = palette_data.get("_variant", "dark")
     for key in ("_zed_theme_dark", "_zed_theme_light"):
@@ -223,15 +215,12 @@ def update_palette_lua(palette_data: dict) -> None:
 # These write into the chezmoi *source*; `chezmoi apply` propagates to ~/.config,
 # so a plain `chezmoi apply` never reverts the theme.
 GHOSTTY_CONFIG = CHEZMOI_SOURCE_DIR / "ghostty" / "config"
-BTOP_CONFIG = CHEZMOI_SOURCE_DIR / "btop" / "btop.conf"
-PANE_FM_CONFIG = CHEZMOI_SOURCE_DIR / "pane-fm" / "config.toml"
 
 
-def rewrite_config_keys(path: Path, replacements: dict[str, str], uncomment: bool = False) -> bool:
+def rewrite_config_keys(path: Path, replacements: dict[str, str]) -> bool:
     """Replace `key = value` lines in a config file, inserting missing keys at the top.
 
-    replacements maps key -> full replacement line. With uncomment, commented-out
-    keys (`# key = ...`) are matched and uncommented too.
+    replacements maps key -> full replacement line.
     """
     if not path.exists():
         print(f"    Warning: {path} not found, skipping")
@@ -240,9 +229,8 @@ def rewrite_config_keys(path: Path, replacements: dict[str, str], uncomment: boo
     new_lines = []
     found = set()
     for line in path.read_text().splitlines():
-        target = line.lstrip("# ") if uncomment else line
         for key, replacement in replacements.items():
-            if target.startswith(f"{key} =") or target.startswith(f"{key}="):
+            if line.startswith(f"{key} =") or line.startswith(f"{key}="):
                 new_lines.append(replacement)
                 found.add(key)
                 break
@@ -274,53 +262,36 @@ def update_ghostty(palette_data: dict) -> None:
         print(f"    Ghostty theme: {theme_name}, opacity: {opacity}")
 
 
-def update_btop(palette_data: dict) -> None:
-    theme_name = palette_data.get("_btop_theme", "")
-    if not theme_name:
-        print("    Warning: No _btop_theme in palette, skipping btop")
+# Files whose consumers hot-reload via an inotify watch on the file's inode.
+# chezmoi applies files by atomic rename, which replaces the inode and kills
+# the watch — hot reload works for the first switch of a session (the dying
+# watch's last event) and never again. Syncing each target in place *before*
+# apply keeps chezmoi's rename away from these files entirely: apply sees no
+# diff, the inode never changes, and the in-place write is a plain IN_MODIFY
+# the watcher survives.
+INODE_WATCHED_TARGETS = [
+    "~/.config/zed/settings.json",           # Zed settings hot-reload
+    "~/.config/pane-fm/themes/palette.css",  # pane-fm theme watcher
+]
+
+
+def sync_rendered_in_place(target: str) -> None:
+    try:
+        result = subprocess.run(
+            ["chezmoi", "cat", target], capture_output=True, text=True, timeout=15
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        result = None
+    if result is None or result.returncode != 0:
+        print(f"    Warning: chezmoi cat {target} failed, leaving it to apply")
         return
-
-    if rewrite_config_keys(BTOP_CONFIG, {
-        "color_theme": f'color_theme = "{theme_name}"',
-    }):
-        print(f"    btop theme: {theme_name}")
-
-
-def update_pane_fm(palette_data: dict) -> None:
-    theme_name = palette_data.get("_pane_fm_theme", "")
-    if not theme_name:
-        print("    Warning: No _pane_fm_theme in palette, skipping pane-fm")
+    path = Path(target.replace("~", str(Path.home()), 1))
+    if path.exists() and path.read_text() == result.stdout:
         return
-
-    variant = palette_data.get("_variant", "dark")
-    light_icons = "true" if variant == "light" else "false"
-    if rewrite_config_keys(PANE_FM_CONFIG, {
-        "theme": f'theme = "{theme_name}"',
-        "light_icons": f"light_icons = {light_icons}",
-    }, uncomment=True):
-        print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
-
-
-def update_zed() -> None:
-    """Write the rendered Zed settings over the live file, in place.
-
-    Zed's settings hot-reload watches settings.json via an inotify watch on
-    the file's inode. chezmoi applies files by atomic rename, which replaces
-    the inode and kills the watch — hot reload works for the first switch of
-    a Zed session (the dying watch's last event) and never again. Syncing the
-    target in place *before* apply keeps chezmoi's rename away from this file
-    entirely: apply sees no diff, the inode never changes, and the in-place
-    write is a plain IN_MODIFY the watcher survives.
-    """
-    source = CHEZMOI_SOURCE_DIR / "zed" / "settings.json.tmpl"
-    target = Path.home() / ".config" / "zed" / "settings.json"
-    content = source.read_text()
-    if target.exists() and target.read_text() == content:
-        return
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with open(target, "w") as f:
-        f.write(content)
-    print("    Zed settings synced in place (hot reload)")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        f.write(result.stdout)
+    print(f"    {path.name} synced in place (hot reload)")
 
 
 CHROME_POLICY_DIRS = [
@@ -486,13 +457,13 @@ async def main() -> None:
     # 3. Regenerate the Hyprland palette module
     update_palette_lua(palette_data)
 
-    # 4. Update direct-write app configs in the chezmoi source
+    # 4. Update direct-write app configs in the chezmoi source, and sync
+    #    inode-watched targets in place so their hot-reload watches survive
     print("==> Updating app configs...")
     update_ghostty(palette_data)
-    update_btop(palette_data)
-    update_pane_fm(palette_data)
     update_chromium(palette_data)
-    update_zed()
+    for target in INODE_WATCHED_TARGETS:
+        sync_rendered_in_place(target)
 
     # 5. Apply chezmoi (only theme-dependent configs, not large static files).
     #    btop saves its config on clean shutdown — kill it first so its
