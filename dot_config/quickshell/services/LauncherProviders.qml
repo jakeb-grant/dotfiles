@@ -24,7 +24,10 @@ Singleton {
             { name: "Dismiss Notification",shortcut: "Super + ,",             dispatch: 'hl.dsp.global("quickshell:notif-dismiss")',          keywords: ["close","clear"] },
             { name: "Dismiss All",         shortcut: "Super + Shift + ,",     dispatch: 'hl.dsp.global("quickshell:notif-dismiss-all")',      keywords: ["clear","close"] },
             { name: "Screenshot (Area)",   shortcut: "Print",                 command:  "screenshot region",                                  keywords: ["capture","snip"] },
-            { name: "Screenshot (Full)",   shortcut: "Shift + Print",         command:  "screenshot full",                                    keywords: ["capture","screen"] },
+            // sleep: let the launcher's 300ms close animation finish so the
+            // capture doesn't include the fading island (menu path only —
+            // the real keybind has no launcher open)
+            { name: "Screenshot (Full)",   shortcut: "Shift + Print",         command:  "sleep 0.4; screenshot full",                         keywords: ["capture","screen"] },
             { name: "Color Picker",        shortcut: "Super + Print",         command:  "hyprpicker -a",                                      keywords: ["pick","eyedropper"] },
             { name: "Lock Screen",         shortcut: "Super + L",             dispatch: 'hl.dsp.global("quickshell:lock")',                   keywords: ["lock"] },
             { name: "Toggle Bar Mode",     shortcut: "Super + Shift + T",     command:  "toggle-bar-mode",                                    keywords: ["sidebar","topbar","bar","layout","swap"] },
