@@ -1,3 +1,4 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
 # Hyprlock Configuration
 
 general {
@@ -7,7 +8,7 @@ general {
 background {
     monitor =
     path = screenshot
-    color = rgb(1e1e2e)
+    color = {{ template "hypr_rgb" $p.base }}
     blur_passes = 3
     blur_size = 6
     noise = 0.02
@@ -22,16 +23,16 @@ input-field {
     dots_size = 0.25
     dots_spacing = 0.3
     dots_center = true
-    outer_color = rgba(6c7086cc)
-    inner_color = rgba(11111be5)
-    font_color = rgb(cdd6f4)
+    outer_color = {{ template "hypr_rgba" (list $p.overlay0 0.8) }}
+    inner_color = {{ template "hypr_rgba" (list $p.crust 0.9) }}
+    font_color = {{ template "hypr_rgb" $p.text }}
     fade_on_empty = false
     placeholder_text = <i>Password...</i>
     hide_input = false
-    check_color = rgba(313244cc)
-    fail_color = rgba(f38ba8cc)
+    check_color = {{ template "hypr_rgba" (list $p.surface0 0.8) }}
+    fail_color = {{ template "hypr_rgba" (list $p.red 0.8) }}
     fail_text = <i>$FAIL</i>
-    capslock_color = rgba(f9e2afcc)
+    capslock_color = {{ template "hypr_rgba" (list $p.yellow 0.8) }}
     position = 0, -80
     halign = center
     valign = center
@@ -40,7 +41,7 @@ input-field {
 label {
     monitor =
     text = $TIME
-    color = rgba(cdd6f4f2)
+    color = {{ template "hypr_rgba" (list $p.text 0.95) }}
     font_size = 72
     font_family = sans-serif
     position = 0, 120
@@ -51,7 +52,7 @@ label {
 label {
     monitor =
     text = cmd[update:3600000] date +"%A, %B %d"
-    color = rgba(a6adc8cc)
+    color = {{ template "hypr_rgba" (list $p.subtext0 0.8) }}
     font_size = 18
     font_family = sans-serif
     position = 0, 40

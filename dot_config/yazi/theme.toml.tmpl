@@ -1,135 +1,136 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
 # Yazi Theme - Generated from theme template
 
 [mgr]
-cwd = { fg = "#cdd6f4" }
-hovered = { bg = "#45475a" }
-preview_hovered = { bg = "#313244" }
-find_keyword = { fg = "#f9e2af", bold = true }
-find_position = { fg = "#cba6f7", italic = true }
-marker_copied = { fg = "#a6e3a1", bg = "#a6e3a1" }
-marker_cut = { fg = "#f38ba8", bg = "#f38ba8" }
-marker_marked = { fg = "#94e2d5", bg = "#94e2d5" }
-marker_selected = { fg = "#f9e2af", bg = "#f9e2af" }
-count_copied = { fg = "#11111b", bg = "#a6e3a1" }
-count_cut = { fg = "#11111b", bg = "#f38ba8" }
-count_selected = { fg = "#11111b", bg = "#f9e2af" }
-border_style = { fg = "#45475a" }
+cwd = { fg = "{{ $p.text }}" }
+hovered = { bg = "{{ $p.surface1 }}" }
+preview_hovered = { bg = "{{ $p.surface0 }}" }
+find_keyword = { fg = "{{ $p.yellow }}", bold = true }
+find_position = { fg = "{{ $p.mauve }}", italic = true }
+marker_copied = { fg = "{{ $p.green }}", bg = "{{ $p.green }}" }
+marker_cut = { fg = "{{ $p.red }}", bg = "{{ $p.red }}" }
+marker_marked = { fg = "{{ $p.teal }}", bg = "{{ $p.teal }}" }
+marker_selected = { fg = "{{ $p.yellow }}", bg = "{{ $p.yellow }}" }
+count_copied = { fg = "{{ $p.crust }}", bg = "{{ $p.green }}" }
+count_cut = { fg = "{{ $p.crust }}", bg = "{{ $p.red }}" }
+count_selected = { fg = "{{ $p.crust }}", bg = "{{ $p.yellow }}" }
+border_style = { fg = "{{ $p.surface1 }}" }
 
 [tabs]
-active = { fg = "#cdd6f4", bg = "#45475a" }
-inactive = { fg = "#a6adc8", bg = "#181825" }
+active = { fg = "{{ $p.text }}", bg = "{{ $p.surface1 }}" }
+inactive = { fg = "{{ $p.subtext0 }}", bg = "{{ $p.mantle }}" }
 
 [mode]
-normal_main = { fg = "#11111b", bg = "#89b4fa", bold = true }
-normal_alt = { fg = "#89b4fa", bg = "#181825" }
-select_main = { fg = "#11111b", bg = "#a6e3a1", bold = true }
-select_alt = { fg = "#a6e3a1", bg = "#181825" }
-unset_main = { fg = "#11111b", bg = "#cba6f7", bold = true }
-unset_alt = { fg = "#cba6f7", bg = "#181825" }
+normal_main = { fg = "{{ $p.crust }}", bg = "{{ $p.blue }}", bold = true }
+normal_alt = { fg = "{{ $p.blue }}", bg = "{{ $p.mantle }}" }
+select_main = { fg = "{{ $p.crust }}", bg = "{{ $p.green }}", bold = true }
+select_alt = { fg = "{{ $p.green }}", bg = "{{ $p.mantle }}" }
+unset_main = { fg = "{{ $p.crust }}", bg = "{{ $p.mauve }}", bold = true }
+unset_alt = { fg = "{{ $p.mauve }}", bg = "{{ $p.mantle }}" }
 
 [status]
 sep_left = { open = "", close = "" }
 sep_right = { open = "", close = "" }
-overall = { fg = "#cdd6f4", bg = "#181825" }
-perm_read = { fg = "#a6e3a1" }
-perm_write = { fg = "#f9e2af" }
-perm_exec = { fg = "#f38ba8" }
-perm_sep = { fg = "#a6adc8" }
+overall = { fg = "{{ $p.text }}", bg = "{{ $p.mantle }}" }
+perm_read = { fg = "{{ $p.green }}" }
+perm_write = { fg = "{{ $p.yellow }}" }
+perm_exec = { fg = "{{ $p.red }}" }
+perm_sep = { fg = "{{ $p.subtext0 }}" }
 
 [pick]
-border = { fg = "#45475a" }
-active = { fg = "#cdd6f4" }
-inactive = { fg = "#a6adc8" }
+border = { fg = "{{ $p.surface1 }}" }
+active = { fg = "{{ $p.text }}" }
+inactive = { fg = "{{ $p.subtext0 }}" }
 
 [input]
-border = { fg = "#45475a" }
-title = { fg = "#cdd6f4" }
-value = { fg = "#cdd6f4" }
-selected = { bg = "#45475a" }
+border = { fg = "{{ $p.surface1 }}" }
+title = { fg = "{{ $p.text }}" }
+value = { fg = "{{ $p.text }}" }
+selected = { bg = "{{ $p.surface1 }}" }
 
 [confirm]
-border = { fg = "#45475a" }
-title = { fg = "#cdd6f4", bold = true }
-content = { fg = "#cdd6f4" }
-list = { fg = "#cdd6f4" }
-btn_yes = { bg = "#a6e3a1", fg = "#11111b" }
-btn_no = { bg = "#f38ba8", fg = "#11111b" }
+border = { fg = "{{ $p.surface1 }}" }
+title = { fg = "{{ $p.text }}", bold = true }
+content = { fg = "{{ $p.text }}" }
+list = { fg = "{{ $p.text }}" }
+btn_yes = { bg = "{{ $p.green }}", fg = "{{ $p.crust }}" }
+btn_no = { bg = "{{ $p.red }}", fg = "{{ $p.crust }}" }
 btn_labels = ["Yes", "No"]
 
 [cmp]
-border = { fg = "#45475a" }
-active = { fg = "#cdd6f4", bg = "#45475a" }
-inactive = { fg = "#a6adc8" }
+border = { fg = "{{ $p.surface1 }}" }
+active = { fg = "{{ $p.text }}", bg = "{{ $p.surface1 }}" }
+inactive = { fg = "{{ $p.subtext0 }}" }
 icon_file = ""
 icon_folder = ""
 icon_command = ""
 
 [tasks]
-border = { fg = "#45475a" }
-title = { fg = "#cdd6f4" }
-hovered = { bg = "#45475a" }
+border = { fg = "{{ $p.surface1 }}" }
+title = { fg = "{{ $p.text }}" }
+hovered = { bg = "{{ $p.surface1 }}" }
 
 [which]
 cols = 3
-mask = { bg = "#11111b" }
-cand = { fg = "#94e2d5" }
-rest = { fg = "#a6adc8" }
-desc = { fg = "#cdd6f4" }
+mask = { bg = "{{ $p.crust }}" }
+cand = { fg = "{{ $p.teal }}" }
+rest = { fg = "{{ $p.subtext0 }}" }
+desc = { fg = "{{ $p.text }}" }
 separator = "  "
-separator_style = { fg = "#45475a" }
+separator_style = { fg = "{{ $p.surface1 }}" }
 
 [help]
-on = { fg = "#94e2d5" }
-run = { fg = "#cdd6f4" }
-desc = { fg = "#a6adc8" }
-hovered = { bg = "#45475a" }
-footer = { fg = "#a6adc8", bg = "#181825" }
+on = { fg = "{{ $p.teal }}" }
+run = { fg = "{{ $p.text }}" }
+desc = { fg = "{{ $p.subtext0 }}" }
+hovered = { bg = "{{ $p.surface1 }}" }
+footer = { fg = "{{ $p.subtext0 }}", bg = "{{ $p.mantle }}" }
 
 [notify]
-title_info = { fg = "#74c7ec" }
-title_warn = { fg = "#f9e2af" }
-title_error = { fg = "#f38ba8" }
+title_info = { fg = "{{ $p.sapphire }}" }
+title_warn = { fg = "{{ $p.yellow }}" }
+title_error = { fg = "{{ $p.red }}" }
 
 [filetype]
 rules = [
     # Directories
-    { url = "*/", fg = "#89b4fa", bold = true },
+    { url = "*/", fg = "{{ $p.blue }}", bold = true },
 
     # Executables
-    { mime = "application/x-executable", fg = "#a6e3a1" },
-    { mime = "application/x-sharedlib", fg = "#a6e3a1" },
+    { mime = "application/x-executable", fg = "{{ $p.green }}" },
+    { mime = "application/x-sharedlib", fg = "{{ $p.green }}" },
 
     # Archives
-    { mime = "application/*zip*", fg = "#cba6f7" },
-    { mime = "application/x-tar", fg = "#cba6f7" },
-    { mime = "application/x-*compressed*", fg = "#cba6f7" },
-    { mime = "application/x-rar", fg = "#cba6f7" },
-    { mime = "application/x-7z*", fg = "#cba6f7" },
+    { mime = "application/*zip*", fg = "{{ $p.mauve }}" },
+    { mime = "application/x-tar", fg = "{{ $p.mauve }}" },
+    { mime = "application/x-*compressed*", fg = "{{ $p.mauve }}" },
+    { mime = "application/x-rar", fg = "{{ $p.mauve }}" },
+    { mime = "application/x-7z*", fg = "{{ $p.mauve }}" },
 
     # Documents
-    { mime = "application/pdf", fg = "#f38ba8" },
-    { mime = "application/*doc*", fg = "#89b4fa" },
-    { mime = "application/*sheet*", fg = "#a6e3a1" },
-    { mime = "application/*presentation*", fg = "#f9e2af" },
+    { mime = "application/pdf", fg = "{{ $p.red }}" },
+    { mime = "application/*doc*", fg = "{{ $p.blue }}" },
+    { mime = "application/*sheet*", fg = "{{ $p.green }}" },
+    { mime = "application/*presentation*", fg = "{{ $p.yellow }}" },
 
     # Images
-    { mime = "image/*", fg = "#94e2d5" },
+    { mime = "image/*", fg = "{{ $p.teal }}" },
 
     # Video
-    { mime = "video/*", fg = "#cba6f7" },
+    { mime = "video/*", fg = "{{ $p.mauve }}" },
 
     # Audio
-    { mime = "audio/*", fg = "#f9e2af" },
+    { mime = "audio/*", fg = "{{ $p.yellow }}" },
 
     # Text/Code
-    { mime = "text/*", fg = "#cdd6f4" },
-    { mime = "application/json", fg = "#f9e2af" },
-    { mime = "application/javascript", fg = "#f9e2af" },
-    { mime = "application/x-yaml", fg = "#94e2d5" },
+    { mime = "text/*", fg = "{{ $p.text }}" },
+    { mime = "application/json", fg = "{{ $p.yellow }}" },
+    { mime = "application/javascript", fg = "{{ $p.yellow }}" },
+    { mime = "application/x-yaml", fg = "{{ $p.teal }}" },
 
     # Symlinks
-    { url = "*", is = "link", fg = "#94e2d5", italic = true },
+    { url = "*", is = "link", fg = "{{ $p.teal }}", italic = true },
 
     # Orphan links
-    { url = "*", is = "orphan", fg = "#f38ba8", italic = true },
+    { url = "*", is = "orphan", fg = "{{ $p.red }}", italic = true },
 ]

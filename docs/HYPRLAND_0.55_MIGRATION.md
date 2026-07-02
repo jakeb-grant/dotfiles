@@ -465,7 +465,7 @@ Then upstream release notes:
 **Decision rule**: if upstream changelog mentions Lua, port them. Otherwise **keep external daemon, hyprlang config** as the conservative default.
 
 If keeping external daemons:
-- `hyprlock.conf.theme` stays Jinja-templated (unchanged).
+- `hyprlock.conf.theme` stayed Jinja-templated at migration time. (Since converted to a chezmoi-native template reading `active.json` — the `.theme` file no longer exists; see CLAUDE.md.)
 - `hypridle.conf` stays static.
 - Autostart in `hyprland.lua` keeps `"hypridle"` and lock-via-`quickshell:lock`.
 - §3 hyprlock/hypridle checkboxes become "no-op, file format unchanged."

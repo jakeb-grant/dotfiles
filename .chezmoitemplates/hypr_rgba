@@ -1,0 +1,4 @@
+{{- /* hyprlang rgba() from "#rrggbb" + opacity 0..1 (alpha truncates like
+       python int(), matching the old Jinja filter byte-for-byte).
+       Usage: {{ template "hypr_rgba" (list $p.base 0.8) }} */ -}}
+{{- printf "rgba(%s%02x)" (trimPrefix "#" (index . 0)) (int (mulf 255.0 (index . 1))) -}}

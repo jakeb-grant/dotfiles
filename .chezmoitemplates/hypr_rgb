@@ -1,0 +1,2 @@
+{{- /* hyprlang rgb() from "#rrggbb". Usage: {{ template "hypr_rgb" $p.base }} */ -}}
+{{- printf "rgb(%s)" (trimPrefix "#" .) -}}
