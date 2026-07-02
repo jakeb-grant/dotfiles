@@ -225,9 +225,11 @@ Variants {
         // The OSD gets its own overlay-layer window: Hyprland renders
         // fullscreen windows above the Top layer the drawers window lives on,
         // and volume keys during fullscreen video are the OSD's prime
-        // scenario. The empty input mask keeps it fully click-through; the
-        // window only maps while the OSD is showing (osd.visible tracks the
-        // fade, so unmap waits for the fade-out to finish).
+        // scenario. The empty input mask keeps it fully click-through. The
+        // window stays mapped permanently — mapping on demand races the
+        // compositor's configure (the surface maps 0×0 and can miss its size
+        // for the whole 1.4s display window); an idle transparent overlay
+        // surface costs nothing.
         PanelWindow {
             id: osdWin
 
@@ -236,7 +238,6 @@ Variants {
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Overlay
             color: "transparent"
-            visible: osd.visible
 
             anchors.bottom: true
             margins.bottom: 96
