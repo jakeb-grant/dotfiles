@@ -102,6 +102,7 @@ dot_config/
 ├── age/                # age recipients (public key) — ~/knowledge's git clean
 │                       #   filter encrypts personal/finance/** to this key
 │                       #   (decrypt side reads the private key from 1Password)
+├── private_1Password/  # 1Password SSH agent config (serves keys from the Developer vault)
 ├── windows-vm/         # Windows VM (docker-compose)
 ├── palette/            # Theme palette definitions (JSON)
 └── wallpapers/         # Flat image pool + wallpapers.json config
@@ -115,6 +116,8 @@ dot_local/bin/
 ├── wallpaper-split     # Split wide/panoramic images into per-monitor sets
 ├── wallpaper-upscale   # AI upscale images using EDSR 4x (CPU)
 └── win-vm              # Windows VM management
+dot_bashrc              # Shell config (PATH, Zed as $EDITOR, fnm)
+dot_claude/             # Claude Code config (writing skill)
 ```
 
 ## Theme System
