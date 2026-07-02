@@ -345,6 +345,8 @@ Item {
                     }
 
                     Keys.onPressed: event => {
+                        if (event.key === Qt.Key_CapsLock && !event.isAutoRepeat)
+                            Services.LockScreen.capsLockKeyPressed();
                         if (event.key === Qt.Key_Escape) {
                             root.inputActive = false;
                             text = "";
@@ -467,6 +469,29 @@ Item {
                     NumberAnimation { target: shakeTranslate; property: "x"; to: 6; duration: 50; easing.type: Easing.OutQuad }
                     NumberAnimation { target: shakeTranslate; property: "x"; to: -3; duration: 40; easing.type: Easing.OutQuad }
                     NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: 40; easing.type: Easing.OutQuad }
+                }
+            }
+
+            // Caps-lock hint — fades via opacity but always occupies its row,
+            // so the pill doesn't jump when caps toggles mid-typing.
+            RowLayout {
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 6
+                opacity: Services.LockScreen.capsLock ? 1.0 : 0.0
+                Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+
+                Utils.MaterialIcon {
+                    text: "keyboard_capslock"
+                    fill: 1
+                    font.pixelSize: 16
+                    color: Utils.Theme.yellow
+                }
+                Text {
+                    text: "Caps Lock is on"
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: 14
+                    font.weight: Font.Medium
+                    color: Utils.Theme.yellow
                 }
             }
         }

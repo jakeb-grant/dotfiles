@@ -75,6 +75,7 @@ Item {
         Spacer { size: Utils.Theme.spacingNormal }
 
         BarItem {
+            id: clockItem
             step: 3
             popout: "calendar"
             implicitWidth: Utils.Theme.isSide ? Utils.Theme.barInnerWidth : clockRow.implicitWidth
@@ -89,9 +90,13 @@ Item {
                 Utils.MaterialIcon {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "calendar_today"
-                    fill: 0
+                    // Hover affordance — sanctioned exception to the bar's
+                    // no-hover-decoration rule (see DEVGUIDE): the glyph fills
+                    // and warms to accent, hinting the calendar popout.
+                    fill: clockItem.hovered ? 1 : 0
                     font.pixelSize: Utils.Theme.iconSize
-                    color: Utils.Theme.subtleText
+                    color: clockItem.hovered ? Utils.Theme.accent : Utils.Theme.subtleText
+                    Behavior on color { ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic } }
                 }
                 Text {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -129,9 +134,11 @@ Item {
                 Utils.MaterialIcon {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "calendar_today"
-                    fill: 0
+                    // Same hover affordance as the side-bar glyph above.
+                    fill: clockItem.hovered ? 1 : 0
                     font.pixelSize: Utils.Theme.iconSize
-                    color: Utils.Theme.subtleText
+                    color: clockItem.hovered ? Utils.Theme.accent : Utils.Theme.subtleText
+                    Behavior on color { ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic } }
                 }
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
@@ -190,6 +197,9 @@ Item {
         required property int step
         // Popout to open on hover; "" for items that manage their own hover
         property string popout: ""
+        // Hover state for content that wants an affordance (only the clock —
+        // the sanctioned exception to the no-hover-decoration rule).
+        readonly property bool hovered: popoutMouse.containsMouse
         default property alias content: slot.data
 
         Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
@@ -211,6 +221,7 @@ Item {
         }
 
         MouseArea {
+            id: popoutMouse
             anchors.fill: parent
             visible: barItem.popout !== ""
             hoverEnabled: true
