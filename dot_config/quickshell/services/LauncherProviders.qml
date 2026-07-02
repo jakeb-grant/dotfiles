@@ -2,6 +2,7 @@ pragma Singleton
 
 import Quickshell
 import QtQuick
+import qs.services as Services
 
 // Static launcher data — keybind/action tables and the main menu. The state
 // machine, filtering, and dispatch live in Launcher.qml; this file is only
@@ -49,6 +50,13 @@ Singleton {
     })()
 
     readonly property var actions: [
+        // special: "dnd" dispatches to Services.Notifications.toggleDnd() in
+        // Launcher.launch() instead of running a command. Icon/subtitle
+        // reference live state, making this whole array a binding that
+        // re-evaluates on toggle.
+        { name: "Do Not Disturb", icon: "", materialIcon: Services.Notifications.dnd ? "notifications_off" : "notifications",
+          subtitle: Services.Notifications.dnd ? "On" : "", special: "dnd",
+          keywords: ["dnd","notifications","silence","quiet","focus","mute"] },
         { name: "Upkeep", icon: "", materialIcon: "system_update", command: "ghostty -e upkeep", keywords: ["update","upgrade","rebuild","maintenance"] },
         { name: "Display", icon: "", materialIcon: "monitor", command: "ghostty -e hyprpier mgr", keywords: ["monitor","screen","resolution"] },
         { name: "About", icon: "", materialIcon: "info", command: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'", keywords: ["info","specs","hardware","fastfetch"] },
@@ -59,8 +67,10 @@ Singleton {
     readonly property var mainItems: [
         { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds" },
         { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard" },
+        { type: "submenu", name: "Notifications", subtitle: "", icon: "", materialIcon: "notifications", score: 0, _data: "notifhistory" },
         { type: "submenu", name: "Themes", subtitle: "", icon: "", materialIcon: "palette", score: 0, _data: "themes" },
         { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "" },
+        { type: "action", name: "Do Not Disturb", subtitle: Services.Notifications.dnd ? "On" : "", icon: "", materialIcon: Services.Notifications.dnd ? "notifications_off" : "notifications", score: 0, _data: "", _special: "dnd" },
         { type: "action", name: "Upkeep", subtitle: "", icon: "", materialIcon: "system_update", score: 0, _data: "ghostty -e upkeep" },
         { type: "action", name: "Display", subtitle: "", icon: "", materialIcon: "monitor", score: 0, _data: "ghostty -e hyprpier mgr" },
         { type: "action", name: "About", subtitle: "", icon: "", materialIcon: "info", score: 0, _data: "ghostty -e bash -c 'fastfetch; read -p \"Press Enter to close...\"'" },

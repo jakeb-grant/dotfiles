@@ -183,6 +183,10 @@ ColumnLayout {
                         // Name
                         Text {
                             text: item.modelData.name ?? ""
+                            // PlainText: names carry untrusted text (clipboard,
+                            // notification history) — AutoText would interpret
+                            // tag-like content instead of displaying it
+                            textFormat: Text.PlainText
                             font.family: Utils.Theme.fontFamily
                             font.pixelSize: Utils.Theme.fontSize
                             color: Utils.Theme.text
@@ -224,6 +228,7 @@ ColumnLayout {
                         // Subtitle (comment, shortcut, calc result, etc.)
                         Text {
                             text: item.modelData.subtitle ?? ""
+                            textFormat: Text.PlainText
                             font.family: Utils.Theme.fontFamily
                             font.pixelSize: item.modelData.type === "calc"
                                 ? Utils.Theme.fontSize : Utils.Theme.fontSizeSmall

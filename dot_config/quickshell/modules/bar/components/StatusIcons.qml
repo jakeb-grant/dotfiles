@@ -24,6 +24,27 @@ Rectangle {
         columnSpacing: Utils.Theme.isTop ? Utils.Theme.spacingSmall : 0
         rowSpacing: Utils.Theme.isSide ? Utils.Theme.spacingSmall : 0
 
+        // DND — indicator only, appears while Do Not Disturb is active (the
+        // toggle lives in the launcher). Accent, not red: a chosen state,
+        // not a hazard — same signal as bluetooth-connected.
+        Item {
+            id: dndItem
+
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
+            visible: Services.Notifications.dnd
+            implicitWidth: dndIcon.implicitWidth
+            implicitHeight: dndIcon.implicitHeight
+
+            Utils.MaterialIcon {
+                id: dndIcon
+                anchors.centerIn: parent
+                text: "notifications_off"
+                fill: 1
+                font.pixelSize: Utils.Theme.iconSize
+                color: Utils.Theme.accent
+            }
+        }
+
         // Mic — indicator only, appears while the default source is muted.
         // Red because a muted mic mid-call is the "why can't they hear me"
         // trap; the other icons stay subtle.

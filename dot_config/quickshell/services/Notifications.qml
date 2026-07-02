@@ -10,6 +10,49 @@ Singleton {
     property list<Notification> popups: []
     readonly property int count: popups.length
     readonly property int defaultTimeout: 5000
+    readonly property int historyLimit: 50
+
+    property alias dnd: persist.dnd
+    // Plain-data snapshots, newest first. Notification objects are released
+    // on dismissal, so history keeps copies, not references. Derived from the
+    // JSON below — re-parses on every write and on reload restore.
+    readonly property var history: JSON.parse(persist.historyJson || "[]")
+
+    // theme-switch reloads the shell, so DND and history must survive live
+    // reloads — losing them there would be silent. (Full quickshell restarts
+    // still clear both; accepted.) History is stored as a JSON string:
+    // PersistentProperties can't carry JS arrays across reload engines —
+    // a `property var` comes back undefined ("JSValue can't be reassigned
+    // to another engine").
+    PersistentProperties {
+        id: persist
+        reloadableId: "notificationsService"
+
+        property bool dnd: false
+        property string historyJson: "[]"
+    }
+
+    function toggleDnd(): void {
+        persist.dnd = !persist.dnd;
+    }
+
+    // Snapshot at arrival — one code path covers every exit (dismiss, expire,
+    // cap-drop, DND-suppress). Text is stored raw (launcher rows render
+    // PlainText; stripping markup naively corrupts text like "5 < 10") but
+    // capped at 4 KiB per field: one pathological notification would
+    // otherwise bloat historyJson — re-stringified on every arrival — and
+    // push Enter-to-copy past the kernel's per-arg limit.
+    function _addToHistory(notif: Notification): void {
+        const entry = {
+            appName: notif.appName ?? "",
+            appIcon: notif.appIcon ?? "",
+            summary: (notif.summary ?? "").substring(0, 4096),
+            body: (notif.body ?? "").substring(0, 4096),
+            critical: notif.urgency === NotificationUrgency.Critical,
+            time: Date.now(),
+        };
+        persist.historyJson = JSON.stringify([entry, ...history.slice(0, historyLimit - 1)]);
+    }
 
     // Track creation times so Repeater recreation doesn't reset timers
     property var _timestamps: ({})
@@ -33,6 +76,14 @@ Singleton {
 
         onNotification: notif => {
             if (notif.lastGeneration) return;
+            root._addToHistory(notif);
+            // DND: no card for non-critical notifications (critical bypasses).
+            // expire() rather than dismiss() — it releases blocking senders
+            // (notify-send --wait/-A) without claiming the user acted on it.
+            if (persist.dnd && notif.urgency !== NotificationUrgency.Critical) {
+                notif.expire();
+                return;
+            }
             // tracked=true keeps the Notification object alive (and its
             // text/body queryable) for as long as we hold a reference. Without
             // it the server invalidates older notifications when new ones
@@ -87,8 +138,8 @@ Singleton {
         _dismissRev++;
     }
 
-    // Called by card after exit animation completes. Always dismiss — there's
-    // no history bucket to keep auto-expired notifications in, so we release
+    // Called by card after exit animation completes. Always dismiss — history
+    // was snapshotted at arrival, so nothing needs the live object; we release
     // the tracked=true reference here.
     function finishRemoval(notif: Notification): void {
         if (!_dismissing[notif.id]) return;

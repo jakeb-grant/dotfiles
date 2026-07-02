@@ -335,6 +335,10 @@ The one non-hover addition bar items may carry is a wheel handler (volume/bright
 
 Transient feedback for keyboard-initiated state changes (volume/brightness/mic/media keys). Split the same way as popouts: `Services.Osd` decides *when* (watches `Audio`/`Brightness` value changes — including `Audio.sourceMuted` for the mic — with a startup grace period; `showMedia()` for explicit media keys; suppressed while the matching popout is open), `modules/osd/OsdOverlay.qml` renders *what*. The overlay lives in its own per-screen `WlrLayer.Overlay` PanelWindow (in `Drawers.qml`) rather than the drawers window: Hyprland draws fullscreen windows above the Top layer, and the OSD must survive fullscreen video. The window has an empty input `mask` (fully click-through) and maps only while the OSD is visible — its `visible` tracks the overlay's fade so unmap waits for the fade-out.
 
+### Reload-persistent state
+
+`theme-switch` live-reloads the shell, so user-facing state that should survive it (Do Not Disturb, notification history) lives in a `PersistentProperties { reloadableId: "..." }` block inside the owning service. Primitives (bool, int, string) transfer cleanly; **JS arrays/objects do not** — a `property var` comes back `undefined` after reload ("JSValue can't be reassigned to another engine"). Serialize collections to a JSON string property and expose the parsed form as a derived binding on it. Full quickshell restarts still reset these — accepted.
+
 ### Invisible hover bridge
 
 Popouts sit `islandGap` away from the bar, so the cursor traverses transparent space when moving from a bar item to its popout. To prevent dismissal during traversal, `PopoutWrapper.qml` renders an invisible `Item` of width/height equal to `islandGap`, anchored between the bar item's edge and the popout's near edge, with its own `HoverHandler` setting a `bridgeHovered` flag. The popout closes only when *neither* the panel nor the bridge is hovered.

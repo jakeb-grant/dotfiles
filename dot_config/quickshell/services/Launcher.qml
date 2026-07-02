@@ -193,6 +193,9 @@ Singleton {
             } else if (result._data === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
                 selectedIndex = 0;
+            } else if (result._data === "notifhistory") {
+                results = _notifHistoryToResults(Services.Notifications.history);
+                selectedIndex = 0;
             } else if (result._data === "themes") {
                 _scanThemes();
                 results = _themesToResults();
@@ -211,7 +214,10 @@ Singleton {
             break;
         case "calc":
             _copyProc.running = false;
-            _copyProc.command = ["wl-copy", result.subtitle];
+            // "--" everywhere text reaches wl-copy: a leading "-" (negative
+            // calc result, "-50% sale" summary) parses as flags otherwise —
+            // and "-c" *clears* the clipboard.
+            _copyProc.command = ["wl-copy", "--", result.subtitle];
             _copyProc.running = true;
             break;
         case "clipboard":
@@ -219,6 +225,15 @@ Singleton {
             _clipDecodeProc.command = ["sh", "-c", "cliphist decode \"$1\" | wl-copy", "sh", result._data];
             _clipDecodeProc.running = true;
             break;
+        // History entries copy their text — same Enter semantics as the
+        // clipboard submenu, and handy for codes/URLs in old notifications.
+        case "notifhistory":
+            _copyProc.running = false;
+            _copyProc.command = ["wl-copy", "--", (result._data.summary + "\n" + result._data.body).trim()];
+            _copyProc.running = true;
+            break;
+        case "placeholder":
+            return;
         case "theme":
             _switchTheme(result._data);
             return;
@@ -232,7 +247,9 @@ Singleton {
         case "action":
             // Close first so interactive tools (slurp, etc.) can grab the screen
             visible = false;
-            if (result._isDispatch) {
+            if (result._special === "dnd") {
+                Services.Notifications.toggleDnd();
+            } else if (result._isDispatch) {
                 Hyprland.dispatch(result._data);
             } else {
                 Quickshell.execDetached(["sh", "-c", result._data]);
@@ -332,11 +349,12 @@ Singleton {
                 out.push({
                     type: "action",
                     name: act.name,
-                    subtitle: "",
+                    subtitle: act.subtitle ?? "",
                     icon: act.icon,
                     materialIcon: act.materialIcon ?? "",
                     score: score,
-                    _data: act.command,
+                    _data: act.command ?? "",
+                    _special: act.special ?? "",
                 });
             }
         }
@@ -372,6 +390,54 @@ Singleton {
             });
         }
         return out;
+    }
+
+    function _relTime(ms): string {
+        const m = Math.floor(ms / 60000);
+        if (m < 1) return "now";
+        if (m < 60) return m + "m ago";
+        const h = Math.floor(m / 60);
+        if (h < 24) return h + "h ago";
+        return Math.floor(h / 24) + "d ago";
+    }
+
+    // Notification history (submenu-only — not in the unified search: stale
+    // notification text scoring against apps/windows is noise, and the
+    // clipboard provider already covers "text I saw recently").
+    function _notifHistoryToResults(entries): var {
+        if (entries.length === 0) {
+            return [{
+                type: "placeholder",
+                name: "No notifications yet",
+                subtitle: "",
+                icon: "",
+                materialIcon: "notifications_none",
+                score: 0,
+                _data: "",
+            }];
+        }
+        const now = Date.now();
+        const out = [];
+        for (const e of entries) {
+            out.push({
+                type: "notifhistory",
+                name: e.summary || e.body || e.appName || "(empty)",
+                subtitle: (e.appName ? e.appName + " · " : "") + _relTime(now - e.time),
+                icon: e.appIcon ?? "",
+                materialIcon: e.critical ? "priority_high" : "notifications",
+                score: 0,
+                _data: e,
+            });
+        }
+        return out;
+    }
+
+    function _filterNotifHistory(terms): var {
+        const hits = Services.Notifications.history.filter(e => {
+            const text = (e.summary + " " + e.body + " " + e.appName).toLowerCase();
+            return terms.every(t => text.includes(t));
+        });
+        return hits.length === 0 ? [] : _notifHistoryToResults(hits);
     }
 
     function _themesToResults(): var {
@@ -444,6 +510,8 @@ Singleton {
                 results = Services.LauncherProviders.keybindItems;
             } else if (submenu === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
+            } else if (submenu === "notifhistory") {
+                results = _notifHistoryToResults(Services.Notifications.history);
             } else if (submenu === "themes") {
                 results = _themesToResults();
             } else {
@@ -469,6 +537,11 @@ Singleton {
         }
         if (submenu === "clipboard") {
             results = _filterClipboard(terms);
+            selectedIndex = 0;
+            return;
+        }
+        if (submenu === "notifhistory") {
+            results = _filterNotifHistory(terms);
             selectedIndex = 0;
             return;
         }
