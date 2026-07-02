@@ -1,18 +1,11 @@
 import QtQuick
 import QtQuick.Layouts
+import qs.modules.bar.popouts.components
 import qs.services as Services
 import qs.utils as Utils
 
-ColumnLayout {
+PopoutColumn {
     id: root
-
-    spacing: Utils.Theme.spacingNormal
-
-    // Width spacer
-    Item {
-        implicitWidth: Utils.Theme.popoutWidth
-        implicitHeight: 0
-    }
 
     readonly property int cellSize: 32
     readonly property int gridSpacing: 2
@@ -66,22 +59,10 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: Utils.Theme.spacingSmall
 
-        Utils.MaterialIcon {
+        IconButton {
             text: "chevron_left"
             font.pixelSize: Utils.Theme.headerActionIconSize
-            color: navLeftMouse.containsMouse ? Utils.Theme.text : Utils.Theme.subtleText
-
-            Behavior on color {
-                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-            }
-
-            MouseArea {
-                id: navLeftMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.prevMonth()
-            }
+            onClicked: root.prevMonth()
         }
 
         Item { Layout.fillWidth: true }
@@ -103,22 +84,10 @@ ColumnLayout {
 
         Item { Layout.fillWidth: true }
 
-        Utils.MaterialIcon {
+        IconButton {
             text: "chevron_right"
             font.pixelSize: Utils.Theme.headerActionIconSize
-            color: navRightMouse.containsMouse ? Utils.Theme.text : Utils.Theme.subtleText
-
-            Behavior on color {
-                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-            }
-
-            MouseArea {
-                id: navRightMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.nextMonth()
-            }
+            onClicked: root.nextMonth()
         }
     }
 
@@ -204,12 +173,7 @@ ColumnLayout {
         }
     }
 
-    // Separator
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // Current time
     RowLayout {

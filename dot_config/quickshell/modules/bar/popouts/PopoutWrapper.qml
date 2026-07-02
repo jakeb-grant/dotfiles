@@ -36,7 +36,7 @@ Item {
     function _updateCurrentPopout() {
         const n = Services.Popout.currentName;
         if (!n) { currentPopout = null; _contentWidth = 0; _contentHeight = 0; return; }
-        const found = contentArea.children.find(c => (c.name ?? c.popoutName ?? "") === n) ?? null;
+        const found = contentArea.children.find(c => (c.name ?? "") === n) ?? null;
         currentPopout = found;
         _contentWidth = found?.implicitWidth ?? 0;
         _contentHeight = found?.implicitHeight ?? 0;
@@ -255,67 +255,18 @@ Item {
             Repeater {
                 model: SystemTray.items
 
-                Loader {
-                    id: trayLoader
+                Popout {
+                    id: trayPopout
 
                     required property SystemTrayItem modelData
                     required property int index
 
-                    readonly property string popoutName: `traymenu${index}`
-                    readonly property bool shouldBeActive: !root.switching
-                        && Services.Popout.currentName === popoutName
-                        && Services.Popout.activeScreen === root.screen
-
-                    anchors.centerIn: parent
-
-                    active: false
-                    opacity: 0
-                    visible: opacity > 0.001
+                    name: `traymenu${index}`
+                    recreateOnOpen: true
 
                     sourceComponent: TrayMenuPopout {
-                        trayItem: trayLoader.modelData
+                        trayItem: trayPopout.modelData
                     }
-
-                    // Force recreation when reopening (per-instance menu state)
-                    Connections {
-                        target: Services.Popout
-                        function onIsOpenChanged() {
-                            if (Services.Popout.isOpen && trayLoader.shouldBeActive) {
-                                trayLoader.active = false;
-                                trayLoader.active = true;
-                            }
-                        }
-                    }
-
-                    states: State {
-                        name: "active"
-                        when: trayLoader.shouldBeActive
-                        PropertyChanges {
-                            trayLoader.active: true
-                            trayLoader.opacity: 1
-                        }
-                    }
-
-                    transitions: [
-                        Transition {
-                            from: ""
-                            to: "active"
-                            SequentialAnimation {
-                                PropertyAction { target: trayLoader; property: "active" }
-                                PauseAnimation { duration: 16 }
-                                PropertyAction { target: trayLoader; property: "opacity" }
-                            }
-                        },
-                        Transition {
-                            from: "active"
-                            to: ""
-                            SequentialAnimation {
-                                PropertyAction { target: trayLoader; property: "opacity" }
-                                PauseAnimation { duration: 50 }
-                                PropertyAction { target: trayLoader; property: "active" }
-                            }
-                        }
-                    ]
                 }
             }
         }
@@ -336,6 +287,8 @@ Item {
         id: popout
 
         required property string name
+        // Reload content every time the popout opens (per-instance menu state)
+        property bool recreateOnOpen: false
         readonly property bool shouldBeActive: !root.switching
             && Services.Popout.currentName === name
             && Services.Popout.activeScreen === root.screen
@@ -345,6 +298,17 @@ Item {
         active: false
         opacity: 0
         visible: opacity > 0.001
+
+        Connections {
+            target: Services.Popout
+            enabled: popout.recreateOnOpen
+            function onIsOpenChanged() {
+                if (Services.Popout.isOpen && popout.shouldBeActive) {
+                    popout.active = false;
+                    popout.active = true;
+                }
+            }
+        }
 
         states: State {
             name: "active"

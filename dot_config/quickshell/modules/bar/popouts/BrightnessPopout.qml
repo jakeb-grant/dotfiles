@@ -1,22 +1,11 @@
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
+import qs.modules.bar.popouts.components
 import qs.services as Services
 import qs.utils as Utils
 
-ColumnLayout {
+PopoutColumn {
     id: root
-
-    spacing: Utils.Theme.spacingNormal
-
-    property real _flowOffset: 0
-    NumberAnimation on _flowOffset { from: 0; to: 1; duration: 8000; loops: Animation.Infinite }
-
-    // Width spacer
-    Item {
-        implicitWidth: Utils.Theme.popoutWidth
-        implicitHeight: 0
-    }
 
     RowLayout {
         spacing: Utils.Theme.spacingNormal
@@ -57,130 +46,18 @@ ColumnLayout {
         }
     }
 
-    // Interactive brightness slider
-    Item {
-        id: slider
-
+    FlowSlider {
         Layout.fillWidth: true
-        height: Utils.Theme.sliderHeight
+        value: Services.Brightness.brightness
+        flowColors: [Utils.Theme.accent, Utils.Theme.yellow, Utils.Theme.peach]
 
-        readonly property real trackHeight: Utils.Theme.sliderTrackHeight
-        readonly property real thumbSize: Utils.Theme.sliderThumbSize
-        readonly property real effectiveWidth: width - thumbSize
-        readonly property bool dragging: sliderMouse.pressed
-
-        // Track background
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            anchors.leftMargin: slider.thumbSize / 2
-            anchors.rightMargin: slider.thumbSize / 2
-            height: slider.trackHeight
-            radius: height / 2
-            color: Utils.Theme.pillBg
-
-            // Fill — masked flowing gradient
-            Item {
-                width: parent.width * Services.Brightness.brightness
-                height: parent.height
-
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    maskEnabled: true
-                    maskSource: briFillMask
-                }
-
-                Rectangle {
-                    id: briFillMask
-                    anchors.fill: parent
-                    radius: parent.height / 2
-                    visible: false
-                    layer.enabled: true
-                }
-
-                Rectangle {
-                    width: 2000
-                    height: parent.height
-                    x: -(root._flowOffset * 1000)
-
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.000; color: Utils.Theme.accent }
-                        GradientStop { position: 0.167; color: Utils.Theme.yellow }
-                        GradientStop { position: 0.333; color: Utils.Theme.peach }
-                        GradientStop { position: 0.500; color: Utils.Theme.accent }
-                        GradientStop { position: 0.667; color: Utils.Theme.yellow }
-                        GradientStop { position: 0.833; color: Utils.Theme.peach }
-                        GradientStop { position: 1.000; color: Utils.Theme.accent }
-                    }
-                }
-
-                Behavior on width {
-                    enabled: !slider.dragging
-                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-                }
-            }
+        onPressStarted: Services.Brightness.beginUserInput()
+        onMoved: (newValue) => {
+            const pct = Math.round(newValue * 100);
+            Services.Brightness.percent = pct;
+            Services.Brightness.setBrightness(pct);
         }
-
-        // Thumb
-        Rectangle {
-            id: thumb
-
-            x: slider.thumbSize / 2 + slider.effectiveWidth * Services.Brightness.brightness - width / 2
-            anchors.verticalCenter: parent.verticalCenter
-            width: slider.thumbSize
-            height: slider.thumbSize
-            radius: width / 2
-            color: sliderMouse.containsMouse || sliderMouse.pressed
-                ? Utils.Theme.text : Utils.Theme.subtext0
-            scale: sliderMouse.pressed ? 1.4 : sliderMouse.containsMouse ? 1.15 : 1
-
-            Behavior on x {
-                enabled: !slider.dragging
-                NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-            }
-
-            Behavior on color {
-                ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-            }
-
-            Behavior on scale {
-                NumberAnimation {
-                    duration: sliderMouse.pressed ? 80 : Utils.Theme.animDurationFast
-                    easing.type: sliderMouse.pressed ? Easing.OutQuad : Easing.OutBack
-                }
-            }
-        }
-
-        // Drag/click area
-        MouseArea {
-            id: sliderMouse
-
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-
-            function brightnessFromX(mouseX: real): void {
-                const clamped = Math.max(slider.thumbSize / 2,
-                    Math.min(mouseX, slider.width - slider.thumbSize / 2));
-                const pct = Math.round((clamped - slider.thumbSize / 2) / slider.effectiveWidth * 100);
-                Services.Brightness.percent = pct;
-                Services.Brightness.setBrightness(pct);
-            }
-
-            onPressed: (mouse) => {
-                Services.Brightness.beginUserInput();
-                brightnessFromX(mouse.x);
-            }
-
-            onPositionChanged: (mouse) => {
-                if (pressed) brightnessFromX(mouse.x);
-            }
-
-            onReleased: Services.Brightness.endUserInput()
-            onCanceled: Services.Brightness.endUserInput()
-        }
+        onReleased: Services.Brightness.endUserInput()
     }
 
     // Hint

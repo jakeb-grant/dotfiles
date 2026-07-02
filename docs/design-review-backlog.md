@@ -9,6 +9,8 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 
 ## Session log
 
+**Session 3 (2026-07-01) — QS-1 complete (popout component library, Wave 3 Track B start).** Built `modules/bar/popouts/components/` — 12 shared primitives (PopoutColumn width-spacer base, Separator, SectionLabel, SectionHeader w/ spinning refresh, ConnectionHeader crossfade w/ icon slot, IconButton, PillButton, ListRow hover row w/ default-alias content, PopoutListView w/ empty state, FlowBar masked flowing gradient, FlowSlider display-only slider emitting pressStarted/moved/released, EmptyLabel) — and rewrote all 9 popouts + PopoutWrapper onto them. Popouts 3314 → 2635 total lines (net −679; VolumePopout 592→302, Wifi 370→133, BT 416→165). PopoutWrapper's tray Loader collapsed into the shared `component Popout` via new `recreateOnOpen` flag. DEVGUIDE "Popout Patterns" converted from copy-paste prose to component docs. Verified three ways: live shell reloads clean (one mid-`chezmoi apply` scanner race, self-resolved), headless second-instance smoke test instantiating all popouts (zero warnings, exit 0), and user-driven interactive test on the live bar (zero new log lines). Review: parity agent CLEAN (6/6 areas; one sub-pixel note on transport-row height accepted); component agent raised 6 — 2 fixed (2-color FlowBar gradient now shifts a full pattern period per loop, fixing a pre-existing battery-bar snap; IconButton bounce gated on `enabled`), 3 rejected as parity-with-original (seek-bar drag coupling, 8px spacer gap, crossfade width share — all match the old code byte-for-byte), 1 false positive (nested layouts default `Layout.fillWidth: true`, headers stretch as before).
+
 **Session 2 (2026-07-01) — Wave 2 complete (theme-system integrity).** Fixed: THM-1 (ghostty/btop/pane-fm direct-writes retargeted to the chezmoi source, run before `chezmoi apply`; ghostty+btop added to `themed_targets`; acceptance: `chezmoi diff`/`status` fully clean after a switch), THM-8 (shared `rewrite_config_keys` helper replaces the ×3 copy-paste; single palette load; chromium warning fix; `CHEZMOI_ROOT` via `chezmoi source-path`), THM-6 (atomic active.json via temp+rename; chezmoi exit code checked → critical notify + exit 1; success toast only on real success), THM-4 (`StrictUndefined` + `validate_palette`: 26 roles/hex/btop+pane-fm file existence/zed names; all 10 palettes pass, negative tests rejected), THM-7 remainder (accent added to 3 catppuccin darks = their blue; real `_zed_theme_dark` for 3 light palettes; rose-pine "inversion" re-checked — moon inverts too, consistent upstream overlay→base mapping, intentional; `islandShadowColor` already documented in Theme.qml). Two review agents: verifier 6/6 pass; code reviewer found no blocking bugs + 3 minor items — 2 fixed (btop now killed *before* apply so its exit-save can't clobber the theme; missing-key insertion warns), 1 accepted as-is (chromium PermissionError still non-fatal — cosmetic wash). Ghostty source header tidied. Re-ran `theme-switch catppuccin-mocha` end-to-end: clean.
 
 **Session 1 (2026-07-01) — Wave 1 complete.** Fixed: CHZ-2 (ignore gaps; HYPRLAND docs moved to `docs/`; stray `~/HYPRLAND_*.md`, `~/LICENSE`, `~/references/`, `~/.config/theme-templates/` deleted), CHZ-3 (phantom prompts removed; README graphics list synced), BIN-1 partial (compose ports → 127.0.0.1; "restart" message fixed), BIN-2 (toggle-bar-mode writes both copies), THM-7 partial (hyprlock bg → `path = screenshot` + palette color fallback; `_wallpaper` key deleted from all 11 palettes), QS-2 (IconCache singleton), CHZ-6 partial (fnm guard), THM-3 (deleted duplicate `hyprland.lua.theme`; CLAUDE.md/README updated), HYP-2 partial (hypridle doc sentence fixed; migration docs archived to `docs/`). Regenerated via `theme-switch catppuccin-mocha` + targeted `chezmoi apply`; two review agents on the diff → 1 real finding (stale README:164 reference, fixed), 1 false positive rejected (reviewer claimed ghostty chezmoi-diff was clean — re-verified: **THM-1 still reproduces**, apply would delete Ghostty's theme lines). Icon-cache startup-window race accepted as-is (self-heals per open; optional `rev` hardening declined).
@@ -21,7 +23,7 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 2. **The Jinja stage is largely vestigial.** Most generated `.tmpl` files contain zero Go template syntax; `hyprland.lua.theme` → `.tmpl` is a byte-identical copy. Chezmoi-native templates reading `active.json` via `fromJson` would eliminate the second template language, the committed-generated-file class, and the "edit the wrong file" trap. → [THM-2](#thm-2)
 3. **The repo is 630 MB** — 558 MB of upscaled wallpaper PNGs in the working tree plus a deleted prior generation still in pack history. → [CHZ-1](#chz-1)
 4. **Repo docs are deployed into `$HOME`.** `.chezmoiignore` gaps mean `~/HYPRLAND_0.55_*.md`, `~/LICENSE`, `~/references/`, and inert `~/.config/theme-templates/` exist right now. → [CHZ-2](#chz-2)
-5. **Quickshell popouts have no shared component library.** ~600–800 lines of copy-paste across 8 popouts (sliders, list rows, pill buttons, headers) that DEVGUIDE documents as prose templates instead of components. → [QS-1](#qs-1)
+5. ~~**Quickshell popouts have no shared component library.**~~ ✅ session 3 — 12-component library in `modules/bar/popouts/components/`, all popouts rewritten, net −679 lines. → [QS-1](#qs-1)
 
 Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default creds** ([BIN-1](#bin-1)).
 
@@ -90,19 +92,13 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - `Notifications.qml` lifecycle handling and `SystemStats.qml` gating polling on popout visibility.
 - Comment quality and DEVGUIDE.md generally.
 
-### QS-1 · P1 · L — Popout component library <a name="qs-1"></a>
+### QS-1 · P1 · L — Popout component library ✅ session 3 <a name="qs-1"></a>
 
-- [ ] Zero shared *content* components exist; DEVGUIDE's "Popout Patterns" (lines 172-272) documents code to copy-paste. Census of duplication:
-  - Width-spacer `Item` ×8 (all popouts)
-  - Separator `Rectangle` ×~14
-  - Pill footer button ×3 (~55 lines each: `BluetoothPopout:359-415`, `WifiPopout:313-369`, `TrayMenuPopout:371-426`)
-  - Hover list-row delegate ×5 (40–90 lines: WifiPopout, BluetoothPopout, VolumePopout, PowerPopout, TrayMenuPopout)
-  - Header crossfade (connected ↔ disconnected + link_off button) ×2 near-identical ~100 lines (`WifiPopout:25-127` ≡ `BluetoothPopout:24-123`)
-  - Section header + spinning refresh ×2 (~45 lines)
-  - Flowing-gradient slider ×2 full + 1 seekbar variant (~140 lines: `VolumePopout:61-210`, `BrightnessPopout:61-184`, `VolumePopout:291-393`)
-  - `_flowOffset` + infinite NumberAnimation ×4 · hover icon-button ×~12 · empty-state text ×2
-- [ ] Within PopoutWrapper itself, the tray Repeater Loader duplicates the inline `component Popout`'s states/transitions verbatim (`PopoutWrapper.qml:290-318` vs `:349-382`).
-- **Fix:** `modules/bar/popouts/components/` with `PopoutColumn`, `Separator`, `SectionHeader{refreshable,spinning}`, `PillButton`, `ListRow`, `FlowSlider`, `IconButton`. Est. 600–800 lines removed; VolumePopout 592→~250, Wifi/Bluetooth converge to ~150 each. Convert DEVGUIDE's prose templates into "import these" docs.
+- [x] Built `modules/bar/popouts/components/` (12 components: `PopoutColumn`, `Separator`, `SectionLabel`, `SectionHeader`, `ConnectionHeader`, `IconButton`, `PillButton`, `ListRow`, `PopoutListView`, `FlowBar`, `FlowSlider`, `EmptyLabel`) and rewrote all 9 popouts onto it. Popouts 3314 → 2099 lines + 536 lines of components = **net −679** (in the 600–800 estimate). VolumePopout 592→302, Wifi 370→133, Bluetooth 416→165.
+- [x] PopoutWrapper tray Loader dedup: the inline `component Popout` gained `recreateOnOpen`; the tray Repeater now instantiates `Popout` directly (−52 lines of verbatim states/transitions).
+- [x] DEVGUIDE "Popout Patterns" rewritten from copy-paste prose to a component table + import examples; new module added to Import Convention.
+- Intentional micro-deltas: Battery "Capacity"/"Power Profile" labels unified to `Font.Medium` (SectionLabel); BT header subtitle gained elide+fillWidth. Volume seek bar keeps `thumbBounce: false` to preserve its original static thumb.
+- Verified: live shell reload clean, headless second-instance smoke test instantiating all 9 popouts (zero warnings), interactive hover/drag session on the live bar produced zero log output.
 
 ### QS-2 · P0 · S — TrayMenuPopout walks `/usr/share/icons` on every open ✅ session 1
 
@@ -273,7 +269,7 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 **Wave 3 — structural (M/L, independent tracks):**
 - Track A: THM-2 (chezmoi-native templates) then THM-5 (generate btop/pane-fm) — decide THM-2 first since it changes where generation lives.
-- Track B: QS-1 (popout components) → QS-3 (BarItem) → QS-5/QS-6 (ladders, exit protocol) → QS-4 (launcher scorer).
+- Track B: ~~QS-1 (popout components)~~ ✅ session 3 → QS-3 (BarItem) → QS-5/QS-6 (ladders, exit protocol) → QS-4 (launcher scorer).
 - Track C: CHZ-1 (wallpaper degit + history purge) — schedule deliberately; it's a history rewrite.
 
 **Wave 4 — polish:** QS-7/8/9/10/11/12, HYP-1/2, BIN-3/4, CHZ-4/5, DOC-1/2.

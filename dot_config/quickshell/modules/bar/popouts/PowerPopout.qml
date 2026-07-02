@@ -1,18 +1,11 @@
 import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
+import qs.modules.bar.popouts.components
 import qs.utils as Utils
 
-ColumnLayout {
+PopoutColumn {
     id: root
-
-    spacing: Utils.Theme.spacingNormal
-
-    // Width spacer
-    Item {
-        implicitWidth: Utils.Theme.popoutWidth
-        implicitHeight: 0
-    }
 
     // Header
     RowLayout {
@@ -33,11 +26,7 @@ ColumnLayout {
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // Action buttons
     Column {
@@ -53,64 +42,32 @@ ColumnLayout {
                 { label: "Log Out", icon: "logout", accent: "red", cmd: "hyprctl dispatch 'hl.dsp.exit()'" },
             ]
 
-            Rectangle {
+            ListRow {
                 id: actionItem
 
                 required property var modelData
 
                 width: parent?.width ?? 0
                 height: Utils.Theme.actionItemHeight
-                radius: Utils.Theme.listItemRadius
-                color: "transparent"
-
-                transform: Translate {
-                    x: actionMouse.containsMouse ? 4 : 0
-                    Behavior on x { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutExpo } }
+                onClicked: {
+                    actionProc.command = ["sh", "-c", actionItem.modelData.cmd];
+                    actionProc.running = true;
                 }
 
-                Rectangle {
-                    anchors.fill: parent
-                    radius: Utils.Theme.listItemRadius
-                    color: Utils.Theme.hoverBg
-                    opacity: actionMouse.containsMouse ? 1 : 0
-
-                    Behavior on opacity {
-                        NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-                    }
+                Utils.MaterialIcon {
+                    text: actionItem.modelData.icon
+                    font.pixelSize: Utils.Theme.headerFontSize
+                    color: Utils.Theme[actionItem.modelData.accent]
+                    Layout.alignment: Qt.AlignVCenter
                 }
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: Utils.Theme.listItemMargin
-                    anchors.rightMargin: Utils.Theme.listItemMargin
-                    spacing: Utils.Theme.spacingNormal
-
-                    Utils.MaterialIcon {
-                        text: actionItem.modelData.icon
-                        font.pixelSize: Utils.Theme.headerFontSize
-                        color: Utils.Theme[actionItem.modelData.accent]
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-
-                    Text {
-                        text: actionItem.modelData.label
-                        font.family: Utils.Theme.fontFamily
-                        font.pixelSize: Utils.Theme.fontSize
-                        color: Utils.Theme.text
-                        Layout.fillWidth: true
-                        Layout.alignment: Qt.AlignVCenter
-                    }
-                }
-
-                MouseArea {
-                    id: actionMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        actionProc.command = ["sh", "-c", actionItem.modelData.cmd];
-                        actionProc.running = true;
-                    }
+                Text {
+                    text: actionItem.modelData.label
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: Utils.Theme.fontSize
+                    color: Utils.Theme.text
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
                 }
 
                 Process {

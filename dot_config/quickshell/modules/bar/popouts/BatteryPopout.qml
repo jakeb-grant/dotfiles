@@ -1,22 +1,11 @@
 import QtQuick
-import QtQuick.Effects
 import QtQuick.Layouts
+import qs.modules.bar.popouts.components
 import qs.services as Services
 import qs.utils as Utils
 
-ColumnLayout {
+PopoutColumn {
     id: root
-
-    spacing: Utils.Theme.spacingNormal
-
-    property real _flowOffset: 0
-    NumberAnimation on _flowOffset { from: 0; to: 1; duration: 8000; loops: Animation.Infinite }
-
-    // Width spacer
-    Item {
-        implicitWidth: Utils.Theme.popoutWidth
-        implicitHeight: 0
-    }
 
     // Battery percentage + status
     RowLayout {
@@ -52,98 +41,38 @@ ColumnLayout {
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // Battery bar
     ColumnLayout {
         spacing: Utils.Theme.spacingSmall
 
-        Text {
+        SectionLabel {
             text: "Capacity"
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: Utils.Theme.fontSizeSmall
-            color: Utils.Theme.subtext0
         }
 
-        Rectangle {
+        FlowBar {
             Layout.fillWidth: true
             height: 8
-            radius: 4
-            color: Utils.Theme.pillBg
-
-            Item {
-                id: batFill
-                width: parent.width * Services.Battery.percentage
-                height: parent.height
-
-                readonly property color batColor1: {
-                    if (Services.Battery.percent < 20) return Utils.Theme.red;
-                    if (Services.Battery.percent < 50) return Utils.Theme.yellow;
-                    return Utils.Theme.green;
-                }
-                readonly property color batColor2: {
-                    if (Services.Battery.percent < 20) return Utils.Theme.maroon;
-                    if (Services.Battery.percent < 50) return Utils.Theme.peach;
-                    return Utils.Theme.teal;
-                }
-
-                layer.enabled: true
-                layer.effect: MultiEffect {
-                    maskEnabled: true
-                    maskSource: batFillMask
-                }
-
-                Rectangle {
-                    id: batFillMask
-                    anchors.fill: parent
-                    radius: 4
-                    visible: false
-                    layer.enabled: true
-                }
-
-                Rectangle {
-                    width: 2000
-                    height: parent.height
-                    x: -(root._flowOffset * 1000)
-
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.000; color: batFill.batColor1 }
-                        GradientStop { position: 0.167; color: batFill.batColor2 }
-                        GradientStop { position: 0.333; color: batFill.batColor1 }
-                        GradientStop { position: 0.500; color: batFill.batColor2 }
-                        GradientStop { position: 0.667; color: batFill.batColor1 }
-                        GradientStop { position: 0.833; color: batFill.batColor2 }
-                        GradientStop { position: 1.000; color: batFill.batColor1 }
-                    }
-                }
-
-                Behavior on width {
-                    NumberAnimation { duration: 1200; easing.type: Easing.OutQuint }
-                }
+            ratio: Services.Battery.percentage
+            widthAnimDuration: 1200
+            widthAnimEasing: Easing.OutQuint
+            flowColors: {
+                if (Services.Battery.percent < 20) return [Utils.Theme.red, Utils.Theme.maroon];
+                if (Services.Battery.percent < 50) return [Utils.Theme.yellow, Utils.Theme.peach];
+                return [Utils.Theme.green, Utils.Theme.teal];
             }
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // Power profile
     ColumnLayout {
         spacing: Utils.Theme.spacingSmall
 
-        Text {
+        SectionLabel {
             text: "Power Profile: " + segmentedSlider.profiles[segmentedSlider.activeIndex].label
-            font.family: Utils.Theme.fontFamily
-            font.pixelSize: Utils.Theme.fontSizeSmall
-            color: Utils.Theme.subtext0
         }
 
         // Segmented slider
@@ -220,7 +149,5 @@ ColumnLayout {
                 }
             }
         }
-
     }
-
 }

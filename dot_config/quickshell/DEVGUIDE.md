@@ -171,20 +171,38 @@ animDurationSpin: 800   // continuous (refresh spinner)
 
 ## Popout Patterns
 
-Every popout follows the same structure:
+Popouts are built from the shared component library in
+`modules/bar/popouts/components/` (`import qs.modules.bar.popouts.components`).
+Don't hand-roll separators, hover rows, pill buttons, or sliders — import them.
+
+| Component | Use |
+|-----------|-----|
+| `PopoutColumn` | Popout body: standard spacing + width spacer (`contentWidth` overridable) |
+| `Separator` | 1px full-width divider |
+| `SectionLabel` | Small muted section label ("Networks", "Hardware") |
+| `SectionHeader` | Label row + optional spinning refresh button; extra actions as children |
+| `ConnectionHeader` | Wifi/Bluetooth header: icon slot, connected/disconnected crossfade, disconnect button |
+| `IconButton` | Hoverable MaterialIcon button (`baseColor`/`hoverColor`, `bounce`, `hitPadding`) |
+| `PillButton` | Footer pill button (`icon` + `label`) |
+| `ListRow` | Hover list row: slide-right + hover bg; children land in its inner RowLayout |
+| `PopoutListView` | Fixed-height clipped ListView + centered `emptyText` |
+| `FlowBar` | Track + masked flowing-gradient fill (`ratio`, `flowColors`, `flatFill`) |
+| `FlowSlider` | Interactive FlowBar with thumb; emits `pressStarted`/`moved(newValue)`/`released` |
+| `EmptyLabel` | Italic muted empty-state text |
+
+A typical popout:
 
 ```qml
-ColumnLayout {
+import QtQuick
+import QtQuick.Layouts
+import qs.modules.bar.popouts.components
+import qs.services as Services
+import qs.utils as Utils
+
+PopoutColumn {
     id: root
-    spacing: Utils.Theme.spacingNormal
 
-    // Width spacer — forces consistent width
-    Item {
-        implicitWidth: Utils.Theme.popoutWidth   // or popoutWidthNarrow
-        implicitHeight: 0
-    }
-
-    // Header: icon + title + action button
+    // Header: icon + title (titles use text color, not accent)
     RowLayout {
         spacing: Utils.Theme.spacingNormal
 
@@ -199,77 +217,80 @@ ColumnLayout {
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.popoutTitleSize
             font.bold: true
-            color: Utils.Theme.text                    // titles use text, not accent
+            color: Utils.Theme.text
             Layout.fillWidth: true
         }
     }
 
-    // Separator
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // Content...
 
-    // Footer pill button (optional)
-    Rectangle {
+    PillButton {
         Layout.fillWidth: true
-        implicitHeight: Utils.Theme.pillHeight
-        radius: Utils.Theme.roundingFull
-        color: Utils.Theme.pillBg
-        border.width: 1
-        border.color: Utils.Theme.surface1
-        // ...
+        icon: "terminal"
+        label: "Open something"
+        onClicked: proc.running = true
     }
 }
 ```
 
 ### List Items
 
-Scrollable lists in popouts use a consistent delegate pattern:
+Scrollable lists combine `PopoutListView` + `ListRow`:
 
 ```qml
-Item {
+PopoutListView {
     Layout.fillWidth: true
-    implicitHeight: Utils.Theme.popoutListHeight
-    clip: true
+    model: Services.Network.networks
+    emptyText: "No networks found"
 
-    ListView {
-        anchors.fill: parent
-        spacing: Utils.Theme.spacingTiny
+    delegate: ListRow {
+        id: row
 
-        delegate: Rectangle {
-            width: ListView.view.width
-            height: Utils.Theme.listItemHeight
-            radius: Utils.Theme.listItemRadius
-            color: "transparent"
+        required property string ssid
 
-            // Hover overlay
-            Rectangle {
-                anchors.fill: parent
-                radius: Utils.Theme.listItemRadius
-                color: Utils.Theme.hoverBg
-                opacity: mouseArea.containsMouse ? 1 : 0
+        width: ListView.view.width
+        interactive: true            // hover feedback + click; false for static rows
+        onClicked: doSomething(row.ssid)
 
-                Behavior on opacity {
-                    NumberAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.OutCubic }
-                }
-            }
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.leftMargin: Utils.Theme.listItemMargin
-                anchors.rightMargin: Utils.Theme.listItemMargin
-                spacing: Utils.Theme.spacingNormal
-
-                // icon, label, status...
-            }
+        // Children land in the row's inner RowLayout
+        Text {
+            text: row.ssid
+            font.family: Utils.Theme.fontFamily
+            font.pixelSize: Utils.Theme.listFontSize
+            color: Utils.Theme.text
+            elide: Text.ElideRight
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
         }
     }
 }
 ```
+
+For non-scrolling lists (fixed action lists), use a plain `Column` +
+`Repeater` with `ListRow { width: parent?.width ?? 0 }` delegates
+(see `PowerPopout.qml`).
+
+### Sliders
+
+`FlowSlider` is display-only — the caller owns the value:
+
+```qml
+FlowSlider {
+    Layout.fillWidth: true
+    value: Services.Brightness.brightness              // 0..1 displayed
+    flowColors: [Utils.Theme.accent, Utils.Theme.yellow, Utils.Theme.peach]
+
+    onPressStarted: Services.Brightness.beginUserInput()
+    onMoved: (newValue) => Services.Brightness.setBrightness(Math.round(newValue * 100))
+    onReleased: Services.Brightness.endUserInput()
+}
+```
+
+`flowColors` takes 2 or 3 colors; both tile seamlessly across the animated
+gradient. See `VolumePopout.qml` for the decoupled-display + resync-timer
+pattern used when the service echoes values back asynchronously.
 
 ## Floating Island Design Language
 
@@ -349,8 +370,9 @@ ColorAnimation { duration: Utils.Theme.animDurationFast; easing.type: Easing.Out
 ## Import Convention
 
 ```qml
-import qs.services as Services    // service singletons
-import qs.utils as Utils          // Theme, MaterialIcon, Anim, Icons
+import qs.services as Services                // service singletons
+import qs.utils as Utils                      // Theme, MaterialIcon, Anim, Icons
+import qs.modules.bar.popouts.components      // popout component library (unaliased)
 
 // Access via namespace
 Services.Popout.show(...)

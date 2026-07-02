@@ -1,19 +1,12 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Io
+import qs.modules.bar.popouts.components
 import qs.services as Services
 import qs.utils as Utils
 
-ColumnLayout {
+PopoutColumn {
     id: root
-
-    spacing: Utils.Theme.spacingNormal
-
-    // Width spacer
-    Item {
-        implicitWidth: Utils.Theme.popoutWidth
-        implicitHeight: 0
-    }
 
     // Distro + kernel
     RowLayout {
@@ -56,11 +49,7 @@ ColumnLayout {
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // Uptime
     RowLayout {
@@ -189,19 +178,11 @@ ColumnLayout {
         }
     }
 
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
-    }
+    Separator {}
 
     // ── Hardware Stats ──
-    Text {
+    SectionLabel {
         text: "Hardware"
-        font.family: Utils.Theme.fontFamily
-        font.pixelSize: Utils.Theme.fontSizeSmall
-        font.weight: Font.Medium
-        color: Utils.Theme.subtext0
     }
 
     StatBar {
@@ -235,19 +216,12 @@ ColumnLayout {
     }
 
     // ── GPU (conditional) ──
-    Rectangle {
-        Layout.fillWidth: true
-        height: 1
-        color: Utils.Theme.separator
+    Separator {
         visible: Services.SystemStats.gpuAvailable
     }
 
-    Text {
+    SectionLabel {
         text: "GPU"
-        font.family: Utils.Theme.fontFamily
-        font.pixelSize: Utils.Theme.fontSizeSmall
-        font.weight: Font.Medium
-        color: Utils.Theme.subtext0
         visible: Services.SystemStats.gpuAvailable
     }
 
