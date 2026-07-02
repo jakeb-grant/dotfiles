@@ -155,11 +155,15 @@ ColumnLayout {
                         anchors.rightMargin: Utils.Theme.spacingNormal
                         spacing: Utils.Theme.spacingNormal
 
-                        // Icon from desktop entry or named icon
+                        // Icon from desktop entry or named icon; _iconUrl is a
+                        // ready image URL (tray items) used as-is — iconPath
+                        // only resolves theme icon *names*.
                         Image {
                             id: appIcon
-                            source: (item.modelData.icon ?? "").length > 0
-                                ? Quickshell.iconPath(item.modelData.icon, true) : ""
+                            source: (item.modelData._iconUrl ?? "").length > 0
+                                ? item.modelData._iconUrl
+                                : ((item.modelData.icon ?? "").length > 0
+                                    ? Quickshell.iconPath(item.modelData.icon, true) : "")
                             sourceSize.width: Utils.Theme.iconSize
                             sourceSize.height: Utils.Theme.iconSize
                             Layout.preferredWidth: Utils.Theme.iconSize

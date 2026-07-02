@@ -341,6 +341,10 @@ Transient feedback for keyboard-initiated state changes (volume/brightness/mic/m
 
 `theme-switch` live-reloads the shell, so user-facing state that should survive it (Do Not Disturb, notification history) lives in a `PersistentProperties { reloadableId: "..." }` block inside the owning service. Primitives (bool, int, string) transfer cleanly; **JS arrays/objects do not** — a `property var` comes back `undefined` after reload ("JSValue can't be reassigned to another engine"). Serialize collections to a JSON string property and expose the parsed form as a derived binding on it. Full quickshell restarts still reset these — accepted.
 
+### Watching Quickshell object models
+
+`Connections { target: someOpener.children }` can miss everything: for models created on demand (e.g. `QsMenuOpener.children` when the menu handle is set), the model is created **and populated within the same signal cascade**, so the Connections re-targets after the `objectInsertedPost` signals already fired — verified live, the handler never runs. Instead bind a `readonly property var` to the model's `values` (its `valuesChanged` notify can't be missed) and react in the property's change handler. Services whose model object is stable for the singleton's lifetime (e.g. `BluetoothAdapter.devices`) are safe with Connections.
+
 ### Invisible hover bridge
 
 Popouts sit `islandGap` away from the bar, so the cursor traverses transparent space when moving from a bar item to its popout. To prevent dismissal during traversal, `PopoutWrapper.qml` renders an invisible `Item` of width/height equal to `islandGap`, anchored between the bar item's edge and the popout's near edge, with its own `HoverHandler` setting a `bridgeHovered` flag. The popout closes only when *neither* the panel nor the bridge is hovered.

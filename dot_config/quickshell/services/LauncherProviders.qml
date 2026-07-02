@@ -1,6 +1,7 @@
 pragma Singleton
 
 import Quickshell
+import Quickshell.Services.SystemTray
 import QtQuick
 import qs.services as Services
 
@@ -64,12 +65,22 @@ Singleton {
         { name: "Windows VM", icon: "", materialIcon: "computer", command: "win-vm", keywords: ["vm","virtual","machine","windows"] },
     ]
 
+    // keywords make submenu entries reachable from the unified search
+    // (Launcher._filterSubmenus) — typing "wifi" beats scrolling the list.
+    // Wi-Fi/Bluetooth/Audio subtitles bind live service state; the Tray entry
+    // only exists while the tray has items (same condition as the bar slot).
     readonly property var mainItems: [
-        { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds" },
-        { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard" },
-        { type: "submenu", name: "Notifications", subtitle: "", icon: "", materialIcon: "notifications", score: 0, _data: "notifhistory" },
-        { type: "submenu", name: "Themes", subtitle: "", icon: "", materialIcon: "palette", score: 0, _data: "themes" },
-        { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "" },
+        { type: "submenu", name: "Keybinds", subtitle: "", icon: "", materialIcon: "keyboard", score: 0, _data: "keybinds", keywords: ["keybinds", "shortcuts", "hotkeys"] },
+        { type: "submenu", name: "Clipboard", subtitle: "", icon: "", materialIcon: "content_paste", score: 0, _data: "clipboard", keywords: ["clipboard", "paste", "history"] },
+        { type: "submenu", name: "Notifications", subtitle: "", icon: "", materialIcon: "notifications", score: 0, _data: "notifhistory", keywords: ["notifications", "history"] },
+        { type: "submenu", name: "Wi-Fi", subtitle: Services.Network.state === "connected" ? Services.Network.ssid : "", icon: "", materialIcon: "wifi", score: 0, _data: "wifi", keywords: ["wifi", "network", "internet", "wireless"] },
+        { type: "submenu", name: "Bluetooth", subtitle: Services.Bluetooth.connectedDevice?.name ?? "", icon: "", materialIcon: "bluetooth", score: 0, _data: "bluetooth", keywords: ["bluetooth", "bt", "pair", "device", "headphones"] },
+        { type: "submenu", name: "Audio Output", subtitle: "", icon: "", materialIcon: "speaker", score: 0, _data: "audio", keywords: ["audio", "output", "sink", "sound", "speaker", "headphones"] },
+        ...(SystemTray.items.values.length > 0
+            ? [{ type: "submenu", name: "Tray", subtitle: "", icon: "", materialIcon: "grid_view", score: 0, _data: "tray", keywords: ["tray", "indicator", "status", "menu"] }]
+            : []),
+        { type: "submenu", name: "Themes", subtitle: "", icon: "", materialIcon: "palette", score: 0, _data: "themes", keywords: ["themes", "theme", "colors", "palette"] },
+        { type: "wallpaper", name: "Wallpapers", subtitle: "", icon: "", materialIcon: "wallpaper", score: 0, _data: "", keywords: ["wallpapers", "wallpaper", "background"] },
         { type: "action", name: "Do Not Disturb", subtitle: Services.Notifications.dnd ? "On" : "", icon: "", materialIcon: Services.Notifications.dnd ? "notifications_off" : "notifications", score: 0, _data: "", _special: "dnd" },
         { type: "action", name: "Upkeep", subtitle: "", icon: "", materialIcon: "system_update", score: 0, _data: "ghostty -e upkeep" },
         { type: "action", name: "Display", subtitle: "", icon: "", materialIcon: "monitor", score: 0, _data: "ghostty -e hyprpier mgr" },

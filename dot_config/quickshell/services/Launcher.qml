@@ -3,6 +3,7 @@ pragma Singleton
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
+import Quickshell.Services.SystemTray
 import QtQuick
 import qs.services as Services
 import qs.utils as Utils
@@ -25,6 +26,44 @@ Singleton {
     property var _clipboardEntries: []
     property var _themes: []
     property var _themeBuffer: []
+
+    // Tray drill-down state ("traymenu" submenu): the SystemTrayItem whose
+    // menu is open, the current DBus menu handle, and parent handles for
+    // Escape back-navigation through nested menus.
+    property var _trayMenuItem: null
+    property var _trayMenuHandle: null
+    property var _trayMenuStack: []
+
+    QsMenuOpener {
+        id: _trayMenuOpener
+        menu: root._trayMenuHandle
+    }
+
+    // DBus menu children populate async after the handle is set — rebuild the
+    // visible rows as they arrive. A binding, not Connections-on-children: the
+    // model object is created and populated within the same signal cascade as
+    // the handle change, so a Connections target re-resolves too late and
+    // misses the insertions (verified live: rows stayed stale).
+    readonly property var _trayMenuChildren: _trayMenuOpener.children?.values ?? []
+    on_TrayMenuChildrenChanged: {
+        if (submenu === "traymenu") _filter();
+    }
+
+    // Wifi scan results land after the submenu opened; same for a bluetooth
+    // power flip (its rows swap between device list and the off row).
+    Connections {
+        target: Services.Network
+        function onScanningChanged(): void {
+            if (!Services.Network.scanning && root.submenu === "wifi") root._filter();
+        }
+    }
+
+    Connections {
+        target: Services.Bluetooth
+        function onPoweredChanged(): void {
+            if (root.submenu === "bluetooth") root._filter();
+        }
+    }
 
     // Static keybind/action/main-menu tables live in LauncherProviders.qml.
 
@@ -132,6 +171,11 @@ Singleton {
             activeScreen = scr ?? screens[0] ?? null;
         } else {
             activeScreen = null;
+            // Release the DBus menu (QsMenuOpener closes it when the handle
+            // clears) so tray apps don't think a menu is still showing.
+            _trayMenuItem = null;
+            _trayMenuHandle = null;
+            _trayMenuStack = [];
         }
     }
 
@@ -158,6 +202,23 @@ Singleton {
     }
 
     function goBack(): bool {
+        // Tray menus nest: pop one level per Escape, then land on the tray
+        // list, then the main menu.
+        if (submenu === "traymenu") {
+            query = "";
+            if (_trayMenuStack.length > 0) {
+                _trayMenuHandle = _trayMenuStack[_trayMenuStack.length - 1];
+                _trayMenuStack = _trayMenuStack.slice(0, -1);
+                results = _trayMenuToResults();
+            } else {
+                submenu = "tray";
+                _trayMenuItem = null;
+                _trayMenuHandle = null;
+                results = _trayToResults();
+            }
+            selectedIndex = 0;
+            return true;
+        }
         if (submenu !== "") {
             submenu = "";
             query = "";
@@ -200,6 +261,20 @@ Singleton {
                 _scanThemes();
                 results = _themesToResults();
                 selectedIndex = 0;
+            } else if (result._data === "wifi") {
+                Services.Network.scan();
+                results = _wifiToResults();
+                selectedIndex = 0;
+            } else if (result._data === "bluetooth") {
+                Services.Bluetooth.refresh();
+                results = _btToResults();
+                selectedIndex = 0;
+            } else if (result._data === "audio") {
+                results = _audioToResults();
+                selectedIndex = 0;
+            } else if (result._data === "tray") {
+                results = _trayToResults();
+                selectedIndex = 0;
             }
             return;
         case "app":
@@ -234,6 +309,69 @@ Singleton {
             break;
         case "placeholder":
             return;
+        // Enter mirrors the popout's row semantics: connected → disconnect,
+        // saved → connect, unknown → impala (password entry lives there,
+        // same punt as the popout's manage row).
+        case "wifi": {
+            const w = result._data;
+            if (w.connecting) return;
+            visible = false;
+            if (w.connected) Services.Network.disconnect();
+            else if (w.known) Services.Network.connect(w.ssid);
+            else _execTracked(["ghostty", "-e", "impala"]);
+            return;
+        }
+        case "bt": {
+            const d = result._data;
+            visible = false;
+            if (d.connected) Services.Bluetooth.disconnectDevice(d.address);
+            else Services.Bluetooth.connectDevice(d.address);
+            return;
+        }
+        // Stays open: the powered-change Connections swaps the off-row for
+        // the device list in place.
+        case "btpower":
+            Services.Bluetooth.togglePower();
+            return;
+        case "sink":
+            Services.Audio.setSink(result._data);
+            visible = false;
+            return;
+        case "trayapp":
+            if (!result._data.hasMenu) {
+                visible = false;
+                result._data.activate();
+                return;
+            }
+            _debounce.stop();
+            submenu = "traymenu";
+            query = "";
+            _trayMenuStack = [];
+            _trayMenuItem = result._data;
+            _trayMenuHandle = result._data.menu ?? null;
+            results = _trayMenuToResults();
+            selectedIndex = 0;
+            return;
+        case "trayactivate":
+            visible = false;
+            result._data.activate();
+            return;
+        case "traymenu": {
+            const e = result._data;
+            if (!e.enabled) return;
+            if (e.hasChildren) {
+                _debounce.stop();
+                _trayMenuStack = [..._trayMenuStack, _trayMenuHandle];
+                _trayMenuHandle = e;
+                query = "";
+                results = _trayMenuToResults();
+                selectedIndex = 0;
+                return;
+            }
+            visible = false;
+            e.triggered();
+            return;
+        }
         case "theme":
             _switchTheme(result._data);
             return;
@@ -457,6 +595,173 @@ Singleton {
         return out;
     }
 
+    function _placeholder(name, materialIcon): var {
+        return [{ type: "placeholder", name: name, subtitle: "", icon: "", materialIcon: materialIcon, score: 0, _data: "" }];
+    }
+
+    // Shared submenu-list filter: every term must appear in name+subtitle.
+    // Placeholders are dropped so "No devices" never matches a search.
+    function _filterRows(rows, terms): var {
+        return rows.filter(r => r.type !== "placeholder"
+            && terms.every(t => (r.name + " " + r.subtitle).toLowerCase().includes(t)));
+    }
+
+    function _wifiToResults(): var {
+        const out = [];
+        const nets = Services.Network.networks;
+        for (let i = 0; i < nets.count; i++) {
+            const n = nets.get(i);
+            const connecting = Services.Network.connectingTo === n.ssid;
+            let subtitle;
+            if (n.connected) subtitle = "Connected";
+            else if (connecting) subtitle = "Connecting…";
+            else if (n.known) subtitle = "Saved";
+            else subtitle = (n.security ? n.security + " · " : "") + "via impala";
+            out.push({
+                type: "wifi",
+                name: n.ssid,
+                subtitle: subtitle,
+                icon: "",
+                materialIcon: ["signal_wifi_0_bar", "network_wifi_1_bar", "network_wifi_2_bar",
+                               "network_wifi_3_bar", "signal_wifi_4_bar"][Math.min(n.signal, 4)],
+                score: 0,
+                _data: { ssid: n.ssid, connected: n.connected, known: n.known, connecting: connecting },
+            });
+        }
+        if (out.length === 0)
+            return _placeholder(Services.Network.scanning ? "Scanning…" : "No networks found", "wifi_find");
+        return out;
+    }
+
+    function _btToResults(): var {
+        if (!Services.Bluetooth.powered)
+            return [{ type: "btpower", name: "Bluetooth is off", subtitle: "Turn on", icon: "",
+                      materialIcon: "bluetooth_disabled", score: 0, _data: "" }];
+        const out = [];
+        const devs = Services.Bluetooth.devices;
+        for (let i = 0; i < devs.count; i++) {
+            const d = devs.get(i);
+            let subtitle = "";
+            if (d.connecting) subtitle = "Connecting…";
+            else if (d.disconnecting) subtitle = "Disconnecting…";
+            else if (d.connected) subtitle = d.batteryAvailable
+                ? "Connected · " + Math.round(d.battery * 100) + "%" : "Connected";
+            else if (d.paired) subtitle = "Paired";
+            const ic = d.icon || "";
+            let mi = "bluetooth";
+            if (ic.includes("headset") || ic.includes("headphone")) mi = "headphones";
+            else if (ic.includes("audio")) mi = "speaker";
+            else if (ic.includes("mouse")) mi = "mouse";
+            else if (ic.includes("keyboard")) mi = "keyboard";
+            else if (ic.includes("phone")) mi = "smartphone";
+            out.push({
+                type: "bt",
+                name: d.name,
+                subtitle: subtitle,
+                icon: "",
+                materialIcon: mi,
+                score: 0,
+                _data: { address: d.address, connected: d.connected },
+            });
+        }
+        if (out.length === 0)
+            return _placeholder("No devices", "bluetooth_searching");
+        return out;
+    }
+
+    function _audioToResults(): var {
+        const out = [];
+        for (const node of Services.Audio.sinks) {
+            const isDefault = node === Services.Audio.sink;
+            const desc = node.description || node.nickname || node.name || "Unknown";
+            const dl = desc.toLowerCase();
+            let mi = "volume_up";
+            if (dl.includes("headphone") || dl.includes("headset")) mi = "headphones";
+            else if (dl.includes("hdmi") || dl.includes("monitor") || dl.includes("display")) mi = "monitor";
+            else if (dl.includes("bluetooth") || dl.includes("a2dp")) mi = "bluetooth";
+            out.push({
+                type: "sink",
+                name: desc,
+                subtitle: isDefault ? "Active" : "",
+                icon: "",
+                materialIcon: mi,
+                score: 0,
+                _data: node,
+            });
+        }
+        if (out.length === 0)
+            return _placeholder("No output devices", "volume_off");
+        return out;
+    }
+
+    function _trayToResults(): var {
+        const out = [];
+        for (const t of SystemTray.items.values) {
+            let title = t.title || t.tooltipTitle || t.id || "?";
+            if (title === t.id)
+                title = title.split("_")[0].charAt(0).toUpperCase() + title.split("_")[0].slice(1);
+            const icon = t.icon ?? "";
+            out.push({
+                type: "trayapp",
+                name: title,
+                subtitle: t.hasMenu ? "" : "activates",
+                icon: "",
+                materialIcon: "grid_view",
+                // Tray icons are full image URLs, not theme names — rendered
+                // directly by LauncherPanel via _iconUrl (iconPath would fail).
+                _iconUrl: icon.includes("?path=") ? "image://icon/" + t.id : icon,
+                score: 0,
+                _data: t,
+            });
+        }
+        if (out.length === 0)
+            return _placeholder("Tray is empty", "grid_view");
+        return out;
+    }
+
+    function _trayMenuToResults(): var {
+        const out = [];
+        // Top level of an item that also supports a primary click: expose it —
+        // it's the only keyboard path to "left-click the tray icon".
+        if (_trayMenuStack.length === 0 && _trayMenuItem && !_trayMenuItem.onlyMenu) {
+            out.push({ type: "trayactivate", name: "Activate", subtitle: "primary click", icon: "",
+                       materialIcon: "open_in_new", score: 0, _data: _trayMenuItem });
+        }
+        for (const e of _trayMenuOpener.children?.values ?? []) {
+            if (e.isSeparator) continue;
+            let mi = "arrow_right";
+            if (e.buttonType === 1) mi = e.checkState === 2 ? "check_box" : "check_box_outline_blank";
+            else if (e.buttonType === 2) mi = e.checkState === 2 ? "radio_button_checked" : "radio_button_unchecked";
+            else if (e.hasChildren) mi = "folder_open";
+            out.push({
+                type: "traymenu",
+                name: e.text || "(unnamed)",
+                subtitle: e.hasChildren ? "›" : (e.enabled ? "" : "disabled"),
+                icon: "",
+                materialIcon: mi,
+                score: 0,
+                _data: e,
+            });
+        }
+        if (out.length === 0)
+            return _placeholder("No menu items", "menu");
+        return out;
+    }
+
+    // Submenu/wallpaper entries from the main menu, scored into the unified
+    // search — "wifi<Enter>" should open the Wi-Fi list without scrolling.
+    function _filterSubmenus(terms): var {
+        const out = [];
+        for (const m of Services.LauncherProviders.mainItems) {
+            if (m.type !== "submenu" && m.type !== "wallpaper") continue;
+            const score = _score(terms, m.name.toLowerCase(),
+                                 (m.keywords ?? []).join(" "), [2.5, 1.5, 0.5]);
+            if (score > 0)
+                out.push(Object.assign({}, m, { score: score }));
+        }
+        return out;
+    }
+
     // Boolean filter, not the ladder: every term must appear, fixed score 1
     // (clipboard entries rank below any real ladder hit in the unified list).
     function _filterClipboard(terms): var {
@@ -514,6 +819,16 @@ Singleton {
                 results = _notifHistoryToResults(Services.Notifications.history);
             } else if (submenu === "themes") {
                 results = _themesToResults();
+            } else if (submenu === "wifi") {
+                results = _wifiToResults();
+            } else if (submenu === "bluetooth") {
+                results = _btToResults();
+            } else if (submenu === "audio") {
+                results = _audioToResults();
+            } else if (submenu === "tray") {
+                results = _trayToResults();
+            } else if (submenu === "traymenu") {
+                results = _trayMenuToResults();
             } else {
                 results = Services.LauncherProviders.mainItems;
             }
@@ -550,12 +865,38 @@ Singleton {
             selectedIndex = 0;
             return;
         }
+        if (submenu === "wifi") {
+            results = _filterRows(_wifiToResults(), terms);
+            selectedIndex = 0;
+            return;
+        }
+        if (submenu === "bluetooth") {
+            results = _filterRows(_btToResults(), terms);
+            selectedIndex = 0;
+            return;
+        }
+        if (submenu === "audio") {
+            results = _filterRows(_audioToResults(), terms);
+            selectedIndex = 0;
+            return;
+        }
+        if (submenu === "tray") {
+            results = _filterRows(_trayToResults(), terms);
+            selectedIndex = 0;
+            return;
+        }
+        if (submenu === "traymenu") {
+            results = _filterRows(_trayMenuToResults(), terms);
+            selectedIndex = 0;
+            return;
+        }
 
         let all = [
             ..._filterApps(terms),
             ..._filterWindows(terms),
             ..._filterKeybinds(terms),
             ..._filterActions(terms),
+            ..._filterSubmenus(terms),
             ..._filterClipboard(terms),
         ];
         all.sort((a, b) => b.score - a.score);
