@@ -14,12 +14,14 @@ Singleton {
     property string query: ""
     property int selectedIndex: 0
     property var results: []
+    // ShellScreen the launcher opened on (null when closed) — same
+    // convention as Popout.activeScreen
     property var activeScreen: null
 
     readonly property string mode: query.startsWith("=") ? "calc" : "unified"
     readonly property string effectiveQuery: mode === "calc" ? query.substring(1).trim() : query
 
-    property string _submenu: ""
+    property string submenu: ""
     property var _clipboardEntries: []
     property var _themes: []
     property var _themeBuffer: []
@@ -65,7 +67,7 @@ Singleton {
             } else {
                 root._themes = root._themeBuffer;
                 root._themeBuffer = [];
-                if (root._submenu === "themes")
+                if (root.submenu === "themes")
                     root.results = root._themesToResults();
             }
         }
@@ -101,7 +103,7 @@ Singleton {
     Connections {
         target: Utils.Theme
         function onThemeNameChanged(): void {
-            if (root._submenu === "themes")
+            if (root.submenu === "themes")
                 root.results = root._themesToResults();
         }
     }
@@ -110,11 +112,11 @@ Singleton {
         if (visible) {
             query = "";
             selectedIndex = 0;
-            _submenu = "";
+            submenu = "";
             results = Services.LauncherProviders.mainItems;
             _clipboardEntries = [];
             _clipListProc.running = true;
-            activeScreen = Hyprland.focusedMonitor?.name ?? "";
+            activeScreen = Hyprland.focusedMonitor?.screen ?? null;
         } else {
             activeScreen = null;
         }
@@ -143,8 +145,8 @@ Singleton {
     }
 
     function goBack(): bool {
-        if (_submenu !== "") {
-            _submenu = "";
+        if (submenu !== "") {
+            submenu = "";
             query = "";
             results = Services.LauncherProviders.mainItems;
             selectedIndex = 0;
@@ -170,7 +172,7 @@ Singleton {
         switch (result.type) {
         case "submenu":
             _debounce.stop();
-            _submenu = result._data;
+            submenu = result._data;
             query = "";
             if (result._data === "keybinds") {
                 results = Services.LauncherProviders.keybindItems;
@@ -209,7 +211,7 @@ Singleton {
             return;
         case "wallpaper":
             _debounce.stop();
-            _submenu = "wallpaper";
+            submenu = "wallpaper";
             query = "";
             Services.Wallpaper.refreshForLauncher();
             return;
@@ -425,11 +427,11 @@ Singleton {
 
     function _filter(): void {
         if (effectiveQuery.length === 0) {
-            if (_submenu === "keybinds") {
+            if (submenu === "keybinds") {
                 results = Services.LauncherProviders.keybindItems;
-            } else if (_submenu === "clipboard") {
+            } else if (submenu === "clipboard") {
                 results = _clipboardToResults(_clipboardEntries);
-            } else if (_submenu === "themes") {
+            } else if (submenu === "themes") {
                 results = _themesToResults();
             } else {
                 results = Services.LauncherProviders.mainItems;
@@ -447,17 +449,17 @@ Singleton {
         const terms = effectiveQuery.toLowerCase().split(/\s+/).filter(t => t.length > 0);
 
         // Filter within submenu if active
-        if (_submenu === "keybinds") {
+        if (submenu === "keybinds") {
             results = _filterKeybinds(terms);
             selectedIndex = 0;
             return;
         }
-        if (_submenu === "clipboard") {
+        if (submenu === "clipboard") {
             results = _filterClipboard(terms);
             selectedIndex = 0;
             return;
         }
-        if (_submenu === "themes") {
+        if (submenu === "themes") {
             results = _themesToResults().filter(t => terms.every(term => t.name.toLowerCase().includes(term)));
             selectedIndex = 0;
             return;

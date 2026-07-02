@@ -35,6 +35,11 @@ Singleton {
             sink.audio.muted = !sink.audio.muted;
     }
 
+    function setVolume(value: real): void {
+        if (sink?.audio)
+            sink.audio.volume = value;
+    }
+
     function setSink(node: PwNode): void {
         Pipewire.preferredDefaultAudioSink = node;
     }

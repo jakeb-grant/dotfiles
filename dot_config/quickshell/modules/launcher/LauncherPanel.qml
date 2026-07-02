@@ -14,7 +14,7 @@ ColumnLayout {
     spacing: Utils.Theme.spacingNormal
     clip: true
 
-    readonly property bool wallpaperMode: Services.Launcher._submenu === "wallpaper"
+    readonly property bool wallpaperMode: Services.Launcher.submenu === "wallpaper"
 
     // #6: Open/close animation (opacity + scale from bottom)
     property bool _opening: false
@@ -389,8 +389,8 @@ ColumnLayout {
                 root.scale = 0.88;
             }
         }
-        function on_SubmenuChanged(): void {
-            if (Services.Launcher._submenu !== "wallpaper")
+        function onSubmenuChanged(): void {
+            if (Services.Launcher.submenu !== "wallpaper")
                 searchInput.forceActiveFocus();
         }
     }

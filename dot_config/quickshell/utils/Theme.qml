@@ -31,9 +31,6 @@ Singleton {
     readonly property string themeName: _p._name ?? "Unknown"
     readonly property bool isDark: (_p._variant ?? "dark") === "dark"
 
-    // ── Theme transition ──
-    readonly property int _tt: 400
-
     // ── Palette: Neutral Scale ──
     property color crust:    _p.crust    ?? "#11111b"
     property color mantle:   _p.mantle   ?? "#181825"
@@ -48,18 +45,18 @@ Singleton {
     property color subtext1: _p.subtext1 ?? "#bac2de"
     property color text:     _p.text     ?? "#cdd6f4"
 
-    Behavior on crust    { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on mantle   { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on base     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on surface0 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on surface1 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on surface2 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on overlay0 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on overlay1 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on overlay2 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on subtext0 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on subtext1 { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on text     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
+    Behavior on crust    { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on mantle   { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on base     { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on surface0 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on surface1 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on surface2 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on overlay0 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on overlay1 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on overlay2 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on subtext0 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on subtext1 { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on text     { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
 
     // ── Palette: Accent Hues ──
     // rosewater/flamingo/pink/sky exist in the palette JSON but no Quickshell
@@ -75,16 +72,16 @@ Singleton {
     property color blue:      _p.blue      ?? "#89b4fa"
     property color lavender:  _p.lavender  ?? "#b4befe"
 
-    Behavior on mauve     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on red       { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on maroon    { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on peach     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on yellow    { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on green     { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on teal      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on sapphire  { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on blue      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on lavender  { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
+    Behavior on mauve     { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on red       { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on maroon    { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on peach     { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on yellow    { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on green     { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on teal      { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on sapphire  { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on blue      { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on lavender  { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
 
     // ── Semantic Roles (app-specific overrides from palette JSON) ──
     // Reference raw _p values to avoid chasing animated intermediates
@@ -96,12 +93,12 @@ Singleton {
     property color pillBg:       _qs.pillBg       ?? (_p.base     ?? "#1e1e2e")
     property color hoverBg:      _qs.hoverBg      ?? (_p.surface1 ?? "#45475a")
 
-    Behavior on accent       { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on disabledText { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on subtleText   { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on separator    { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on pillBg       { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
-    Behavior on hoverBg      { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
+    Behavior on accent       { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on disabledText { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on subtleText   { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on separator    { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on pillBg       { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
+    Behavior on hoverBg      { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
 
     // ── Bar Mode ──
     readonly property string barMode: _qs.barMode ?? "side"
@@ -155,7 +152,7 @@ Singleton {
     readonly property int islandShadowY: _qs.islandShadowY ?? 6
     property color islandShadowColor: _qs.islandShadowColor ?? (_p.crust ?? "#11111b")
 
-    Behavior on islandShadowColor { ColorAnimation { duration: root._tt; easing.type: Easing.OutCubic } }
+    Behavior on islandShadowColor { ColorAnimation { duration: root.animDuration; easing.type: Easing.OutCubic } }
 
     // Island fill helpers — mantle and surface0 with islandOpacity applied.
     // Bindings track theme transitions because mantle/surface0 are animated.

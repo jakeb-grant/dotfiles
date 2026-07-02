@@ -46,11 +46,32 @@ Singleton {
     // Known network SSIDs
     property var knownNetworks: ({})
 
+    // Station device name, detected once at startup. Until (or if) detection
+    // returns, commands run against the wlan0 fallback and self-correct on
+    // the next poll tick.
+    property string device: "wlan0"
+
+    Process {
+        id: deviceProc
+        // iwctl device list columns: Name Address Powered Adapter Mode
+        command: ["sh", "-c", "iwctl device list | sed 's/\\x1b\\[[0-9;]*m//g' | awk '$NF==\"station\"{print $1; exit}'"]
+        running: true
+
+        stdout: SplitParser {
+            onRead: data => {
+                const name = data.trim();
+                if (name)
+                    root.device = name;
+            }
+        }
+    }
+
     // --- Status polling (single-line output to avoid race conditions) ---
     Process {
         id: proc
         // Outputs one line: state|ssid|ip|security|freq_mhz|rssi_dbm
-        command: ["sh", "-c", "iwctl station wlan0 show | sed 's/\\x1b\\[[0-9;]*m//g' | awk '/State/{st=$NF} /Connected network/{ssid=$NF} /IPv4 address/{ip=$NF} /Security/{sec=$NF} /Frequency/{freq=$NF} /^ *RSSI/{rssi=$(NF-1)} END{print st\"|\"ssid\"|\"ip\"|\"sec\"|\"freq\"|\"rssi}'"]
+        // (SSID keeps internal spaces: strip the label + surrounding padding, take the rest)
+        command: ["sh", "-c", "iwctl station " + root.device + " show | sed 's/\\x1b\\[[0-9;]*m//g' | awk '/State/{st=$NF} /Connected network/{sub(/^ *Connected network */, \"\"); sub(/ *$/, \"\"); ssid=$0} /IPv4 address/{ip=$NF} /Security/{sec=$NF} /Frequency/{freq=$NF} /^ *RSSI/{rssi=$(NF-1)} END{print st\"|\"ssid\"|\"ip\"|\"sec\"|\"freq\"|\"rssi}'"]
         running: true
 
         stdout: SplitParser {
@@ -93,9 +114,17 @@ Singleton {
     // Track previous state to detect external changes
     property string _prevState: ""
 
+    // Rescan at most once per debounce window — a flapping connection would
+    // otherwise fire scan()'s three processes on every 3s poll tick.
+    Timer {
+        id: autoScanDebounce
+        interval: 15000
+    }
+
     onStateChanged: {
-        if (_prevState !== "" && state !== _prevState) {
+        if (_prevState !== "" && state !== _prevState && !autoScanDebounce.running) {
             // State changed externally — rescan network list
+            autoScanDebounce.start();
             scan();
         }
         _prevState = state;
@@ -121,7 +150,7 @@ Singleton {
 
     Process {
         id: scanProc
-        command: ["iwctl", "station", "wlan0", "scan"]
+        command: ["iwctl", "station", root.device, "scan"]
 
         onRunningChanged: {
             if (!running) {
@@ -144,11 +173,14 @@ Singleton {
                 const line = data;
                 // Skip header/separator lines
                 if (line.includes("Known Networks") || line.includes("---") || line.trim() === "") return;
-                // Format: "  SSID                  Security  ..."
-                // SSID is the first column, typically left-aligned with leading spaces
-                const parts = line.trim().split(/\s{2,}/);
-                if (parts.length >= 1 && parts[0] !== "Name") {
-                    knownProc._names[parts[0]] = true;
+                // Columns: Name  Security  Last connected. Anchor on the two
+                // right-hand columns (rsplit) so names with runs of spaces
+                // survive; fall back to first-column split if a row lacks them.
+                const trimmed = line.trim();
+                const m = trimmed.match(/^(.*\S)\s{2,}\S+\s{2,}\S/);
+                const name = m ? m[1] : trimmed.split(/\s{2,}/)[0];
+                if (name && name !== "Name") {
+                    knownProc._names[name] = true;
                 }
             }
         }
@@ -164,7 +196,7 @@ Singleton {
     // --- Network list ---
     Process {
         id: listProc
-        command: ["sh", "-c", "iwctl station wlan0 get-networks rssi-dbms | sed 's/\\x1b\\[[0-9;]*m//g'"]
+        command: ["sh", "-c", "iwctl station " + root.device + " get-networks rssi-dbms | sed 's/\\x1b\\[[0-9;]*m//g'"]
 
         property var _entries: []
 
@@ -192,20 +224,23 @@ Singleton {
                 const trimmed = cleaned.trim();
                 if (trimmed === "" || trimmed === "Name" || trimmed.startsWith("Network")) return;
 
-                // Split by 2+ spaces
-                const parts = trimmed.split(/\s{2,}/);
-                if (parts.length < 2) return;
-
-                // Last token is rssi in centidBm (e.g. -5900)
-                const rssiRaw = parseInt(parts[parts.length - 1]) || 0;
+                // Anchor on the right-hand columns (rsplit): rssi in centidBm
+                // last (e.g. -5900), security second-to-last, and the SSID is
+                // everything before them with internal spaces intact.
+                let ssid, sec, rssiRaw;
+                const m = trimmed.match(/^(.*\S)\s{2,}(\S+)\s{2,}(-?\d+)$/);
+                if (m) {
+                    ssid = m[1];
+                    sec = m[2];
+                    rssiRaw = parseInt(m[3]) || 0;
+                } else {
+                    const m2 = trimmed.match(/^(.*\S)\s{2,}(-?\d+)$/);
+                    if (!m2) return;
+                    ssid = m2[1];
+                    sec = "";
+                    rssiRaw = parseInt(m2[2]) || 0;
+                }
                 const signal = listProc.dbmToLevel(rssiRaw);
-
-                // Security is second-to-last
-                const sec = parts.length >= 3 ? parts[parts.length - 2] : "";
-
-                // SSID is everything before security
-                const ssidParts = parts.slice(0, parts.length >= 3 ? parts.length - 2 : parts.length - 1);
-                const ssid = ssidParts.join("  ").trim();
 
                 if (ssid === "" || ssid === "Name") return;
 
@@ -244,7 +279,7 @@ Singleton {
     // --- Connect ---
     function connect(ssid) {
         root.connectingTo = ssid;
-        connectProc.command = ["iwctl", "station", "wlan0", "connect", ssid];
+        connectProc.command = ["iwctl", "station", root.device, "connect", ssid];
         connectProc.running = true;
     }
 
@@ -284,7 +319,7 @@ Singleton {
 
     Process {
         id: disconnectProc
-        command: ["iwctl", "station", "wlan0", "disconnect"]
+        command: ["iwctl", "station", root.device, "disconnect"]
 
         onRunningChanged: {
             if (!running) {

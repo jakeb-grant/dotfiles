@@ -208,8 +208,8 @@ ColumnLayout {
     // Reset scroll when entering wallpaper mode
     Connections {
         target: Services.Launcher
-        function on_SubmenuChanged(): void {
-            if (Services.Launcher._submenu === "wallpaper") {
+        function onSubmenuChanged(): void {
+            if (Services.Launcher.submenu === "wallpaper") {
                 root.forceActiveFocus();
                 root.activeRow = root.singleEntries.length > 0 ? 0 : 1;
                 singlesBand.selectedIndex = 0;

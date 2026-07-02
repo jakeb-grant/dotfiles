@@ -30,7 +30,7 @@ Singleton {
     // Native device refs for connect/disconnect by address
     property var _deviceRefs: ({})
 
-    function _syncDevices() {
+    function refresh() {
         if (!adapter) return;
 
         const devs = adapter.devices.values;
@@ -82,8 +82,8 @@ Singleton {
     Connections {
         target: root.adapter?.devices ?? null
 
-        function onObjectInsertedPost() { root._syncDevices(); }
-        function onObjectRemovedPost() { root._syncDevices(); }
+        function onObjectInsertedPost() { root.refresh(); }
+        function onObjectRemovedPost() { root.refresh(); }
     }
 
     // Also re-sync periodically to catch property changes (connected, battery, etc.)
@@ -92,7 +92,7 @@ Singleton {
         interval: 2000
         running: true
         repeat: true
-        onTriggered: root._syncDevices()
+        onTriggered: root.refresh()
     }
 
     property bool _weStartedDiscovery: false
@@ -119,7 +119,7 @@ Singleton {
                 root.adapter.discovering = false;
                 root._weStartedDiscovery = false;
             }
-            root._syncDevices();
+            root.refresh();
         }
     }
 

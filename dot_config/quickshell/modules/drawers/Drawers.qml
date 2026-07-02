@@ -35,7 +35,7 @@ Variants {
             WlrLayershell.exclusionMode: ExclusionMode.Ignore
             WlrLayershell.layer: WlrLayer.Top
             WlrLayershell.keyboardFocus: (Services.Launcher.visible
-                    && Services.Launcher.activeScreen === scope.modelData.name)
+                    && Services.Launcher.activeScreen === scope.modelData)
                 ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
             color: "transparent"
 
@@ -101,7 +101,7 @@ Variants {
                 id: launcherBg
 
                 readonly property int spacing: Utils.Theme.spacingNormal
-                readonly property real launcherActiveWidth: Services.Launcher._submenu === "wallpaper"
+                readonly property real launcherActiveWidth: Services.Launcher.submenu === "wallpaper"
                     ? Utils.Theme.wallpaperPickerWidth : Utils.Theme.launcherWidth
                 readonly property real lw: launcherActiveWidth + spacing * 2
 
@@ -134,7 +134,7 @@ Variants {
                     }
                 }
 
-                layer.enabled: true
+                layer.enabled: visible
                 layer.smooth: true
                 layer.effect: MultiEffect {
                     shadowEnabled: true
@@ -154,7 +154,7 @@ Variants {
                 y: launcherBg.y + launcherBg.spacing
                 width: launcherBg.launcherActiveWidth
                 visible: Services.Launcher.visible
-                    && Services.Launcher.activeScreen === scope.modelData.name
+                    && Services.Launcher.activeScreen === scope.modelData
 
                 Behavior on width {
                     NumberAnimation { duration: 300; easing.type: Easing.OutExpo }
@@ -182,11 +182,6 @@ Variants {
                         notification: modelData
                     }
                 }
-            }
-
-            PersistentProperties {
-                id: visibilities
-                property bool bar: true
             }
 
             BarWrapper {

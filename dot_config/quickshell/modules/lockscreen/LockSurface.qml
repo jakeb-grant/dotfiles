@@ -125,18 +125,6 @@ Item {
 
     ListModel { id: passModel }
 
-    function syncPassModel(): void {
-        const newText = hiddenInput.text;
-        const modelCount = passModel.count;
-
-        if (newText.length > modelCount) {
-            for (let i = modelCount; i < newText.length; i++)
-                passModel.append({ charStr: newText[i], isDot: false });
-        } else if (newText.length < modelCount) {
-            passModel.remove(newText.length, modelCount - newText.length);
-        }
-    }
-
     // ── Focus & service connections ──
 
     Connections {
@@ -150,7 +138,12 @@ Item {
         }
         function onClearInput(): void {
             hiddenInput.text = "";
+            hiddenInput.oldText = "";
             passModel.clear();
+        }
+        function onShowFailureChanged(): void {
+            if (Services.LockScreen.showFailure)
+                shakeAnim.start();
         }
     }
 
@@ -474,19 +467,6 @@ Item {
                     NumberAnimation { target: shakeTranslate; property: "x"; to: 6; duration: 50; easing.type: Easing.OutQuad }
                     NumberAnimation { target: shakeTranslate; property: "x"; to: -3; duration: 40; easing.type: Easing.OutQuad }
                     NumberAnimation { target: shakeTranslate; property: "x"; to: 0; duration: 40; easing.type: Easing.OutQuad }
-                }
-
-                Connections {
-                    target: Services.LockScreen
-                    function onShowFailureChanged(): void {
-                        if (Services.LockScreen.showFailure)
-                            shakeAnim.start();
-                    }
-                    function onClearInput(): void {
-                        hiddenInput.text = "";
-                        hiddenInput.oldText = "";
-                        passModel.clear();
-                    }
                 }
             }
         }

@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
-import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.bar.popouts.components
@@ -11,7 +10,7 @@ import qs.utils as Utils
 PopoutColumn {
     id: root
 
-    Component.onCompleted: Services.Bluetooth._syncDevices()
+    Component.onCompleted: Services.Bluetooth.refresh()
 
     ConnectionHeader {
         connected: Services.Bluetooth.connectedDevice !== null
@@ -155,11 +154,6 @@ PopoutColumn {
         Layout.fillWidth: true
         icon: "terminal"
         label: "Open bluetui"
-        onClicked: bluetuiProc.running = true
-    }
-
-    Process {
-        id: bluetuiProc
-        command: ["sh", "-c", "setsid ghostty -e bluetui &"]
+        onClicked: Quickshell.execDetached(["ghostty", "-e", "bluetui"])
     }
 }

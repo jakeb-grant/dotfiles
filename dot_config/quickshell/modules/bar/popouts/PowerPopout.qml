@@ -1,4 +1,4 @@
-import Quickshell.Io
+import Quickshell
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.bar.popouts.components
@@ -49,10 +49,7 @@ PopoutColumn {
 
                 width: parent?.width ?? 0
                 height: Utils.Theme.actionItemHeight
-                onClicked: {
-                    actionProc.command = ["sh", "-c", actionItem.modelData.cmd];
-                    actionProc.running = true;
-                }
+                onClicked: Quickshell.execDetached(["sh", "-c", actionItem.modelData.cmd])
 
                 Utils.MaterialIcon {
                     text: actionItem.modelData.icon
@@ -68,10 +65,6 @@ PopoutColumn {
                     color: Utils.Theme.text
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
-                }
-
-                Process {
-                    id: actionProc
                 }
             }
         }

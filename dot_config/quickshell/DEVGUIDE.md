@@ -8,7 +8,7 @@ Best practices for building and extending the Quickshell desktop shell.
 
 Theme colors are loaded at runtime from `~/.config/palette/active.json` via `FileView` with `watchChanges: true`. When the active palette file changes (e.g. via `theme-switch`), the entire shell re-themes live — no restart needed.
 
-`utils/Theme.qml` is the single source of truth for all visual properties: colors, sizes, spacing, rounding, fonts, and animation parameters. Every QML file references `Utils.Theme.*` — never hardcode values inline.
+`utils/Theme.qml` is the single source of truth for all visual properties: colors, sizes, spacing, rounding, fonts, and animation parameters. Never hardcode *colors* — they must track the palette. For sizes/durations, tokenize anything reused across files or likely to be tuned (bar/popout surfaces hold to this strictly); one-off geometry internal to a single component (lockscreen blob layout, entrance animation choreography) may stay inline.
 
 ### Color Hierarchy
 
@@ -36,7 +36,7 @@ readonly property color islandShadowColor: _qs.islandShadowColor ?? crust
 The `??` fallback is the default (works well on dark variants). Light variants override via `_quickshell` in their palette JSON to maintain contrast. For example, `pillBg` defaults to `base` (dark on Mocha) but Latte overrides it to `crust` (darker than `base` on light themes, creating the needed contrast inversion).
 
 **3. Accent colors** — used sparingly for interactive state and emphasis:
-- `blue` — active/connected state (connected device, active wifi, checkmarks)
+- `accent` — active/connected state and emphasis (connected device, active wifi, checkmarks); per-palette via `_quickshell.accent`, falls back to `blue`
 - `red` — destructive/power actions
 - `green` — success/enabled state
 - `mauve` — special highlights (theme popout accent)
@@ -73,7 +73,7 @@ readonly property color myRole: _qs.myRole ?? surface0  // default for dark
 | Text (disabled) | `disabledText` | Placeholder, unavailable |
 | Hover state | `hoverBg` | List item hover overlay |
 | Borders/dividers | `separator` | Horizontal rules in popouts |
-| Active/connected | `blue` | Connected BT, active wifi |
+| Active/connected | `accent` | Connected BT, active wifi |
 | Destructive | `red` | Power button, disconnect |
 | Popout titles | `text` | Not accent — titles use primary text |
 | Header icons | `subtleText` | Popout header icons (non-interactive) |
@@ -106,7 +106,7 @@ islandShadowBlur: 24  islandShadowOpacity: 0.35    islandShadowY: 6
 barMargin: 4          barRounding: 16
 
 // Popouts
-popoutWidth: 280      popoutWidthNarrow: 180
+popoutWidth: 280
 popoutListHeight: 180
 
 // List items
@@ -142,6 +142,8 @@ Utils.MaterialIcon {
 ```
 
 Animate `fill` for state changes (e.g., outline when off, filled when on). The component has a built-in `Behavior on fill` animation.
+
+One deliberate exception: wifi signal strength uses Nerd Font glyphs (`Network.signalIcon` / `signalIconFor(level)`) instead of MaterialIcon — Material Symbols has no per-level wifi-strength ligatures, the Nerd Font set does.
 
 ### Anim
 
@@ -348,7 +350,7 @@ transform: Scale {
 
 ## Common Mistakes
 
-**Hardcoded colors** — never write `color: "#89b4fa"`. Use `Utils.Theme.blue`.
+**Hardcoded colors** — never write `color: "#89b4fa"`. Use `Utils.Theme.accent`.
 
 **Hardcoded sizes** — never write `font.pixelSize: 14`. Use `Utils.Theme.fontSize`.
 
@@ -376,7 +378,7 @@ import qs.modules.bar.popouts.components      // popout component library (unali
 
 // Access via namespace
 Services.Popout.show(...)
-Utils.Theme.blue
+Utils.Theme.accent
 Utils.MaterialIcon { ... }
 ```
 

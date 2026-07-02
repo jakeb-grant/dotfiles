@@ -9,6 +9,8 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 
 ## Session log
 
+**Session 9 (2026-07-02) — Wave 4 Quickshell batch: QS-7..12 complete.** QS-7: Network.qml detects the station device via `iwctl device list` (wlan0 fallback until detection lands, self-corrects next poll); all five commands reference `root.device`; SSID parsing switched to right-anchored regexes (rsplit semantics — verified against live iwctl output including a real spaced SSID "Steve Home" and synthetic 2+-space/`-59`-suffix cases), including the status awk which previously truncated connected SSIDs to their last word (`$NF`); the state-flap auto-scan is debounced by a 15s Timer (status poll untouched, so nothing stalls). QS-8: `Bluetooth._syncDevices`→`refresh()`, `Launcher._submenu`→`submenu` (+`onSubmenuChanged` handlers); `Launcher.activeScreen` unified with Popout's convention — now a ShellScreen object (`Hyprland.focusedMonitor?.screen`), Drawers compares `=== scope.modelData`; new `Audio.setVolume()` replaces VolumePopout's direct `sink.audio.volume` write. QS-9: new `services/SystemInfo.qml` (kernel/hostname/shell fetched once per shell start as one combined process; uptime + pacman counts re-fetched via `refresh()` on popout open) — SystemPopout's six embedded Processes deleted; PowerPopout's per-delegate Process and Wifi/BT's impala/bluetui Processes → `Quickshell.execDetached`; `Battery.refreshProfile()` re-polls the power profile on BatteryPopout open (external keybind/TLP changes were never reflected). QS-10: dead `syncPassModel()` deleted; the two `Connections { target: LockScreen }` blocks merged at root level (the survivors had already drifted — only one reset `oldText`); unused `PersistentProperties` dropped from Drawers. QS-11: phantom `popoutWidthNarrow` token removed from DEVGUIDE; active/connected guidance switched `blue`→`accent` (code was already uniform on accent); `layer.enabled: true`→`visible` at PopoutWrapper/Drawers (both have visible bindings that only drop when fully hidden — code aligned to guide rather than vice versa); "never hardcode" rule re-scoped honestly (colors strict, one-off internal geometry may stay inline); Wifi's Nerd-Font glyph exception documented. QS-12: `_tt` merged into `animDuration` (both 400); empty-state guard item moot since QS-1 (both popouts express it via `PopoutListView.emptyText`); LockSurface file split **deferred** — pure organization, and a lockscreen regression locks the owner out. Verified: live reload clean (one known mid-apply scanner race, self-resolved), headless smoke instance of all 8 popouts + LockSurface zero warnings exit 0, regexes tested against real iwctl output. Reviews (2 agents): correctness CLEAN (rename completeness, device-binding liveness, ShellScreen identity comparison, SystemInfo registration, LockSurface id scoping, setVolume parity all verified); docs reviewer found 3 stale `blue`-as-active mentions elsewhere in DEVGUIDE (fixed: When-to-Use table, Common Mistakes, import example). **Wave 4 Quickshell track done; remaining: HYP-1/2, BIN-3/4, CHZ-4/5, DOC-2.**
+
 **Session 8 (2026-07-02) — THM-5 complete: btop + pane-fm themes generated from palettes.** The 20 hand-maintained files (10 btop `.theme`, 10 pane-fm `.css`) replaced by two chezmoi templates reading `active.json`: `btop/themes/palette.theme.tmpl` (the upstream Catppuccin role mapping applied to whichever palette is active — renders **byte-identical** to the four deleted Catppuccin themes; everforest/nord/rosé-pine intentionally shift from their upstream artistic btop themes, some of whose colors weren't even in the palettes, to the uniform role-mapped look) and `pane-fm/themes/palette.css.tmpl` (the 10 old files were already one uniform role mapping — verified identical across all 10 palettes modulo hex case and `0.7`→`0.70`; `--accent` = `_accent`, `--accent-hover` = sapphire). Both apps now point at the generated theme statically — `color_theme = "palette"` in btop.conf, `theme = "palette"` in pane-fm's config, which became `config.toml.tmpl` so `light_icons` follows `{{ eq $p._variant "light" }}` (verified `true` under latte). `_btop_theme`/`_pane_fm_theme` deleted from all 10 palettes + their validation checks; `update_btop`/`update_pane_fm` deleted from theme-switch. **Drive-by bug found & fixed: THM-2 had silently broken `update_zed`** — it copied the raw `settings.json.tmpl` text (now containing `{{ }}` tokens post-conversion) over live Zed settings every switch, then apply's rename "fixed" it, killing the inode watch the function existed to protect. Replaced by `sync_rendered_in_place()` (renders via `chezmoi cat`, writes in place pre-apply) over `INODE_WATCHED_TARGETS` = Zed settings + pane-fm `palette.css` — pane-fm's theme watcher is an inode-level `notify` watch too (confirmed in its Rust source: `watcher.watch(&file)`), and with `theme = "palette"` now constant, the config-watcher reload path that used to mask this is gone. Verified: parity as above (4/4 catppuccin btop identical, 10/10 pane-fm), `theme-switch rose-pine` → `catppuccin-mocha` roundtrip (correct colors in both generated files, Zed live settings properly *rendered*, `light_icons` flip, `chezmoi status` clean, `--list` works, py_compile passes); stale deployed per-palette theme files removed from `~/.config`. Reviews (2 agents): correctness CLEAN (ordering active.json→cat→apply, `~` expansion, TOML validity, all role refs exist, no dangling references repo-wide; 1 nit fixed — `rewrite_config_keys`' `uncomment` param went dead with `update_pane_fm`); docs CLEAN (1 wording nit fixed). Net −1000 lines. Adding a palette is now: palette JSON + hand-made Zed theme + `_ghostty_theme` check — btop/pane-fm come free. **Wave 3 Track A complete.**
 
 **Session 7 (2026-07-02) — THM-2 complete: Jinja pipeline deleted.** Converted the last five templates (gtk-3.0, gtk-4.0, phylax, zed `settings.json`, obsidian `theme.css`) to chezmoi-native templates and removed the entire Jinja stage. Key moves: only **two** new helpers were needed — `.chezmoitemplates/rgba` and `rgb_values` (hex→decimal via sprig `int "0x.."`, which parses base-0 like Go's `ParseInt` — no digit-map needed; `hex`/`hex_alpha`/`rgb`/`strip` were unused by the remaining templates and were not ported). The derived `_accent`/`_accent_h/_s/_l` keys moved from render-time-only to **persisted in `active.json`** (computation hoisted above the write in `main()`), so gtk/obsidian templates read them like any role; Python remains the sole HSL computer (no template math, byte-parity free). Obsidian's `TEMPLATE_OUTPUT_OVERRIDES` special case dissolved — its template is now a normal source file `knowledge/dot_obsidian/themes/Palette/theme.css.tmpl` (that path was inside the chezmoi source tree all along). theme-switch: `process_templates`, `create_jinja_env`, all 8 filters, `TEMPLATE_DIR`/`TEMPLATE_OUTPUT_OVERRIDES`, jinja2 imports and the PEP 723 dependency deleted (script now has zero third-party deps); `dot_config/theme-templates/` removed; `.chezmoiignore` entry dropped. Drive-by fix: a stray `●` byte (U+25CF paste artifact) at the top of phylax's CSS, deployed verbatim until now, dropped during conversion. Verified: byte-parity of all 5 templates × all 10 palettes (old Jinja render vs `chezmoi cat`, ● asserted as the only delta), then a full deployed-binary `theme-switch rose-pine` → `catppuccin-mocha` roundtrip — all five targets themed correctly (incl. obsidian accent HSL 267 under rose-pine), `chezmoi status` clean, `--list` works, py_compile passes. Reviews (2 agents): no correctness bugs — helpers verified on uppercase hex + integer opacities, all conversions diffed 1:1 vs deleted sources, no dangling Jinja references repo-wide. Six doc-level findings fixed (four stale "Generated from theme template" header comments, README mis-listing Zed as direct-write, an impossible `e6` alpha byte in a README example); one false positive rejected (claimed stale `~/.config/theme-templates` on deployed machines — the dir was always `.chezmoiignore`d and never deployed). CLAUDE.md + README rewritten to the single-pipeline story. **Wave 3 Track A: THM-2 done; THM-5 next.**
@@ -134,43 +136,43 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 - [x] Done: `Services.Popout.barItemExited()` (symmetric counterpart to `show()`'s internal `barItemHovered = true`) and `Services.Popout.showFrom(item, name, screen)` (absorbs the duplicated `_showPopout` helpers); all 12 call sites across BarContent/StatusIcons/TrayOverflow migrated. Popout.qml now imports `qs.utils` (no cycle — Theme imports no `qs.*`).
 
-### QS-7 · P2 · S — Network.qml hardening
+### QS-7 · P2 · S — Network.qml hardening ✅ session 9
 
-- [ ] `wlan0` hardcoded in 5 commands (`Network.qml:45,116,159,239,279`) → detect the station name once via `iwctl device list` into a property.
-- [ ] Column-split on `/\s{2,}/` + SSID reconstruction via `join("  ")` (`:141,188,200`) is lossy for SSIDs with runs of spaces → treat last-two-columns as authoritative (rsplit-style). (Text parsing itself is forced — no Quickshell iwd module, iwctl has no JSON output.)
-- [ ] `onStateChanged` auto-`scan()` (`:88-94`) re-runs three processes per 3s poll cycle under connection flapping — debounce or gate on state transitions.
+- [x] `wlan0` hardcoded in 5 commands (`Network.qml:45,116,159,239,279`) → detect the station name once via `iwctl device list` into a property.
+- [x] Column-split on `/\s{2,}/` + SSID reconstruction via `join("  ")` (`:141,188,200`) is lossy for SSIDs with runs of spaces → treat last-two-columns as authoritative (rsplit-style). (Text parsing itself is forced — no Quickshell iwd module, iwctl has no JSON output.)
+- [x] `onStateChanged` auto-`scan()` (`:88-94`) re-runs three processes per 3s poll cycle under connection flapping — debounce or gate on state transitions.
 
-### QS-8 · P2 · S — API hygiene
+### QS-8 · P2 · S — API hygiene ✅ session 9
 
-- [ ] Private members used cross-module: `Services.Bluetooth._syncDevices()` (from `BluetoothPopout.qml:15`), `Services.Launcher._submenu` read by Drawers/LauncherPanel/WallpaperPicker incl. an `on_SubmenuChanged` handler → rename `refresh()` / `submenu`.
-- [ ] Screen identity typed inconsistently: `Popout.activeScreen` is a `ShellScreen` object; `Launcher.activeScreen` is a monitor-name string — pick one convention.
-- [ ] `VolumePopout.qml:196` writes `Services.Audio.sink.audio.volume` directly; add `Audio.setVolume()` beside `toggleMute`/`setSink`.
+- [x] Private members used cross-module: `Services.Bluetooth._syncDevices()` (from `BluetoothPopout.qml:15`), `Services.Launcher._submenu` read by Drawers/LauncherPanel/WallpaperPicker incl. an `on_SubmenuChanged` handler → rename `refresh()` / `submenu`.
+- [x] Screen identity typed inconsistently: `Popout.activeScreen` is a `ShellScreen` object; `Launcher.activeScreen` is a monitor-name string — pick one convention.
+- [x] `VolumePopout.qml:196` writes `Services.Audio.sink.audio.volume` directly; add `Audio.setVolume()` beside `toggleMute`/`setSink`.
 
-### QS-9 · P2 · S — Data acquisition in view code
+### QS-9 · P2 · S — Data acquisition in view code ✅ session 9
 
-- [ ] `SystemPopout.qml` embeds 6 one-shot Processes (kernel/uptime/hostname/shell/pacman×2, `:45-188`), re-running all six per open; kernel/hostname/shell are static per boot → `SystemInfo` service with cached statics.
-- [ ] PowerPopout creates a `Process` per Repeater delegate (`:116-118`); Wifi/Bluetooth embed `impalaProc`/`bluetuiProc` → use `Quickshell.execDetached` (the convention `Launcher.qml:310` already establishes).
-- [ ] `Battery.qml:62` reads the power profile once at startup — external changes (keybind, TLP) never reflected → watch `/sys/firmware/acpi/platform_profile` or re-poll on popout open.
+- [x] `SystemPopout.qml` embeds 6 one-shot Processes (kernel/uptime/hostname/shell/pacman×2, `:45-188`), re-running all six per open; kernel/hostname/shell are static per boot → `SystemInfo` service with cached statics.
+- [x] PowerPopout creates a `Process` per Repeater delegate (`:116-118`); Wifi/Bluetooth embed `impalaProc`/`bluetuiProc` → use `Quickshell.execDetached` (the convention `Launcher.qml:310` already establishes).
+- [x] `Battery.qml:62` reads the power profile once at startup — external changes (keybind, TLP) never reflected → watch `/sys/firmware/acpi/platform_profile` or re-poll on popout open.
 
-### QS-10 · P2 · S — Dead code
+### QS-10 · P2 · S — Dead code ✅ session 9
 
-- [ ] `LockSurface.syncPassModel()` (`LockSurface.qml:128-138`) — never called; `onTextChanged` (`:375-399`) reimplements it inline.
-- [ ] Two `Connections` blocks both handling `onClearInput` (`LockSurface.qml:142-155` and `:479-490`) — already drifted from each other (only the second resets `hiddenInput.oldText`). Merge.
-- [ ] `PersistentProperties { property bool bar: true }` (`Drawers.qml:187-190`) referenced nowhere.
+- [x] `LockSurface.syncPassModel()` (`LockSurface.qml:128-138`) — never called; `onTextChanged` (`:375-399`) reimplements it inline.
+- [x] Two `Connections` blocks both handling `onClearInput` (`LockSurface.qml:142-155` and `:479-490`) — already drifted from each other (only the second resets `hiddenInput.oldText`). Merge.
+- [x] `PersistentProperties { property bool bar: true }` (`Drawers.qml:187-190`) referenced nowhere.
 
-### QS-11 · P2 · S — DEVGUIDE drift
+### QS-11 · P2 · S — DEVGUIDE drift ✅ session 9
 
-- [ ] Token `popoutWidthNarrow: 180` (DEVGUIDE:109,183) doesn't exist in Theme.qml.
-- [ ] DEVGUIDE:39 says use `blue` for active/connected; code uniformly uses the `accent` role, which the roles list omits.
-- [ ] DEVGUIDE:303 prefers `layer.enabled: visible`; `PopoutWrapper.qml:223` and `Drawers.qml:137` use `layer.enabled: true` — align code or guidance.
-- [ ] "Never hardcode sizes" is heavily violated outside popouts (LockSurface wall-to-wall magic numbers `:214-217,256,314`; LauncherPanel durations; BarContent literals; Workspaces slot math) — either tokenize the recurring values or scope the rule to bar/popout surfaces in DEVGUIDE.
-- [ ] Wifi's Nerd-Font-glyph exception to MaterialIcon is deliberate but undocumented.
+- [x] Token `popoutWidthNarrow: 180` (DEVGUIDE:109,183) doesn't exist in Theme.qml.
+- [x] DEVGUIDE:39 says use `blue` for active/connected; code uniformly uses the `accent` role, which the roles list omits.
+- [x] DEVGUIDE:303 prefers `layer.enabled: visible`; `PopoutWrapper.qml:223` and `Drawers.qml:137` use `layer.enabled: true` — align code or guidance.
+- [x] "Never hardcode sizes" is heavily violated outside popouts (LockSurface wall-to-wall magic numbers `:214-217,256,314`; LauncherPanel durations; BarContent literals; Workspaces slot math) — either tokenize the recurring values or scope the rule to bar/popout surfaces in DEVGUIDE.
+- [x] Wifi's Nerd-Font-glyph exception to MaterialIcon is deliberate but undocumented.
 
-### QS-12 · P3 · S — Minor
+### QS-12 · P3 · S — Minor ✅ session 9 (LockSurface split deferred)
 
-- [ ] `Theme.qml`: `_tt: 400` duplicates `animDuration: 400` (`:35,230`) — merge tokens.
-- [ ] LockSurface natural split: `LockBackground.qml` (blobs/rings/vignette `:32-122`) + `PasswordPill.qml`.
-- [ ] Empty-state null-guard style differs between Wifi/Bluetooth popouts.
+- [x] `Theme.qml`: `_tt: 400` duplicates `animDuration: 400` (`:35,230`) — merge tokens.
+- [x] LockSurface natural split: **deferred session 9** — pure organization with lockout risk if a regression slips in; revisit only if the file grows.
+- [x] Empty-state null-guard style differs between Wifi/Bluetooth popouts.
 
 ---
 
@@ -280,4 +282,4 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - Track B: ~~QS-1 (popout components)~~ ✅ session 3 → ~~QS-3 (BarItem) / QS-5/QS-6 (ladders, exit protocol)~~ ✅ session 4 → ~~QS-4 (launcher scorer)~~ ✅ session 5. **Track B complete.**
 - Track C: ~~CHZ-1 (wallpaper degit + history purge)~~ ⏸ deferred session 9 — wallpapers stay in git by owner decision. **All Wave 3 tracks closed.**
 
-**Wave 4 — polish:** QS-7/8/9/10/11/12, HYP-1/2, BIN-3/4, CHZ-4/5, DOC-1/2.
+**Wave 4 — polish:** ~~QS-7/8/9/10/11/12~~ ✅ session 9 · ~~DOC-1~~ ✅ session 6 · remaining: HYP-1/2, BIN-3/4, CHZ-4/5, DOC-2.

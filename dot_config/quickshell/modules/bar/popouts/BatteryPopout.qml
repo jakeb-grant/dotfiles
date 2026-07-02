@@ -7,6 +7,9 @@ import qs.utils as Utils
 PopoutColumn {
     id: root
 
+    // The profile can change behind our back (keybind, TLP) — re-poll on open
+    Component.onCompleted: Services.Battery.refreshProfile()
+
     // Battery percentage + status
     RowLayout {
         spacing: Utils.Theme.spacingNormal

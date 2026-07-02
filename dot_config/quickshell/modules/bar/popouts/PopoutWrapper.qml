@@ -220,7 +220,7 @@ Item {
             }
         }
 
-        layer.enabled: true
+        layer.enabled: visible
         layer.smooth: true
         layer.effect: MultiEffect {
             shadowEnabled: true

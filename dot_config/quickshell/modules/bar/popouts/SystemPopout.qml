@@ -1,12 +1,14 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Io
 import qs.modules.bar.popouts.components
 import qs.services as Services
 import qs.utils as Utils
 
 PopoutColumn {
     id: root
+
+    // Uptime + package counts go stale while the shell runs; statics are cached
+    Component.onCompleted: Services.SystemInfo.refresh()
 
     // Distro + kernel
     RowLayout {
@@ -30,21 +32,10 @@ PopoutColumn {
             }
 
             Text {
-                text: "kernel " + kernelProc.output
+                text: "kernel " + Services.SystemInfo.kernel
                 font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.fontSizeSmall
                 color: Utils.Theme.subtext0
-
-                Process {
-                    id: kernelProc
-                    property string output: ""
-                    command: ["uname", "-r"]
-                    running: true
-
-                    stdout: SplitParser {
-                        onRead: data => kernelProc.output = data.trim()
-                    }
-                }
             }
         }
     }
@@ -62,21 +53,10 @@ PopoutColumn {
         }
 
         Text {
-            text: uptimeProc.output
+            text: Services.SystemInfo.uptime
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             color: Utils.Theme.text
-
-            Process {
-                id: uptimeProc
-                property string output: ""
-                command: ["sh", "-c", "uptime -p | sed 's/up //'"]
-                running: true
-
-                stdout: SplitParser {
-                    onRead: data => uptimeProc.output = data.trim()
-                }
-            }
         }
     }
 
@@ -91,21 +71,10 @@ PopoutColumn {
         }
 
         Text {
-            text: hostnameProc.output
+            text: Services.SystemInfo.hostname
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             color: Utils.Theme.text
-
-            Process {
-                id: hostnameProc
-                property string output: ""
-                command: ["cat", "/etc/hostname"]
-                running: true
-
-                stdout: SplitParser {
-                    onRead: data => hostnameProc.output = data.trim()
-                }
-            }
         }
     }
 
@@ -120,21 +89,10 @@ PopoutColumn {
         }
 
         Text {
-            text: shellProc.output
+            text: Services.SystemInfo.shell
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             color: Utils.Theme.text
-
-            Process {
-                id: shellProc
-                property string output: ""
-                command: ["sh", "-c", "basename $SHELL"]
-                running: true
-
-                stdout: SplitParser {
-                    onRead: data => shellProc.output = data.trim()
-                }
-            }
         }
     }
 
@@ -149,32 +107,10 @@ PopoutColumn {
         }
 
         Text {
-            text: nativeProc.output + " native, " + aurProc.output + " AUR"
+            text: Services.SystemInfo.pkgNative + " native, " + Services.SystemInfo.pkgAur + " AUR"
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.fontSizeSmall
             color: Utils.Theme.text
-
-            Process {
-                id: nativeProc
-                property string output: ""
-                command: ["sh", "-c", "pacman -Qn | wc -l"]
-                running: true
-
-                stdout: SplitParser {
-                    onRead: data => nativeProc.output = data.trim()
-                }
-            }
-
-            Process {
-                id: aurProc
-                property string output: ""
-                command: ["sh", "-c", "pacman -Qm | wc -l"]
-                running: true
-
-                stdout: SplitParser {
-                    onRead: data => aurProc.output = data.trim()
-                }
-            }
         }
     }
 

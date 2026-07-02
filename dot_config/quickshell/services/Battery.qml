@@ -56,6 +56,12 @@ Singleton {
         setProfileProc.running = true;
     }
 
+    // Re-read the profile — external changes (keybind, TLP) aren't pushed to
+    // us, so BatteryPopout re-polls on open.
+    function refreshProfile(): void {
+        profileProc.running = true;
+    }
+
     Process {
         id: profileProc
         command: ["powerprofilesctl", "get"]

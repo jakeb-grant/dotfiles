@@ -54,8 +54,7 @@ PopoutColumn {
 
         onMoved: (newValue) => {
             displayVolume = newValue;
-            if (Services.Audio.sink?.audio)
-                Services.Audio.sink.audio.volume = newValue;
+            Services.Audio.setVolume(newValue);
         }
         onReleased: volResync.restart()
 

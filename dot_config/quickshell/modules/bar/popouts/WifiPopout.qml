@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
-import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import qs.modules.bar.popouts.components
@@ -116,11 +115,6 @@ PopoutColumn {
         Layout.fillWidth: true
         icon: "terminal"
         label: "Open Impala"
-        onClicked: impalaProc.running = true
-    }
-
-    Process {
-        id: impalaProc
-        command: ["sh", "-c", "setsid ghostty -e impala &"]
+        onClicked: Quickshell.execDetached(["ghostty", "-e", "impala"])
     }
 }
