@@ -88,12 +88,11 @@ dot_config/
 ├── sddm-theme/         # SDDM login theme (legacy, replaced by greetd)
 ├── windows-vm/         # Windows VM (docker-compose)
 ├── palette/            # Theme palette definitions (JSON)
-├── theme-templates/    # Jinja2 theme templates
 └── wallpapers/         # Flat image pool + wallpapers.json config
 knowledge/
 └── dot_obsidian/           # Obsidian vault theme (~/knowledge/ must be the vault)
     ├── appearance.json     # Selects "Palette" theme
-    └── themes/Palette/     # Generated theme CSS + manifest
+    └── themes/Palette/     # Theme CSS template + manifest
 dot_local/bin/
 ├── theme-switch        # Theme switching utility
 ├── toggle-bar-mode     # Switch between sidebar and topbar layouts
@@ -106,11 +105,11 @@ dot_local/bin/
 
 Palette JSONs are the single source of truth. `theme-switch` applies them across all apps via three methods:
 
-**Templated apps** (Jinja2 → chezmoi pipeline):
+**Templated apps** (chezmoi templates reading the active palette):
 ```
-Palette JSON              Theme Template                  Chezmoi Template           Final Config
-(everforest.json) --->   (style.css.theme)      --->    (style.css.tmpl)     ---> (style.css)
-                          theme-switch                    chezmoi apply
+Palette JSON              active.json                     Chezmoi Template            Final Config
+(everforest.json) --->   written by theme-switch --->   (style.css.tmpl reads  ---> (style.css)
+                                                          active.json) chezmoi apply
 ```
 Used by: GTK3/4, Phylax, Yazi, Zed settings, Obsidian, hyprlock.
 
@@ -119,7 +118,7 @@ Used by: GTK3/4, Phylax, Yazi, Zed settings, Obsidian, hyprlock.
 Palette JSON              theme-switch                    Final Config
 (everforest.json) --->   reads _ghostty_theme   --->    writes theme = Everforest Dark Hard
 ```
-Used by: Ghostty (`_ghostty_theme`), Zed (`_zed_theme_dark`/`_zed_theme_light`), btop (`_btop_theme`), pane-fm (`_pane_fm_theme`).
+Used by: Ghostty (`_ghostty_theme`), btop (`_btop_theme`), pane-fm (`_pane_fm_theme`). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch only syncs the rendered file in place so Zed's hot reload survives.)
 
 **Lua-required (Hyprland)**:
 ```
@@ -133,8 +132,8 @@ Palette JSON              theme-switch                    palette.lua           
 ### How It Works
 
 1. **Palette files** (`dot_config/palette/*.json`) define color roles using Catppuccin-style naming
-2. **`theme-switch`** copies active palette, processes Jinja2 templates, generates `palette.lua`, updates direct-write apps
-3. **`chezmoi apply`** processes machine-specific variables (GPU config, hostname) and propagates generated artifacts
+2. **`theme-switch`** writes `active.json` (palette + derived `_accent*` keys), generates `palette.lua`, updates direct-write apps
+3. **`chezmoi apply`** renders themed `.tmpl` configs from `active.json` and machine-specific variables (GPU config, hostname)
 4. **Quickshell** detects `active.json` change and animates to new colors instantly
 
 ### Available Palettes
@@ -154,11 +153,12 @@ Palette JSON              theme-switch                    palette.lua           
 
 ### Template Syntax
 
-Theme variables (Jinja2, processed by `theme-switch`):
+Theme colors (chezmoi Go templates, rendered by `chezmoi apply`):
 ```
-{< crust >}                           # Direct color value
-{< crust | rgba(0.95) >}              # With filter and opacity
-{< surface0 | hypr_rgba(0.93) >}      # Hyprland format (still used by hyprlock)
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+{{ $p.crust }}                              # Direct color value: #11111b
+{{ template "rgba" (list $p.crust 0.95) }}  # CSS rgba with opacity
+{{ template "hypr_rgba" (list $p.surface0 0.93) }}  # Hyprland format (hyprlock)
 ```
 
 Lua-side colors in `hyprland.lua.tmpl` (via `palette.lua`):
@@ -174,23 +174,19 @@ Chezmoi variables (Go templates, processed by `chezmoi apply`):
 {{ if eq .graphics "nvidia" }}...{{ end }}
 ```
 
-### Available Filters
+### Color Helpers (`.chezmoitemplates/`)
 
-| Filter | Output Example |
+| Helper | Output Example |
 |--------|----------------|
-| `hex` | `#3ddbd9` |
-| `hex_alpha(0.9)` | `#3ddbd9e6` |
-| `rgb` | `rgb(61, 219, 217)` |
-| `rgba(0.9)` | `rgba(61, 219, 217, 0.90)` |
-| `rgb_values` | `61, 219, 217` |
-| `hypr_rgb` | `rgb(3ddbd9)` |
-| `hypr_rgba(0.9)` | `rgba(3ddbd9e6)` |
-| `strip` | `3ddbd9` |
+| `rgba` (color, opacity) | `rgba(61, 219, 217, 0.90)` |
+| `rgb_values` (color) | `61, 219, 217` |
+| `hypr_rgb` (color) | `rgb(3ddbd9)` |
+| `hypr_rgba` (color, opacity) | `rgba(3ddbd9e5)` |
 
 ### Usage
 
 ```bash
-# Switch theme (updates palette, processes templates, applies chezmoi, reloads apps)
+# Switch theme (updates active.json, applies chezmoi, reloads apps)
 theme-switch everforest
 ```
 

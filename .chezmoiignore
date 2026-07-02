@@ -6,9 +6,6 @@ docs/
 screenshots/
 references/
 
-# Theme sources — only read from the chezmoi source dir by theme-switch
-.config/theme-templates
-
 # Runtime state (not managed by chezmoi)
 .config/wallpapers/.current
 

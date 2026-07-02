@@ -1,127 +1,128 @@
-/* GTK3 color overrides - Generated from theme template */
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+/* GTK3 color overrides - colors from palette/active.json (chezmoi template) */
 
-@define-color window_bg_color #11111b;
-@define-color window_fg_color #cdd6f4;
-@define-color view_bg_color #11111b;
-@define-color view_fg_color #cdd6f4;
-@define-color accent_bg_color #313244;
-@define-color accent_fg_color #11111b;
-@define-color accent_color #313244;
-@define-color headerbar_bg_color #11111b;
-@define-color headerbar_fg_color #cdd6f4;
-@define-color headerbar_backdrop_color #11111b;
-@define-color card_bg_color #181825;
-@define-color card_fg_color #cdd6f4;
-@define-color popover_bg_color #181825;
-@define-color popover_fg_color #cdd6f4;
-@define-color dialog_bg_color #181825;
-@define-color dialog_fg_color #cdd6f4;
-@define-color sidebar_bg_color #11111b;
-@define-color sidebar_fg_color #cdd6f4;
-@define-color sidebar_backdrop_color #11111b;
-@define-color sidebar_shade_color rgba(17, 17, 27, 0.50);
-@define-color secondary_sidebar_bg_color #11111b;
-@define-color secondary_sidebar_fg_color #cdd6f4;
-@define-color secondary_sidebar_backdrop_color #11111b;
-@define-color secondary_sidebar_shade_color rgba(17, 17, 27, 0.50);
+@define-color window_bg_color {{ $p.crust }};
+@define-color window_fg_color {{ $p.text }};
+@define-color view_bg_color {{ $p.crust }};
+@define-color view_fg_color {{ $p.text }};
+@define-color accent_bg_color {{ $p.surface0 }};
+@define-color accent_fg_color {{ $p.crust }};
+@define-color accent_color {{ $p.surface0 }};
+@define-color headerbar_bg_color {{ $p.crust }};
+@define-color headerbar_fg_color {{ $p.text }};
+@define-color headerbar_backdrop_color {{ $p.crust }};
+@define-color card_bg_color {{ $p.mantle }};
+@define-color card_fg_color {{ $p.text }};
+@define-color popover_bg_color {{ $p.mantle }};
+@define-color popover_fg_color {{ $p.text }};
+@define-color dialog_bg_color {{ $p.mantle }};
+@define-color dialog_fg_color {{ $p.text }};
+@define-color sidebar_bg_color {{ $p.crust }};
+@define-color sidebar_fg_color {{ $p.text }};
+@define-color sidebar_backdrop_color {{ $p.crust }};
+@define-color sidebar_shade_color {{ template "rgba" (list $p.crust 0.5) }};
+@define-color secondary_sidebar_bg_color {{ $p.crust }};
+@define-color secondary_sidebar_fg_color {{ $p.text }};
+@define-color secondary_sidebar_backdrop_color {{ $p.crust }};
+@define-color secondary_sidebar_shade_color {{ template "rgba" (list $p.crust 0.5) }};
 
 /* Semantic colors */
-@define-color error_bg_color #f38ba8;
-@define-color error_fg_color #11111b;
-@define-color error_color #f38ba8;
-@define-color warning_bg_color #f9e2af;
-@define-color warning_fg_color #11111b;
-@define-color warning_color #f9e2af;
-@define-color success_bg_color #a6e3a1;
-@define-color success_fg_color #11111b;
-@define-color success_color #a6e3a1;
+@define-color error_bg_color {{ $p.red }};
+@define-color error_fg_color {{ $p.crust }};
+@define-color error_color {{ $p.red }};
+@define-color warning_bg_color {{ $p.yellow }};
+@define-color warning_fg_color {{ $p.crust }};
+@define-color warning_color {{ $p.yellow }};
+@define-color success_bg_color {{ $p.green }};
+@define-color success_fg_color {{ $p.crust }};
+@define-color success_color {{ $p.green }};
 
 /* Borders and separators */
-@define-color borders #45475a;
-@define-color shade_color rgba(17, 17, 27, 0.50);
-@define-color scrollbar_outline_color #45475a;
+@define-color borders {{ $p.surface1 }};
+@define-color shade_color {{ template "rgba" (list $p.crust 0.5) }};
+@define-color scrollbar_outline_color {{ $p.surface1 }};
 
 /* ===== GTK3 widget overrides (Adwaita doesn't use @define-color) ===== */
 
 /* Base window and dialog backgrounds */
 window, dialog, .background {
-  background-color: #11111b;
-  color: #cdd6f4;
+  background-color: {{ $p.crust }};
+  color: {{ $p.text }};
 }
 
 /* Header bars */
 headerbar, .titlebar, headerbar .title {
-  background-color: #11111b;
+  background-color: {{ $p.crust }};
   background-image: none;
-  color: #cdd6f4;
-  border-color: #313244;
+  color: {{ $p.text }};
+  border-color: {{ $p.surface0 }};
   box-shadow: none;
 }
 
 headerbar:hover, .titlebar:hover {
-  background-color: #11111b;
+  background-color: {{ $p.crust }};
   background-image: none;
 }
 
 headerbar:backdrop, .titlebar:backdrop {
-  background-color: #11111b;
+  background-color: {{ $p.crust }};
   background-image: none;
 }
 
 headerbar button, .titlebar button {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
   background-image: none;
-  color: #cdd6f4;
-  border-color: #45475a;
+  color: {{ $p.text }};
+  border-color: {{ $p.surface1 }};
   box-shadow: none;
   -gtk-icon-shadow: none;
   text-shadow: none;
 }
 
 headerbar button:hover, .titlebar button:hover {
-  background-color: #45475a;
+  background-color: {{ $p.surface1 }};
   background-image: none;
   box-shadow: none;
 }
 
 /* Sidebars / Places panel (file picker left panel) */
 .sidebar, placessidebar, .places-sidebar, placessidebar row {
-  background-color: #11111b;
-  color: #cdd6f4;
+  background-color: {{ $p.crust }};
+  color: {{ $p.text }};
 }
 
 placessidebar row:selected {
-  background-color: #313244;
-  color: #cdd6f4;
+  background-color: {{ $p.surface0 }};
+  color: {{ $p.text }};
 }
 
 placessidebar row:hover {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
 }
 
 /* Main content / file list area */
 treeview, treeview.view, .view {
-  background-color: #1e1e2e;
-  color: #cdd6f4;
+  background-color: {{ $p.base }};
+  color: {{ $p.text }};
 }
 
 treeview header button, treeview.view header button {
-  background-color: #181825;
+  background-color: {{ $p.mantle }};
   background-image: none;
-  color: #bac2de;
-  border-color: #313244;
+  color: {{ $p.subtext1 }};
+  border-color: {{ $p.surface0 }};
 }
 
 /* Selection highlight */
 treeview:selected, treeview.view:selected, .view:selected,
 row:selected, *:selected {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
   background-image: none;
-  color: #cdd6f4;
+  color: {{ $p.text }};
 }
 
 treeview:hover, row:hover {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
 }
 
 /* Path bar / breadcrumbs */
@@ -131,10 +132,10 @@ treeview:hover, row:hover {
 .nautilus-path-bar button,
 headerbar .path-bar button,
 headerbar .linked > button {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
   background-image: none;
-  color: #cdd6f4;
-  border-color: #45475a;
+  color: {{ $p.text }};
+  border-color: {{ $p.surface1 }};
   box-shadow: none;
   -gtk-icon-shadow: none;
   text-shadow: none;
@@ -143,7 +144,7 @@ headerbar .linked > button {
 .path-bar button:hover, .linked.path-bar > button:hover,
 headerbar .path-bar button:hover,
 headerbar .linked > button:hover {
-  background-color: #45475a;
+  background-color: {{ $p.surface1 }};
   background-image: none;
   box-shadow: none;
 }
@@ -151,70 +152,70 @@ headerbar .linked > button:hover {
 .path-bar button:checked, .linked.path-bar > button:checked,
 headerbar .path-bar button:checked,
 headerbar .linked > button:checked {
-  background-color: #45475a;
+  background-color: {{ $p.surface1 }};
   background-image: none;
   box-shadow: none;
-  color: #cdd6f4;
+  color: {{ $p.text }};
 }
 
 /* Text entries (filename input, search) */
 entry {
-  background-color: #1e1e2e;
-  color: #cdd6f4;
-  border-color: #45475a;
-  caret-color: #cdd6f4;
+  background-color: {{ $p.base }};
+  color: {{ $p.text }};
+  border-color: {{ $p.surface1 }};
+  caret-color: {{ $p.text }};
 }
 
 entry:focus {
-  border-color: #7f849c;
+  border-color: {{ $p.overlay1 }};
 }
 
 /* Buttons */
 button {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
   background-image: none;
-  color: #cdd6f4;
-  border-color: #45475a;
+  color: {{ $p.text }};
+  border-color: {{ $p.surface1 }};
   box-shadow: none;
   -gtk-icon-shadow: none;
   text-shadow: none;
 }
 
 button:hover {
-  background-color: #45475a;
+  background-color: {{ $p.surface1 }};
   background-image: none;
   box-shadow: none;
 }
 
 button.suggested-action {
-  background-color: #89b4fa;
+  background-color: {{ $p._accent }};
   background-image: none;
-  color: #11111b;
+  color: {{ $p.crust }};
 }
 
 button.suggested-action:hover {
-  background-color: #89b4fa;
+  background-color: {{ $p._accent }};
   background-image: none;
   opacity: 0.8;
 }
 
 /* Scrollbars */
 scrollbar slider {
-  background-color: #45475a;
+  background-color: {{ $p.surface1 }};
 }
 
 scrollbar slider:hover {
-  background-color: #585b70;
+  background-color: {{ $p.surface2 }};
 }
 
 /* Separators and borders */
 separator {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
 }
 
 /* Pane borders */
 paned > separator {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
   background-image: none;
   border: none;
   min-width: 1px;
@@ -223,39 +224,39 @@ paned > separator {
 
 /* All borders/frames */
 frame > border, .frame {
-  border-color: #313244;
+  border-color: {{ $p.surface0 }};
 }
 
 /* Headerbar bottom edge shadow/border */
 headerbar, .titlebar {
   box-shadow: none;
-  border-bottom: 1px solid #313244;
+  border-bottom: 1px solid {{ $p.surface0 }};
 }
 
 headerbar:backdrop, .titlebar:backdrop {
   box-shadow: none;
-  border-bottom: 1px solid #313244;
+  border-bottom: 1px solid {{ $p.surface0 }};
 }
 
 /* Column header borders */
 treeview header, treeview.view header {
-  border-bottom: 1px solid #313244;
+  border-bottom: 1px solid {{ $p.surface0 }};
 }
 
 treeview header button, treeview.view header button {
-  border-color: #313244;
+  border-color: {{ $p.surface0 }};
   box-shadow: none;
 }
 
 /* Window decoration border */
 decoration {
-  border-color: #313244;
+  border-color: {{ $p.surface0 }};
   box-shadow: none;
 }
 
 /* Scrolled window borders */
 scrolledwindow {
-  border-color: #313244;
+  border-color: {{ $p.surface0 }};
 }
 
 scrolledwindow overshoot, scrolledwindow undershoot {
@@ -265,52 +266,52 @@ scrolledwindow overshoot, scrolledwindow undershoot {
 /* File chooser specific */
 filechooser .view,
 filechooser scrolledwindow {
-  border-color: #313244;
+  border-color: {{ $p.surface0 }};
 }
 
 /* Generic border override */
 *, *:backdrop {
-  -GtkWidget-separator-color: #313244;
-  outline-color: #45475a;
-  border-color: #313244;
+  -GtkWidget-separator-color: {{ $p.surface0 }};
+  outline-color: {{ $p.surface1 }};
+  border-color: {{ $p.surface0 }};
 }
 
 /* Popovers and menus */
 popover, popover.background, menu {
-  background-color: #181825;
-  color: #cdd6f4;
+  background-color: {{ $p.mantle }};
+  color: {{ $p.text }};
 }
 
 menu menuitem:hover {
-  background-color: #313244;
+  background-color: {{ $p.surface0 }};
 }
 
 /* Tooltips */
 tooltip, tooltip.background {
-  background-color: #313244;
-  color: #cdd6f4;
+  background-color: {{ $p.surface0 }};
+  color: {{ $p.text }};
 }
 
 /* Status bar at the bottom */
 actionbar, .action-bar {
-  background-color: #11111b;
-  color: #cdd6f4;
-  border-top: 1px solid #313244;
+  background-color: {{ $p.crust }};
+  color: {{ $p.text }};
+  border-top: 1px solid {{ $p.surface0 }};
   box-shadow: none;
 }
 
 actionbar > revealer > box {
-  border-top-color: #313244;
+  border-top-color: {{ $p.surface0 }};
   box-shadow: none;
 }
 
 /* Check buttons */
 checkbutton check {
-  background-color: #1e1e2e;
-  border-color: #45475a;
+  background-color: {{ $p.base }};
+  border-color: {{ $p.surface1 }};
 }
 
 checkbutton:checked check {
-  background-color: #89b4fa;
-  border-color: #89b4fa;
+  background-color: {{ $p._accent }};
+  border-color: {{ $p._accent }};
 }

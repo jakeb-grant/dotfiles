@@ -1,0 +1,4 @@
+{{- /* CSS "r, g, b" decimal channels from "#rrggbb" (sprig int parses "0x.."
+       via base-0 ParseInt). Usage: {{ template "rgb_values" $p.red }} */ -}}
+{{- $h := trimPrefix "#" . -}}
+{{- printf "%d, %d, %d" (int (printf "0x%s" (substr 0 2 $h))) (int (printf "0x%s" (substr 2 4 $h))) (int (printf "0x%s" (substr 4 6 $h))) -}}

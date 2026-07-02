@@ -1,41 +1,42 @@
-● /* Window */
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+/* Window */
 window.auth-window.background,
 window.auth-window {
-    background-color: #11111b;
+    background-color: {{ $p.crust }};
 }
 
 /* Typography */
 .auth-header {
-    color: #cdd6f4;
+    color: {{ $p.text }};
     font-weight: bold;
 }
 
 .auth-message {
-    color: #cdd6f4;
+    color: {{ $p.text }};
 }
 
 .auth-retry {
-    color: #cdd6f4;
+    color: {{ $p.text }};
 }
 
 /* Identity dropdown */
 dropdown.auth-identity > button.toggle {
     background: none;
-    background-color: #181825;
-    border-color: #45475a;
+    background-color: {{ $p.mantle }};
+    border-color: {{ $p.surface1 }};
     border-radius: 8px;
-    color: #cdd6f4;
+    color: {{ $p.text }};
 }
 
 dropdown.auth-identity > popover.menu > contents,
 dropdown.auth-identity listview {
-    background-color: #181825;
-    border-color: #45475a;
+    background-color: {{ $p.mantle }};
+    border-color: {{ $p.surface1 }};
 }
 
 dropdown.auth-identity listview > row:hover,
 dropdown.auth-identity listview > row:selected {
-    background-color: #1e1e2e;
+    background-color: {{ $p.base }};
 }
 
 dropdown.auth-identity listview > row:focus:not(:hover) {
@@ -44,14 +45,14 @@ dropdown.auth-identity listview > row:focus:not(:hover) {
 
 /* Password entry */
 .auth-password {
-    background: #181825;
-    border-color: #45475a;
+    background: {{ $p.mantle }};
+    border-color: {{ $p.surface1 }};
     border-radius: 8px;
-    color: #cdd6f4;
+    color: {{ $p.text }};
 }
 
 entry.auth-password:focus-within {
-    outline-color: #313244;
+    outline-color: {{ $p.surface0 }};
 }
 
 /* Buttons */
@@ -61,12 +62,12 @@ entry.auth-password:focus-within {
 
 .auth-cancel,
 .auth-confirm {
-    background: #181825;
-    border-color: #45475a;
-    color: #cdd6f4;
+    background: {{ $p.mantle }};
+    border-color: {{ $p.surface1 }};
+    color: {{ $p.text }};
 }
 
 .auth-cancel:hover,
 .auth-confirm:hover {
-    background: #1e1e2e;
+    background: {{ $p.base }};
 }

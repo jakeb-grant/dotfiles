@@ -1,0 +1,78 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+/* Obsidian theme - colors from palette/active.json (chezmoi template) */
+
+.theme-dark {
+  --color-base-00: {{ $p.crust }};
+  --color-base-10: {{ $p.mantle }};
+  --color-base-20: {{ $p.base }};
+  --color-base-25: {{ $p.surface0 }};
+  --color-base-30: {{ $p.surface1 }};
+  --color-base-35: {{ $p.surface1 }};
+  --color-base-40: {{ $p.surface2 }};
+  --color-base-50: {{ $p.overlay0 }};
+  --color-base-60: {{ $p.overlay1 }};
+  --color-base-70: {{ $p.subtext0 }};
+  --color-base-100: {{ $p.text }};
+
+  --accent-h: {{ $p._accent_h }};
+  --accent-s: {{ $p._accent_s }}%;
+  --accent-l: {{ $p._accent_l }}%;
+
+  --color-red: {{ $p.red }};
+  --color-red-rgb: {{ template "rgb_values" $p.red }};
+  --color-orange: {{ $p.peach }};
+  --color-orange-rgb: {{ template "rgb_values" $p.peach }};
+  --color-yellow: {{ $p.yellow }};
+  --color-yellow-rgb: {{ template "rgb_values" $p.yellow }};
+  --color-green: {{ $p.green }};
+  --color-green-rgb: {{ template "rgb_values" $p.green }};
+  --color-cyan: {{ $p.teal }};
+  --color-cyan-rgb: {{ template "rgb_values" $p.teal }};
+  --color-blue: {{ $p.blue }};
+  --color-blue-rgb: {{ template "rgb_values" $p.blue }};
+  --color-purple: {{ $p.mauve }};
+  --color-purple-rgb: {{ template "rgb_values" $p.mauve }};
+  --color-pink: {{ $p.pink }};
+  --color-pink-rgb: {{ template "rgb_values" $p.pink }};
+
+  --titlebar-background: {{ $p.crust }};
+  --titlebar-background-focused: {{ $p.crust }};
+}
+
+.theme-light {
+  --color-base-00: {{ $p.text }};
+  --color-base-10: {{ $p.subtext0 }};
+  --color-base-20: {{ $p.overlay2 }};
+  --color-base-25: {{ $p.overlay1 }};
+  --color-base-30: {{ $p.overlay0 }};
+  --color-base-35: {{ $p.overlay0 }};
+  --color-base-40: {{ $p.surface2 }};
+  --color-base-50: {{ $p.surface1 }};
+  --color-base-60: {{ $p.surface0 }};
+  --color-base-70: {{ $p.base }};
+  --color-base-100: {{ $p.crust }};
+
+  --accent-h: {{ $p._accent_h }};
+  --accent-s: {{ $p._accent_s }}%;
+  --accent-l: {{ $p._accent_l }}%;
+
+  --color-red: {{ $p.red }};
+  --color-red-rgb: {{ template "rgb_values" $p.red }};
+  --color-orange: {{ $p.peach }};
+  --color-orange-rgb: {{ template "rgb_values" $p.peach }};
+  --color-yellow: {{ $p.yellow }};
+  --color-yellow-rgb: {{ template "rgb_values" $p.yellow }};
+  --color-green: {{ $p.green }};
+  --color-green-rgb: {{ template "rgb_values" $p.green }};
+  --color-cyan: {{ $p.teal }};
+  --color-cyan-rgb: {{ template "rgb_values" $p.teal }};
+  --color-blue: {{ $p.blue }};
+  --color-blue-rgb: {{ template "rgb_values" $p.blue }};
+  --color-purple: {{ $p.mauve }};
+  --color-purple-rgb: {{ template "rgb_values" $p.mauve }};
+  --color-pink: {{ $p.pink }};
+  --color-pink-rgb: {{ template "rgb_values" $p.pink }};
+
+  --titlebar-background: {{ $p.text }};
+  --titlebar-background-focused: {{ $p.text }};
+}

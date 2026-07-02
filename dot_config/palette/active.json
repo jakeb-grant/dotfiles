@@ -43,5 +43,9 @@
     "pillBg": "#1e1e2e",
     "hoverBg": "#45475a",
     "barMode": "top"
-  }
+  },
+  "_accent": "#89b4fa",
+  "_accent_h": 217,
+  "_accent_s": 92,
+  "_accent_l": 76
 }

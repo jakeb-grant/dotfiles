@@ -1,0 +1,5 @@
+{{- /* CSS rgba(r, g, b, o) from "#rrggbb" + opacity 0..1 (opacity printed
+       %.2f like the old Jinja filter's f"{o:.2f}").
+       Usage: {{ template "rgba" (list $p.crust 0.5) }} */ -}}
+{{- $h := trimPrefix "#" (index . 0) -}}
+{{- printf "rgba(%d, %d, %d, %.2f)" (int (printf "0x%s" (substr 0 2 $h))) (int (printf "0x%s" (substr 2 4 $h))) (int (printf "0x%s" (substr 4 6 $h))) (index . 1 | float64) -}}

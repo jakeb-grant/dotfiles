@@ -1,42 +1,43 @@
-/* GTK4/libadwaita color overrides - Generated from theme template */
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+/* GTK4/libadwaita color overrides - colors from palette/active.json (chezmoi template) */
 
-@define-color window_bg_color #11111b;
-@define-color window_fg_color #cdd6f4;
-@define-color view_bg_color #11111b;
-@define-color view_fg_color #cdd6f4;
-@define-color accent_bg_color #313244;
-@define-color accent_fg_color #11111b;
-@define-color accent_color #313244;
-@define-color headerbar_bg_color #11111b;
-@define-color headerbar_fg_color #cdd6f4;
-@define-color headerbar_backdrop_color #11111b;
-@define-color card_bg_color #181825;
-@define-color card_fg_color #cdd6f4;
-@define-color popover_bg_color #181825;
-@define-color popover_fg_color #cdd6f4;
-@define-color dialog_bg_color #181825;
-@define-color dialog_fg_color #cdd6f4;
-@define-color sidebar_bg_color #11111b;
-@define-color sidebar_fg_color #cdd6f4;
-@define-color sidebar_backdrop_color #11111b;
+@define-color window_bg_color {{ $p.crust }};
+@define-color window_fg_color {{ $p.text }};
+@define-color view_bg_color {{ $p.crust }};
+@define-color view_fg_color {{ $p.text }};
+@define-color accent_bg_color {{ $p.surface0 }};
+@define-color accent_fg_color {{ $p.crust }};
+@define-color accent_color {{ $p.surface0 }};
+@define-color headerbar_bg_color {{ $p.crust }};
+@define-color headerbar_fg_color {{ $p.text }};
+@define-color headerbar_backdrop_color {{ $p.crust }};
+@define-color card_bg_color {{ $p.mantle }};
+@define-color card_fg_color {{ $p.text }};
+@define-color popover_bg_color {{ $p.mantle }};
+@define-color popover_fg_color {{ $p.text }};
+@define-color dialog_bg_color {{ $p.mantle }};
+@define-color dialog_fg_color {{ $p.text }};
+@define-color sidebar_bg_color {{ $p.crust }};
+@define-color sidebar_fg_color {{ $p.text }};
+@define-color sidebar_backdrop_color {{ $p.crust }};
 @define-color sidebar_shade_color rgba(0, 0, 0, 0.07);
-@define-color secondary_sidebar_bg_color #11111b;
-@define-color secondary_sidebar_fg_color #cdd6f4;
-@define-color secondary_sidebar_backdrop_color #11111b;
+@define-color secondary_sidebar_bg_color {{ $p.crust }};
+@define-color secondary_sidebar_fg_color {{ $p.text }};
+@define-color secondary_sidebar_backdrop_color {{ $p.crust }};
 @define-color secondary_sidebar_shade_color rgba(0, 0, 0, 0.07);
 
 /* Semantic colors */
-@define-color error_bg_color #f38ba8;
-@define-color error_fg_color #11111b;
-@define-color error_color #f38ba8;
-@define-color warning_bg_color #f9e2af;
-@define-color warning_fg_color #11111b;
-@define-color warning_color #f9e2af;
-@define-color success_bg_color #a6e3a1;
-@define-color success_fg_color #11111b;
-@define-color success_color #a6e3a1;
+@define-color error_bg_color {{ $p.red }};
+@define-color error_fg_color {{ $p.crust }};
+@define-color error_color {{ $p.red }};
+@define-color warning_bg_color {{ $p.yellow }};
+@define-color warning_fg_color {{ $p.crust }};
+@define-color warning_color {{ $p.yellow }};
+@define-color success_bg_color {{ $p.green }};
+@define-color success_fg_color {{ $p.crust }};
+@define-color success_color {{ $p.green }};
 
 /* Borders and separators */
-@define-color borders #45475a;
+@define-color borders {{ $p.surface1 }};
 @define-color shade_color rgba(0, 0, 0, 0.07);
-@define-color scrollbar_outline_color #45475a;
+@define-color scrollbar_outline_color {{ $p.surface1 }};

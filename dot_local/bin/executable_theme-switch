@@ -1,9 +1,7 @@
 #!/usr/bin/env -S uv run --quiet --script
 # /// script
 # requires-python = ">=3.11"
-# dependencies = [
-#     "jinja2",
-# ]
+# dependencies = []
 # ///
 """
 Theme Switching System
@@ -21,9 +19,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
-from jinja2 import BaseLoader, Environment, StrictUndefined
-from jinja2.exceptions import UndefinedError
 
 
 def notify(message: str, urgency: str = "normal") -> None:
@@ -53,12 +48,6 @@ def _chezmoi_root() -> Path:
 CHEZMOI_ROOT = _chezmoi_root()
 CHEZMOI_SOURCE_DIR = CHEZMOI_ROOT / "dot_config"
 PALETTE_DIR = CHEZMOI_SOURCE_DIR / "palette"
-TEMPLATE_DIR = CHEZMOI_SOURCE_DIR / "theme-templates"
-
-# Map template subdirectories to custom output base dirs (default: CHEZMOI_SOURCE_DIR)
-TEMPLATE_OUTPUT_OVERRIDES = {
-    "obsidian": CHEZMOI_ROOT / "knowledge" / "dot_obsidian" / "themes" / "Palette",
-}
 DEFAULT_THEME = "catppuccin-mocha"
 
 
@@ -74,54 +63,6 @@ def hex_to_rgb(color: str) -> tuple[int, int, int]:
 
 def strip_hash(color: str) -> str:
     return color.lstrip("#")
-
-
-def opacity_to_hex(opacity: float) -> str:
-    return f"{int(opacity * 255):02x}"
-
-
-# =============================================================================
-# Jinja2 Filters
-# =============================================================================
-
-
-def filter_hex(color: str) -> str:
-    h = strip_hash(color)
-    return f"#{h[:6]}"
-
-
-def filter_hex_alpha(color: str, opacity: float = 1.0) -> str:
-    h = strip_hash(color)
-    return f"#{h[:6]}{opacity_to_hex(opacity)}"
-
-
-def filter_rgb(color: str) -> str:
-    r, g, b = hex_to_rgb(color)
-    return f"rgb({r}, {g}, {b})"
-
-
-def filter_rgba(color: str, opacity: float = 1.0) -> str:
-    r, g, b = hex_to_rgb(color)
-    return f"rgba({r}, {g}, {b}, {opacity:.2f})"
-
-
-def filter_rgb_values(color: str) -> str:
-    r, g, b = hex_to_rgb(color)
-    return f"{r}, {g}, {b}"
-
-
-def filter_hypr_rgb(color: str) -> str:
-    h = strip_hash(color)
-    return f"rgb({h[:6]})"
-
-
-def filter_hypr_rgba(color: str, opacity: float = 1.0) -> str:
-    h = strip_hash(color)
-    return f"rgba({h[:6]}{opacity_to_hex(opacity)})"
-
-
-def filter_strip(color: str) -> str:
-    return strip_hash(color)
 
 
 def hex_to_hsl(color: str) -> tuple[int, int, int]:
@@ -146,33 +87,8 @@ def hex_to_hsl(color: str) -> tuple[int, int, int]:
 
 
 # =============================================================================
-# Template Processing
+# Palettes
 # =============================================================================
-
-
-def create_jinja_env() -> Environment:
-    env = Environment(
-        loader=BaseLoader(),
-        undefined=StrictUndefined,
-        variable_start_string="{<",
-        variable_end_string=">}",
-        block_start_string="{%<",
-        block_end_string=">%}",
-        comment_start_string="{#<",
-        comment_end_string=">#}",
-        keep_trailing_newline=True,
-    )
-
-    env.filters["hex"] = filter_hex
-    env.filters["hex_alpha"] = filter_hex_alpha
-    env.filters["rgb"] = filter_rgb
-    env.filters["rgba"] = filter_rgba
-    env.filters["rgb_values"] = filter_rgb_values
-    env.filters["hypr_rgb"] = filter_hypr_rgb
-    env.filters["hypr_rgba"] = filter_hypr_rgba
-    env.filters["strip"] = filter_strip
-
-    return env
 
 
 def load_palette(theme_name: str) -> dict:
@@ -262,32 +178,6 @@ def validate_palette(theme_name: str, palette_data: dict) -> None:
     if errors:
         notify(f"Palette {theme_name} failed validation:\n" + "\n".join(errors), "critical")
         sys.exit(1)
-
-
-def process_templates(env: Environment, palette_data: dict) -> None:
-    for template_file in TEMPLATE_DIR.rglob("*.theme"):
-        relative = template_file.relative_to(TEMPLATE_DIR)
-        override_dir = TEMPLATE_OUTPUT_OVERRIDES.get(relative.parts[0])
-        if override_dir:
-            output_name = Path(*relative.parts[1:]).with_suffix("")
-            output_path = override_dir / output_name
-        else:
-            output_name = relative.with_suffix(".tmpl")
-            output_path = CHEZMOI_SOURCE_DIR / output_name
-
-        print(f"    {relative} -> {output_name}")
-
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        template_content = template_file.read_text()
-        template = env.from_string(template_content)
-        try:
-            result = template.render(**palette_data)
-        except UndefinedError as e:
-            notify(f"Template {relative}: {e}", "critical")
-            sys.exit(1)
-
-        output_path.write_text(result)
 
 
 # =============================================================================
@@ -578,12 +468,9 @@ async def main() -> None:
 
     if active_bar_mode:
         palette_data.setdefault("_quickshell", {})["barMode"] = active_bar_mode
-    live_palette.parent.mkdir(parents=True, exist_ok=True)
-    for active_path in [PALETTE_DIR / "active.json", live_palette]:
-        write_json_atomic(active_path, palette_data)
 
-    # 3. Compute accent HSL for templates that need it (e.g. Obsidian).
-    #    After the active.json writes — these keys are render-time only.
+    # Derive accent + its HSL before the active.json writes — chezmoi templates
+    # (gtk, obsidian) read these straight from active.json.
     accent = palette_data.get("_quickshell", {}).get("accent") or palette_data.get("blue", "")
     if accent:
         palette_data["_accent"] = accent
@@ -592,13 +479,14 @@ async def main() -> None:
         palette_data["_accent_s"] = s
         palette_data["_accent_l"] = l
 
-    # 4. Process Jinja2 .theme templates → .tmpl files
-    print("==> Processing theme templates...")
-    env = create_jinja_env()
-    process_templates(env, palette_data)
+    live_palette.parent.mkdir(parents=True, exist_ok=True)
+    for active_path in [PALETTE_DIR / "active.json", live_palette]:
+        write_json_atomic(active_path, palette_data)
+
+    # 3. Regenerate the Hyprland palette module
     update_palette_lua(palette_data)
 
-    # 5. Update direct-write app configs in the chezmoi source
+    # 4. Update direct-write app configs in the chezmoi source
     print("==> Updating app configs...")
     update_ghostty(palette_data)
     update_btop(palette_data)
@@ -606,7 +494,7 @@ async def main() -> None:
     update_chromium(palette_data)
     update_zed()
 
-    # 6. Apply chezmoi (only theme-dependent configs, not large static files).
+    # 5. Apply chezmoi (only theme-dependent configs, not large static files).
     #    btop saves its config on clean shutdown — kill it first so its
     #    exit-save can't overwrite the freshly applied theme.
     await reload_btop()
@@ -635,7 +523,7 @@ async def main() -> None:
         )
         sys.exit(1)
 
-    # 7. Reload apps in parallel
+    # 6. Reload apps in parallel
     await reload_all(palette_data)
 
     notify(f"Switched to {theme_name.replace('-', ' ').title()}")
