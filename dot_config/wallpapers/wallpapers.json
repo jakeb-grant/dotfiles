@@ -1,4 +1,7 @@
 {
+  "defaults": {
+    "*": "lavender3.png"
+  },
   "wallpapers": [
     {
       "file": "astronaut3.png",
@@ -10,27 +13,39 @@
     },
     {
       "file": "everforest1.png",
-      "palettes": ["everforest"]
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "file": "everforest2.png",
-      "palettes": ["everforest"]
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "file": "everforest3.png",
-      "palettes": ["everforest"]
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "file": "ireland1.png",
-      "palettes": ["everforest"]
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "file": "ireland2.png",
-      "palettes": ["everforest"]
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "file": "ireland3.png",
-      "palettes": ["everforest"]
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "file": "lavender3.png",
@@ -80,33 +95,6 @@
       ]
     },
     {
-      "file": "sunset1.png",
-      "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
-      "file": "sunset2.png",
-      "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
-      "file": "sunset3.png",
-      "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
       "file": "urban1.png",
       "palettes": []
     },
@@ -122,7 +110,11 @@
   "sets": [
     {
       "name": "Astronaut",
-      "images": ["astronaut1.png", "astronaut2.png", "astronaut3.png"],
+      "images": [
+        "astronaut1.png",
+        "astronaut2.png",
+        "astronaut3.png"
+      ],
       "palettes": [
         "catppuccin-mocha",
         "catppuccin-frappe",
@@ -131,17 +123,32 @@
     },
     {
       "name": "Everforest",
-      "images": ["everforest1.png", "everforest2.png", "everforest3.png"],
-      "palettes": ["everforest"]
+      "images": [
+        "everforest1.png",
+        "everforest2.png",
+        "everforest3.png"
+      ],
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "name": "Ireland",
-      "images": ["ireland1.png", "ireland2.png", "ireland3.png"],
-      "palettes": ["everforest"]
+      "images": [
+        "ireland1.png",
+        "ireland2.png",
+        "ireland3.png"
+      ],
+      "palettes": [
+        "everforest"
+      ]
     },
     {
       "name": "Kyoto",
-      "images": ["lavender1.png", "lavender2.png"],
+      "images": [
+        "lavender1.png",
+        "lavender2.png"
+      ],
       "palettes": [
         "rose-pine*",
         "catppuccin-mocha",
@@ -152,12 +159,20 @@
     },
     {
       "name": "Mars Race",
-      "images": ["mars-race1.png", "mars-race2.png", "mars-race3.png"],
+      "images": [
+        "mars-race1.png",
+        "mars-race2.png",
+        "mars-race3.png"
+      ],
       "palettes": []
     },
     {
       "name": "Snowfield",
-      "images": ["snowfield1.png", "snowfield2.png", "snowfield3.png"],
+      "images": [
+        "snowfield1.png",
+        "snowfield2.png",
+        "snowfield3.png"
+      ],
       "palettes": [
         "catppuccin-mocha",
         "catppuccin-frappe",
@@ -168,18 +183,12 @@
       ]
     },
     {
-      "name": "Sunset",
-      "images": ["sunset1.png", "sunset2.png", "sunset3.png"],
-      "palettes": [
-        "catppuccin-mocha",
-        "catppuccin-frappe",
-        "catppuccin-macchiato",
-        "rose-pine*"
-      ]
-    },
-    {
       "name": "Urban",
-      "images": ["urban1.png", "urban2.png", "urban3.png"],
+      "images": [
+        "urban1.png",
+        "urban2.png",
+        "urban3.png"
+      ],
       "palettes": []
     }
   ]

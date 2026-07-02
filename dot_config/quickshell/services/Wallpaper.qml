@@ -150,11 +150,37 @@ Singleton {
                     }
                 }
             }
-            if (!restored) {
-                const idx = Math.floor(Math.random() * entries.length);
-                applyEntry(entries[idx]);
+            if (!restored)
+                applyEntry(_defaultEntry());
+        }
+    }
+
+    // Deterministic pick for a freshly matched theme: the config's `defaults`
+    // map names a wallpaper/set per palette slug (exact slug wins, then
+    // wildcard keys like "rose-pine*", then "*"), falling back to the first
+    // matching entry when nothing is configured or the named entry doesn't
+    // apply to this theme.
+    function _defaultEntry(): var {
+        const defaults = _config.defaults ?? {};
+        let name = defaults[paletteSlug];
+        if (name === undefined) {
+            for (const key in defaults) {
+                if (key !== "*" && key.includes("*")) {
+                    const regex = new RegExp("^" + key.replace(/\*/g, ".*") + "$");
+                    if (regex.test(paletteSlug)) {
+                        name = defaults[key];
+                        break;
+                    }
+                }
             }
         }
+        if (name === undefined)
+            name = defaults["*"];
+        for (let i = 0; i < entries.length; i++) {
+            if (entries[i].name === name)
+                return entries[i];
+        }
+        return entries[0];
     }
 
     // ── Public functions ──
