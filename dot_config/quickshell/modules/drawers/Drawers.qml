@@ -4,6 +4,7 @@ import qs.modules.bar
 import qs.modules.bar.popouts
 import qs.modules.launcher
 import qs.modules.notifications
+import qs.modules.osd
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Hyprland
@@ -218,6 +219,36 @@ Variants {
                 barWidth: Utils.Theme.isSide ? bar.implicitWidth : 0
                 barHeight: Utils.Theme.isTop ? bar.implicitHeight : 0
                 screen: scope.modelData
+            }
+        }
+
+        // The OSD gets its own overlay-layer window: Hyprland renders
+        // fullscreen windows above the Top layer the drawers window lives on,
+        // and volume keys during fullscreen video are the OSD's prime
+        // scenario. The empty input mask keeps it fully click-through; the
+        // window only maps while the OSD is showing (osd.visible tracks the
+        // fade, so unmap waits for the fade-out to finish).
+        PanelWindow {
+            id: osdWin
+
+            screen: scope.modelData
+            WlrLayershell.namespace: "quickshell-osd"
+            WlrLayershell.exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Overlay
+            color: "transparent"
+            visible: osd.visible
+
+            anchors.bottom: true
+            margins.bottom: 96
+            // Oversize for the drop shadow's bleed beyond the island bounds
+            implicitWidth: osd.implicitWidth + Utils.Theme.islandShadowBlur * 2
+            implicitHeight: osd.implicitHeight + Utils.Theme.islandShadowBlur * 2
+
+            mask: Region {}
+
+            OsdOverlay {
+                id: osd
+                anchors.centerIn: parent
             }
         }
     }

@@ -11,6 +11,8 @@ Working loop (same as the design review): implement chunk → verify live → �
 
 *(newest first)*
 
+**Session 1 (2026-07-02) — Chunk 1 complete: UX-1a/b/c.** New `services/Osd.qml` (decides *when*: watches `Audio.volumePercent`/`muted` and `Brightness.percent`, 1.4s auto-hide, suppressed while the matching popout is open, 2s startup grace so the async login value-sync doesn't flash it) + `modules/osd/OsdOverlay.qml` (renders *what*: bottom-center island — icon, fill bar, fixed-width % label so the bar doesn't wiggle, "Muted" state, track title/artist in media mode with a "Nothing playing" fallback). Media keys: `XF86AudioPlay/Pause/Next/Prev` → `quickshell:media-*` global shortcuts → the existing MPRIS `Players` service (no playerctl dep); play+pause both map to toggle (one keysym per press, so no double-fire; separate-key boards get toggle-on-either). Wheel handlers on the bar volume/brightness icons. All three OSD modes verified live by screenshot (+ owner eyes); shortcuts confirmed registered in `hyprctl globalshortcuts`; rendered lua luac-clean. Review (1 agent): 1 real bug fixed pre-commit — naive per-event wheel stepping would slam 5%/micro-event on touchpads and treat `angleDelta.y === 0` as scroll-down; now accumulates and steps per ±120. Convention nit fixed (`Osd.qml` qualifies siblings via `import qs.services as Services` per DEVGUIDE). Acted on the review's fullscreen observation: OSD moved out of the drawers window (WlrLayer.Top — fullscreen occludes it, which is the OSD's prime scenario) into its own per-screen `WlrLayer.Overlay` PanelWindow with an empty input mask (click-through) that maps only while showing. Rejected: swallow-first-change startup latch (eats the user's first real keypress whenever the value binds before the singleton instantiates — a rare cosmetic login flash is the better trade; rationale in Osd.qml). Accepted as feature: device switches (headphones plug, BT connect) flash the volume OSD. Known cosmetic: suppression is global while overlays are per-screen — popout on monitor A suppresses monitor B's OSD. DEVGUIDE: island enumeration + wheel-accumulation rule + OSD pattern section. Owner-verify: scroll-to-adjust on the bar icons (wheel events can't be synthesized headlessly).
+
 ---
 
 ## Guiding observations
@@ -19,11 +21,11 @@ The shell has two feedback channels today: the bar (icons + hover popouts) and n
 
 ---
 
-## Chunk 1 — System keys feel responsive (OSD core) · M
+## Chunk 1 — System keys feel responsive (OSD core) · M · ✅ session 1
 
-- [ ] **UX-1a: Volume/brightness OSD.** Transient island (icon + fill bar + %) near the bar edge on volume/brightness change; ~1.2s auto-hide; distinct muted state (not just a number); suppressed while the corresponding popout is open and on shell-startup initial value sync. New `modules/osd/`, driven by the existing `Audio`/`Brightness` services.
-- [ ] **UX-1b: Media key binds.** `XF86AudioPlay/Next/Prev` → Quickshell global shortcuts handled by the existing `Players` (MPRIS) service — no playerctl dependency. OSD flashes track title/artist on skip.
-- [ ] **UX-1c: Scroll-to-adjust on bar icons.** Wheel handlers on the volume and brightness status icons (the popout hint already promises "scroll … to adjust"; make the bar icons honor it too).
+- [x] **UX-1a: Volume/brightness OSD.** ✅ session 1 — bottom-center overlay-layer island (survives fullscreen), 1.4s auto-hide, muted state, popout + startup suppression.
+- [x] **UX-1b: Media key binds.** ✅ session 1 — `quickshell:media-*` globals → MPRIS `Players` service; OSD flashes track info.
+- [x] **UX-1c: Scroll-to-adjust on bar icons.** ✅ session 1 — wheel handlers with ±120 accumulation (owner to confirm feel on real hardware).
 
 ## Chunk 2 — Screenshot feedback · S
 

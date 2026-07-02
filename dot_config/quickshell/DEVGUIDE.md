@@ -296,7 +296,7 @@ pattern used when the service echoes values back asynchronously.
 
 ## Floating Island Design Language
 
-Every shell surface (bar, popouts, notifications, launcher) is a self-contained rounded `Rectangle` grounded by a soft drop shadow. No painted frames, no concave-curve seams. Islands sit in space with `barMargin` breathing room from the screen edges.
+Every shell surface (bar, popouts, notifications, launcher, OSD) is a self-contained rounded `Rectangle` grounded by a soft drop shadow. No painted frames, no concave-curve seams. Islands sit in space with `barMargin` breathing room from the screen edges.
 
 ### Drop-shadow pattern
 
@@ -327,7 +327,13 @@ For ephemeral surfaces, prefer `layer.enabled: visible` over `layer.enabled: tru
 
 ### Bar-item hover
 
-The bar deliberately has *no* hover decoration on its items — no scale grow, no backdrop pill, no glow. Hovering a popout-source icon (volume, brightness, calendar, etc.) opens its popout; the cursor's position plus the open popout is the only feedback. If you add a new bar item that spawns a popout, mirror the existing pattern: a `MouseArea` with `onEntered: Services.Popout.showFrom(item, name, screen)` and `onExited: Services.Popout.barItemExited()`, and nothing else. For top-level bar entries, `BarContent.qml`'s inline `BarItem { step; popout }` component wires this up (plus the entrance animation) — just set `popout` and drop the content in as a child.
+The bar deliberately has *no* hover decoration on its items — no scale grow, no backdrop pill, no glow. Hovering a popout-source icon (volume, brightness, calendar, etc.) opens its popout; the cursor's position plus the open popout is the only feedback. If you add a new bar item that spawns a popout, mirror the existing pattern: a `MouseArea` with `onEntered: Services.Popout.showFrom(item, name, screen)` and `onExited: Services.Popout.barItemExited()`, and nothing else visual. For top-level bar entries, `BarContent.qml`'s inline `BarItem { step; popout }` component wires this up (plus the entrance animation) — just set `popout` and drop the content in as a child.
+
+The one non-hover addition bar items may carry is a wheel handler (volume/brightness scroll-to-adjust). Accumulate `angleDelta.y` and only act per ±120 accumulated — touchpads emit streams of small-delta events, and stepping per event overshoots badly.
+
+### OSD
+
+Transient feedback for keyboard-initiated state changes (volume/brightness/media keys). Split the same way as popouts: `Services.Osd` decides *when* (watches `Audio`/`Brightness` value changes with a startup grace period; `showMedia()` for explicit media keys; suppressed while the matching popout is open), `modules/osd/OsdOverlay.qml` renders *what*. The overlay lives in its own per-screen `WlrLayer.Overlay` PanelWindow (in `Drawers.qml`) rather than the drawers window: Hyprland draws fullscreen windows above the Top layer, and the OSD must survive fullscreen video. The window has an empty input `mask` (fully click-through) and maps only while the OSD is visible — its `visible` tracks the overlay's fade so unmap waits for the fade-out.
 
 ### Invisible hover bridge
 

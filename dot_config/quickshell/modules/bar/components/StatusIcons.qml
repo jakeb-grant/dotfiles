@@ -52,6 +52,17 @@ Rectangle {
 
                 onEntered: Services.Popout.showFrom(volumeItem, "volume", root.screen)
                 onExited: Services.Popout.barItemExited()
+                // Accumulate and step per ±120: touchpads emit many small-delta
+                // events; stepping per event would jump 5% per micro-scroll.
+                property real _wheelAccum: 0
+                onWheel: wheel => {
+                    if (wheel.angleDelta.y === 0) return;
+                    _wheelAccum += wheel.angleDelta.y;
+                    const steps = Math.trunc(_wheelAccum / 120);
+                    if (steps === 0) return;
+                    _wheelAccum -= steps * 120;
+                    Services.Audio.setVolume(Math.min(1, Math.max(0, Services.Audio.volume + steps * 0.05)));
+                }
             }
         }
 
@@ -84,6 +95,15 @@ Rectangle {
 
                 onEntered: Services.Popout.showFrom(brightnessItem, "brightness", root.screen)
                 onExited: Services.Popout.barItemExited()
+                property real _wheelAccum: 0
+                onWheel: wheel => {
+                    if (wheel.angleDelta.y === 0) return;
+                    _wheelAccum += wheel.angleDelta.y;
+                    const steps = Math.trunc(_wheelAccum / 120);
+                    if (steps === 0) return;
+                    _wheelAccum -= steps * 120;
+                    Services.Brightness.setBrightness(Services.Brightness.percent + steps * 5);
+                }
             }
         }
 

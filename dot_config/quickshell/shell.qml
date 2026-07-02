@@ -35,6 +35,33 @@ ShellRoot {
     }
 
     GlobalShortcut {
+        name: "media-playpause"
+        description: "Play/pause the active media player"
+        onPressed: {
+            Services.Players.togglePlaying();
+            Services.Osd.showMedia();
+        }
+    }
+
+    GlobalShortcut {
+        name: "media-next"
+        description: "Skip to next track"
+        onPressed: {
+            Services.Players.next();
+            Services.Osd.showMedia();
+        }
+    }
+
+    GlobalShortcut {
+        name: "media-prev"
+        description: "Skip to previous track"
+        onPressed: {
+            Services.Players.previous();
+            Services.Osd.showMedia();
+        }
+    }
+
+    GlobalShortcut {
         name: "notif-dismiss"
         description: "Dismiss latest notification"
         onPressed: Services.Notifications.dismissLatest()
