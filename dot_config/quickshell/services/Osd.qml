@@ -7,7 +7,7 @@ import qs.services as Services
 Singleton {
     id: root
 
-    // "volume" | "brightness" | "media" — what the overlay renders
+    // "volume" | "brightness" | "media" | "mic" — what the overlay renders
     property string mode: ""
     readonly property bool visible: hideTimer.running
 
@@ -46,10 +46,25 @@ Singleton {
         hideTimer.restart();
     }
 
+    // sourceMuted is derived from the default source, so it also flips when
+    // the source *device* changes (headset plug/unplug — unplugging a muted
+    // headset would flash "Microphone on"). Only a mute change on the same
+    // source is a user toggle worth showing. Update-then-compare keeps this
+    // correct regardless of sourceChanged/sourceMutedChanged emission order.
+    property var _lastSource: null
+    Component.onCompleted: _lastSource = Services.Audio.source
+
     Connections {
         target: Services.Audio
         function onVolumePercentChanged() { root.show("volume"); }
         function onMutedChanged() { root.show("volume"); }
+        function onSourceChanged() { root._lastSource = Services.Audio.source; }
+        function onSourceMutedChanged() {
+            const s = Services.Audio.source;
+            const switched = s !== root._lastSource;
+            root._lastSource = s;
+            if (!switched) root.show("mic");
+        }
     }
 
     Connections {

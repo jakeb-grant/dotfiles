@@ -13,7 +13,9 @@ Rectangle {
     readonly property string mode: Services.Osd.mode
     readonly property bool isVolume: mode === "volume"
     readonly property bool isMedia: mode === "media"
-    readonly property bool showsMuted: isVolume && Services.Audio.muted
+    readonly property bool isMic: mode === "mic"
+    readonly property bool showsMuted: (isVolume && Services.Audio.muted)
+        || (isMic && Services.Audio.sourceMuted)
     readonly property real fillValue: isVolume
         ? Services.Audio.volumePercent / 100
         : Services.Brightness.percent / 100
@@ -56,6 +58,7 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             text: {
                 if (root.isMedia) return Services.Players.isPlaying ? "play_arrow" : "pause";
+                if (root.isMic) return Services.Audio.micIcon;
                 if (root.isVolume) return Services.Audio.icon;
                 return Services.Brightness.icon;
             }
@@ -66,7 +69,7 @@ Rectangle {
 
         // Volume/brightness: fill bar + fixed-width label
         Item {
-            visible: !root.isMedia
+            visible: !root.isMedia && !root.isMic
             Layout.fillWidth: true
             Layout.alignment: Qt.AlignVCenter
             implicitHeight: Utils.Theme.sliderTrackHeight
@@ -88,8 +91,20 @@ Rectangle {
             }
         }
 
+        // Mic: binary state, no bar
         Text {
-            visible: !root.isMedia
+            visible: root.isMic
+            Layout.fillWidth: true
+            Layout.alignment: Qt.AlignVCenter
+            text: Services.Audio.sourceMuted ? "Microphone muted" : "Microphone on"
+            font.family: Utils.Theme.fontFamily
+            font.pixelSize: Utils.Theme.fontSizeSmall
+            font.bold: true
+            color: root.showsMuted ? Utils.Theme.subtleText : Utils.Theme.text
+        }
+
+        Text {
+            visible: !root.isMedia && !root.isMic
             Layout.alignment: Qt.AlignVCenter
             // Fixed width so the bar doesn't wiggle as "5%" grows to "100%"
             Layout.preferredWidth: 48

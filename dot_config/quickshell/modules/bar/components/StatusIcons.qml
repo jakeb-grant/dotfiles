@@ -24,6 +24,27 @@ Rectangle {
         columnSpacing: Utils.Theme.isTop ? Utils.Theme.spacingSmall : 0
         rowSpacing: Utils.Theme.isSide ? Utils.Theme.spacingSmall : 0
 
+        // Mic — indicator only, appears while the default source is muted.
+        // Red because a muted mic mid-call is the "why can't they hear me"
+        // trap; the other icons stay subtle.
+        Item {
+            id: micItem
+
+            Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
+            visible: Services.Audio.sourceMuted
+            implicitWidth: micIcon.implicitWidth
+            implicitHeight: micIcon.implicitHeight
+
+            Utils.MaterialIcon {
+                id: micIcon
+                anchors.centerIn: parent
+                text: "mic_off"
+                fill: 1
+                font.pixelSize: Utils.Theme.iconSize
+                color: Utils.Theme.red
+            }
+        }
+
         // Volume
         Item {
             id: volumeItem

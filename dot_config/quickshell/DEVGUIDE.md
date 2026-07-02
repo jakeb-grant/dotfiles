@@ -333,7 +333,7 @@ The one non-hover addition bar items may carry is a wheel handler (volume/bright
 
 ### OSD
 
-Transient feedback for keyboard-initiated state changes (volume/brightness/media keys). Split the same way as popouts: `Services.Osd` decides *when* (watches `Audio`/`Brightness` value changes with a startup grace period; `showMedia()` for explicit media keys; suppressed while the matching popout is open), `modules/osd/OsdOverlay.qml` renders *what*. The overlay lives in its own per-screen `WlrLayer.Overlay` PanelWindow (in `Drawers.qml`) rather than the drawers window: Hyprland draws fullscreen windows above the Top layer, and the OSD must survive fullscreen video. The window has an empty input `mask` (fully click-through) and maps only while the OSD is visible — its `visible` tracks the overlay's fade so unmap waits for the fade-out.
+Transient feedback for keyboard-initiated state changes (volume/brightness/mic/media keys). Split the same way as popouts: `Services.Osd` decides *when* (watches `Audio`/`Brightness` value changes — including `Audio.sourceMuted` for the mic — with a startup grace period; `showMedia()` for explicit media keys; suppressed while the matching popout is open), `modules/osd/OsdOverlay.qml` renders *what*. The overlay lives in its own per-screen `WlrLayer.Overlay` PanelWindow (in `Drawers.qml`) rather than the drawers window: Hyprland draws fullscreen windows above the Top layer, and the OSD must survive fullscreen video. The window has an empty input `mask` (fully click-through) and maps only while the OSD is visible — its `visible` tracks the overlay's fade so unmap waits for the fade-out.
 
 ### Invisible hover bridge
 
