@@ -10,6 +10,16 @@ Singleton {
     property bool available: false
     property int percent: 0
     readonly property real brightness: percent / 100
+
+    readonly property string icon: {
+        if (percent <= 14) return "brightness_1";
+        if (percent <= 28) return "brightness_2";
+        if (percent <= 42) return "brightness_3";
+        if (percent <= 56) return "brightness_4";
+        if (percent <= 70) return "brightness_5";
+        if (percent <= 85) return "brightness_6";
+        return "brightness_7";
+    }
     property bool suppressUpdates: false
 
     property int _max: 0

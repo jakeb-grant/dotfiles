@@ -9,6 +9,8 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 
 ## Session log
 
+**Session 4 (2026-07-01) — QS-3 + QS-5 + QS-6 complete (bar dedup, Wave 3 Track B).** BarContent.qml 361→231: the duplicated side/top layouts (every item ×2, entrance boilerplate ×12) replaced by one flow-switched GridLayout with inline `BarItem { step; popout }` (entrance shift+fade, orientation-aware alignment, sizes to first child, optional hover-popout wiring) and `Spacer { size; fill }` components — the same GridLayout-flow idiom Workspaces/StatusIcons/TrayOverflow already used. `Services.Popout` gained `showFrom(item, name, screen)` (the old ×3-duplicated `_showPopout`) and `barItemExited()` (the old ×12 inline `barItemHovered = false; requestClose()`); all call sites migrated. Icon ladders centralized following the Battery pattern: `Audio.icon`, `Brightness.icon`, `Network.signalIcon` + `signalIconFor(level)` (glyph array was duplicated ×3); Bluetooth's ladders deliberately left local (bar and popout genuinely differ). One design subtlety: the tray BarItem duplicates TrayOverflow's `visible` condition on the instance because QML `visible` reads *effective* visibility — binding parent to child would latch false forever once hidden. Net −161 lines. Verified: live reload clean, headless smoke instance (BarContent + all 8 popouts) zero warnings exit 0. Review: parity agent CLEAN (item order/spacers/entrance params/clock variants/ladder thresholds/glyph codepoints/protocol semantics all byte-equivalent; also confirmed the refactor halves live object count — HEAD ran hidden duplicates of Workspaces/TrayOverflow/StatusIcons); correctness agent NO DEFECTS (verified default-alias child routing, sizing reactivity, and `columns: -1` empirically in a Qt 6 runtime; 2 observations — click-swallowing MouseAreas, unclamped negative signal level — both inherited from HEAD, rejected under parity). DEVGUIDE bar-item-hover section updated to the new API.
+
 **Session 3 (2026-07-01) — QS-1 complete (popout component library, Wave 3 Track B start).** Built `modules/bar/popouts/components/` — 12 shared primitives (PopoutColumn width-spacer base, Separator, SectionLabel, SectionHeader w/ spinning refresh, ConnectionHeader crossfade w/ icon slot, IconButton, PillButton, ListRow hover row w/ default-alias content, PopoutListView w/ empty state, FlowBar masked flowing gradient, FlowSlider display-only slider emitting pressStarted/moved/released, EmptyLabel) — and rewrote all 9 popouts + PopoutWrapper onto them. Popouts 3314 → 2635 total lines (net −679; VolumePopout 592→302, Wifi 370→133, BT 416→165). PopoutWrapper's tray Loader collapsed into the shared `component Popout` via new `recreateOnOpen` flag. DEVGUIDE "Popout Patterns" converted from copy-paste prose to component docs. Verified three ways: live shell reloads clean (one mid-`chezmoi apply` scanner race, self-resolved), headless second-instance smoke test instantiating all popouts (zero warnings, exit 0), and user-driven interactive test on the live bar (zero new log lines). Review: parity agent CLEAN (6/6 areas; one sub-pixel note on transport-row height accepted); component agent raised 6 — 2 fixed (2-color FlowBar gradient now shifts a full pattern period per loop, fixing a pre-existing battery-bar snap; IconButton bounce gated on `enabled`), 3 rejected as parity-with-original (seek-bar drag coupling, 8px spacer gap, crossfade width share — all match the old code byte-for-byte), 1 false positive (nested layouts default `Layout.fillWidth: true`, headers stretch as before).
 
 **Session 2 (2026-07-01) — Wave 2 complete (theme-system integrity).** Fixed: THM-1 (ghostty/btop/pane-fm direct-writes retargeted to the chezmoi source, run before `chezmoi apply`; ghostty+btop added to `themed_targets`; acceptance: `chezmoi diff`/`status` fully clean after a switch), THM-8 (shared `rewrite_config_keys` helper replaces the ×3 copy-paste; single palette load; chromium warning fix; `CHEZMOI_ROOT` via `chezmoi source-path`), THM-6 (atomic active.json via temp+rename; chezmoi exit code checked → critical notify + exit 1; success toast only on real success), THM-4 (`StrictUndefined` + `validate_palette`: 26 roles/hex/btop+pane-fm file existence/zed names; all 10 palettes pass, negative tests rejected), THM-7 remainder (accent added to 3 catppuccin darks = their blue; real `_zed_theme_dark` for 3 light palettes; rose-pine "inversion" re-checked — moon inverts too, consistent upstream overlay→base mapping, intentional; `islandShadowColor` already documented in Theme.qml). Two review agents: verifier 6/6 pass; code reviewer found no blocking bugs + 3 minor items — 2 fixed (btop now killed *before* apply so its exit-save can't clobber the theme; missing-key insertion warns), 1 accepted as-is (chromium PermissionError still non-fatal — cosmetic wash). Ghostty source header tidied. Re-ran `theme-switch catppuccin-mocha` end-to-end: clean.
@@ -104,10 +106,9 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 - [x] Done: `services/IconCache.qml` singleton populated once at startup; TrayMenuPopout reads `Services.IconCache.icons`. Known accepted edge: a tray menu opened in the first ~1s after shell start may miss icons for that open only (delegates recreate per open, so it self-heals).
 
-### QS-3 · P1 · M — BarContent duplicates every bar item ×2 layouts
+### QS-3 · P1 · M — BarContent duplicates every bar item ×2 layouts ✅ session 4
 
-- [ ] `BarContent.qml` (361 lines): `sideLayout` and `topLayout` each list every item, and the per-item entrance boilerplate (`_shift` + 2 Behaviors + opacity + transform) repeats ×12. Workspaces/StatusIcons/TrayOverflow already use the single-GridLayout-with-flow-switch pattern (`Workspaces.qml:153-188`, `StatusIcons.qml:27-35`) — BarContent is the one sibling not using its own codebase's solution.
-- **Fix:** `BarItem { step }` component + one flow-switched layout. Roughly halves the file.
+- [x] Done: one flow-switched GridLayout with inline `BarItem { step; popout }` + `Spacer { size; fill }` components; 361→231 lines, single live copy of Workspaces/TrayOverflow/StatusIcons (HEAD ran a hidden duplicate of each). Clock keeps both orientation variants (visibility-switched) with per-orientation implicit-size override; tray visibility condition duplicated on the BarItem instance (effective-visibility latch prevents binding to the child).
 
 ### QS-4 · P2 · M — Launcher.qml (582) mixes five concerns
 
@@ -116,16 +117,13 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - [ ] `_scanThemes` shells to inline python3 (`:161-174`) just to parse palette JSONs — drop the python dependency (FileView per file, or a tiny helper script).
 - Note: `_evalCalc`'s `eval()` (`:512`) is regex-sanitized first — acceptable, documented here for the record.
 
-### QS-5 · P2 · S — Icon ladders duplicated between bar and popouts
+### QS-5 · P2 · S — Icon ladders duplicated between bar and popouts ✅ session 4
 
-- [ ] Battery centralizes `icon`/`iconColor` in the service (`Battery.qml:23-49`) — the right pattern. But: volume ladder duplicated (`StatusIcons.qml:48-54` ≡ `VolumePopout.qml:26-32`), brightness ladder duplicated (`StatusIcons.qml:89-98` ≡ `BrightnessPopout.qml:25-34`), and the Nerd-Font wifi glyph array `["󰤯","󰤟","󰤢","󰤥","󰤨"]` appears ×3 (`StatusIcons.qml:132-136`, `WifiPopout.qml:33-37`, `:240-243`).
-- **Fix:** `Services.Audio.icon`, `Services.Brightness.icon`, `Services.Network.signalIcon`, following Battery.
+- [x] Done: `Services.Audio.icon`, `Services.Brightness.icon`, `Services.Network.signalIcon` + `signalIconFor(level)` (glyph array now lives once in Network.qml); all bar + popout sites migrated, thresholds verified identical. Bluetooth ladders deliberately stay local — bar (`bluetooth_disabled`/`connected`/`bluetooth`) and popout (`connected`/`bluetooth`) genuinely differ.
 
-### QS-6 · P2 · S — Bar-item exit protocol duplicated at ~12 call sites
+### QS-6 · P2 · S — Bar-item exit protocol duplicated at ~12 call sites ✅ session 4
 
-- [ ] `Services.Popout.barItemHovered = false; Services.Popout.requestClose();` verbatim in `BarContent.qml:70,155,197,236,313,355`, `StatusIcons.qml` ×5, `TrayOverflow.qml:84-87`. And `show()` sets `barItemHovered = true` internally while callers clear it — asymmetric API.
-- [ ] `_showPopout()` helper duplicated (`BarContent.qml:28-36` ≡ `StatusIcons.qml:17-25`).
-- **Fix:** add `Popout.barItemExited()`; single shared `_showPopout`.
+- [x] Done: `Services.Popout.barItemExited()` (symmetric counterpart to `show()`'s internal `barItemHovered = true`) and `Services.Popout.showFrom(item, name, screen)` (absorbs the duplicated `_showPopout` helpers); all 12 call sites across BarContent/StatusIcons/TrayOverflow migrated. Popout.qml now imports `qs.utils` (no cycle — Theme imports no `qs.*`).
 
 ### QS-7 · P2 · S — Network.qml hardening
 
@@ -269,7 +267,7 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 **Wave 3 — structural (M/L, independent tracks):**
 - Track A: THM-2 (chezmoi-native templates) then THM-5 (generate btop/pane-fm) — decide THM-2 first since it changes where generation lives.
-- Track B: ~~QS-1 (popout components)~~ ✅ session 3 → QS-3 (BarItem) → QS-5/QS-6 (ladders, exit protocol) → QS-4 (launcher scorer).
+- Track B: ~~QS-1 (popout components)~~ ✅ session 3 → ~~QS-3 (BarItem) / QS-5/QS-6 (ladders, exit protocol)~~ ✅ session 4 → QS-4 (launcher scorer).
 - Track C: CHZ-1 (wallpaper degit + history purge) — schedule deliberately; it's a history rewrite.
 
 **Wave 4 — polish:** QS-7/8/9/10/11/12, HYP-1/2, BIN-3/4, CHZ-4/5, DOC-1/2.

@@ -325,7 +325,7 @@ For ephemeral surfaces, prefer `layer.enabled: visible` over `layer.enabled: tru
 
 ### Bar-item hover
 
-The bar deliberately has *no* hover decoration on its items — no scale grow, no backdrop pill, no glow. Hovering a popout-source icon (volume, brightness, calendar, etc.) opens its popout; the cursor's position plus the open popout is the only feedback. If you add a new bar item that spawns a popout, mirror the existing pattern: a `MouseArea` with `onEntered: root._showPopout(...)` and `onExited` clearing `Services.Popout.barItemHovered + requestClose()`, and nothing else.
+The bar deliberately has *no* hover decoration on its items — no scale grow, no backdrop pill, no glow. Hovering a popout-source icon (volume, brightness, calendar, etc.) opens its popout; the cursor's position plus the open popout is the only feedback. If you add a new bar item that spawns a popout, mirror the existing pattern: a `MouseArea` with `onEntered: Services.Popout.showFrom(item, name, screen)` and `onExited: Services.Popout.barItemExited()`, and nothing else. For top-level bar entries, `BarContent.qml`'s inline `BarItem { step; popout }` component wires this up (plus the entrance animation) — just set `popout` and drop the content in as a child.
 
 ### Invisible hover bridge
 

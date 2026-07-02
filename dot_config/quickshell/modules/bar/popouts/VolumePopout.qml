@@ -12,13 +12,7 @@ PopoutColumn {
         spacing: Utils.Theme.spacingNormal
 
         Utils.MaterialIcon {
-            text: {
-                const v = Services.Audio.volumePercent;
-                if (Services.Audio.muted) return "volume_off";
-                if (v === 0) return "volume_mute";
-                if (v <= 25) return "volume_down";
-                return "volume_up";
-            }
+            text: Services.Audio.icon
             fill: Services.Audio.muted ? 0 : 1
             font.pixelSize: Utils.Theme.headerIconSize
             color: {

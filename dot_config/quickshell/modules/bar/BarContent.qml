@@ -1,5 +1,6 @@
 import qs.modules.bar.components
 import Quickshell
+import Quickshell.Services.SystemTray
 import QtQuick
 import QtQuick.Layouts
 import qs.services as Services
@@ -25,93 +26,64 @@ Item {
         }
     }
 
-    function _showPopout(item: Item, name: string) {
-        const gp = Utils.Theme.isSide
-            ? item.mapToItem(null, 0, item.height / 2)
-            : item.mapToItem(null, item.width / 2, 0);
-        Services.Popout.show(name,
-            Utils.Theme.isTop ? gp.x : 0,
-            Utils.Theme.isSide ? gp.y : 0,
-            root.screen);
-    }
-
-    // ── Side mode: ColumnLayout ──
-    ColumnLayout {
-        id: sideLayout
+    GridLayout {
         anchors.fill: parent
-        visible: Utils.Theme.isSide
-        spacing: Utils.Theme.spacingSmall
+        flow: Utils.Theme.isSide ? GridLayout.TopToBottom : GridLayout.LeftToRight
+        columns: Utils.Theme.isTop ? -1 : 1
+        rows: Utils.Theme.isSide ? -1 : 1
+        columnSpacing: Utils.Theme.isTop ? Utils.Theme.spacingSmall : 0
+        rowSpacing: Utils.Theme.isSide ? Utils.Theme.spacingSmall : 0
 
-        Item { Layout.preferredHeight: Utils.Theme.spacingSmall }
+        Spacer { size: Utils.Theme.spacingSmall }
 
-        Item {
-            id: archLogoSide
-            Layout.alignment: Qt.AlignHCenter
-            implicitWidth: archTextSide.implicitWidth
-            implicitHeight: archTextSide.implicitHeight
-            property real _shift: root._animStep >= 0 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 0 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { y: archLogoSide._shift }
+        BarItem {
+            step: 0
+            popout: "system"
 
             Text {
-                id: archTextSide
                 anchors.centerIn: parent
                 text: "\uf303"
                 font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.iconSize
                 color: Utils.Theme.subtleText
             }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: root._showPopout(archLogoSide, "system")
-                onExited: { Services.Popout.barItemHovered = false; Services.Popout.requestClose(); }
+        }
+
+        BarItem {
+            step: 1
+
+            Workspaces {
+                screen: root.screen
+                entranceReady: root._animStep >= 1
             }
         }
 
-        Workspaces {
-            id: workspacesSide
-            Layout.alignment: Qt.AlignHCenter
-            screen: root.screen
-            entranceReady: root._animStep >= 1
-            property real _shift: root._animStep >= 1 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 1 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { y: workspacesSide._shift }
+        Spacer { fill: true }
+
+        BarItem {
+            step: 2
+            // Mirrors TrayOverflow's own condition — an invisible child can't
+            // drive parent visibility (visible reads as effective visibility,
+            // which would latch false once hidden).
+            visible: SystemTray.items.values.length > 0
+
+            TrayOverflow {
+                screen: root.screen
+            }
         }
 
-        Item { Layout.fillHeight: true }
+        Spacer { size: Utils.Theme.spacingNormal }
 
-        TrayOverflow {
-            id: traySide
-            Layout.alignment: Qt.AlignHCenter
-            screen: root.screen
-            property real _shift: root._animStep >= 2 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 2 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { y: traySide._shift }
-        }
-
-        Item { Layout.preferredHeight: Utils.Theme.spacingNormal }
-
-        Item {
-            id: clockSide
-            Layout.alignment: Qt.AlignHCenter
-            implicitWidth: Utils.Theme.barInnerWidth
-            implicitHeight: calendarClockCol.implicitHeight
-            property real _shift: root._animStep >= 3 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 3 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { y: clockSide._shift }
+        BarItem {
+            step: 3
+            popout: "calendar"
+            implicitWidth: Utils.Theme.isSide ? Utils.Theme.barInnerWidth : clockRow.implicitWidth
+            implicitHeight: Utils.Theme.isSide ? clockCol.implicitHeight : clockRow.implicitHeight
 
             Column {
-                id: calendarClockCol
+                id: clockCol
                 anchors.centerIn: parent
+                visible: Utils.Theme.isSide
                 spacing: Utils.Theme.spacingTiny
 
                 Utils.MaterialIcon {
@@ -148,136 +120,10 @@ Item {
                 }
             }
 
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: root._showPopout(clockSide, "calendar")
-                onExited: { Services.Popout.barItemHovered = false; Services.Popout.requestClose(); }
-            }
-        }
-
-        Item { Layout.preferredHeight: Utils.Theme.spacingSmall }
-
-        StatusIcons {
-            id: statusSide
-            Layout.alignment: Qt.AlignHCenter
-            screen: root.screen
-            property real _shift: root._animStep >= 4 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 4 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { y: statusSide._shift }
-        }
-
-        Item { Layout.preferredHeight: Utils.Theme.spacingSmall }
-
-        Item {
-            id: powerSide
-            Layout.alignment: Qt.AlignHCenter
-            implicitWidth: powerIconSide.implicitWidth
-            implicitHeight: powerIconSide.implicitHeight
-            property real _shift: root._animStep >= 5 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 5 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { y: powerSide._shift }
-
-            Utils.MaterialIcon {
-                id: powerIconSide
-                anchors.centerIn: parent
-                text: "power_settings_new"
-                fill: 1
-                font.pixelSize: Utils.Theme.iconSize + 4
-                color: Utils.Theme.red
-            }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: root._showPopout(powerSide, "power")
-                onExited: { Services.Popout.barItemHovered = false; Services.Popout.requestClose(); }
-            }
-        }
-
-        Item { Layout.preferredHeight: Utils.Theme.spacingNormal }
-    }
-
-    // ── Top mode: RowLayout ──
-    RowLayout {
-        id: topLayout
-        anchors.fill: parent
-        visible: Utils.Theme.isTop
-        spacing: Utils.Theme.spacingSmall
-
-        Item { Layout.preferredWidth: Utils.Theme.spacingSmall }
-
-        Item {
-            id: archLogoTop
-            Layout.alignment: Qt.AlignVCenter
-            implicitWidth: archTextTop.implicitWidth
-            implicitHeight: archTextTop.implicitHeight
-            property real _shift: root._animStep >= 0 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 0 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { x: archLogoTop._shift }
-
-            Text {
-                id: archTextTop
-                anchors.centerIn: parent
-                text: "\uf303"
-                font.family: Utils.Theme.fontFamily
-                font.pixelSize: Utils.Theme.iconSize
-                color: Utils.Theme.subtleText
-            }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: root._showPopout(archLogoTop, "system")
-                onExited: { Services.Popout.barItemHovered = false; Services.Popout.requestClose(); }
-            }
-        }
-
-        Workspaces {
-            id: workspacesTop
-            Layout.alignment: Qt.AlignVCenter
-            screen: root.screen
-            entranceReady: root._animStep >= 1
-            property real _shift: root._animStep >= 1 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 1 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { x: workspacesTop._shift }
-        }
-
-        Item { Layout.fillWidth: true }
-
-        TrayOverflow {
-            id: trayTop
-            Layout.alignment: Qt.AlignVCenter
-            screen: root.screen
-            property real _shift: root._animStep >= 2 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 2 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { x: trayTop._shift }
-        }
-
-        Item { Layout.preferredWidth: Utils.Theme.spacingNormal }
-
-        Item {
-            id: clockTop
-            Layout.alignment: Qt.AlignVCenter
-            implicitWidth: clockTopRow.implicitWidth
-            implicitHeight: clockTopRow.implicitHeight
-            property real _shift: root._animStep >= 3 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 3 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { x: clockTop._shift }
-
             Row {
-                id: clockTopRow
+                id: clockRow
                 anchors.centerIn: parent
+                visible: Utils.Theme.isTop
                 spacing: Utils.Theme.spacingTiny
 
                 Utils.MaterialIcon {
@@ -305,57 +151,82 @@ Item {
                     color: Utils.Theme.disabledText
                 }
             }
+        }
 
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: root._showPopout(clockTop, "calendar")
-                onExited: { Services.Popout.barItemHovered = false; Services.Popout.requestClose(); }
+        Spacer { size: Utils.Theme.spacingSmall }
+
+        BarItem {
+            step: 4
+
+            StatusIcons {
+                screen: root.screen
             }
         }
 
-        Item { Layout.preferredWidth: Utils.Theme.spacingSmall }
+        Spacer { size: Utils.Theme.spacingSmall }
 
-        StatusIcons {
-            id: statusTop
-            Layout.alignment: Qt.AlignVCenter
-            screen: root.screen
-            property real _shift: root._animStep >= 4 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 4 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { x: statusTop._shift }
-        }
-
-        Item { Layout.preferredWidth: Utils.Theme.spacingSmall }
-
-        Item {
-            id: powerTop
-            Layout.alignment: Qt.AlignVCenter
-            implicitWidth: powerIconTop.implicitWidth
-            implicitHeight: powerIconTop.implicitHeight
-            property real _shift: root._animStep >= 5 ? 0 : 12
-            Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
-            opacity: root._animStep >= 5 ? 1 : 0
-            Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
-            transform: Translate { x: powerTop._shift }
+        BarItem {
+            step: 5
+            popout: "power"
 
             Utils.MaterialIcon {
-                id: powerIconTop
                 anchors.centerIn: parent
                 text: "power_settings_new"
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize + 4
                 color: Utils.Theme.red
             }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                onEntered: root._showPopout(powerTop, "power")
-                onExited: { Services.Popout.barItemHovered = false; Services.Popout.requestClose(); }
-            }
         }
 
-        Item { Layout.preferredWidth: Utils.Theme.spacingNormal }
+        Spacer { size: Utils.Theme.spacingNormal }
+    }
+
+    // One bar entry: entrance step (drop-in shift + fade), orientation-aware
+    // alignment, and optional hover-popout wiring. Sizes to its first child;
+    // override implicitWidth/Height for multi-child content.
+    component BarItem: Item {
+        id: barItem
+
+        required property int step
+        // Popout to open on hover; "" for items that manage their own hover
+        property string popout: ""
+        default property alias content: slot.data
+
+        Layout.alignment: Utils.Theme.isSide ? Qt.AlignHCenter : Qt.AlignVCenter
+        implicitWidth: slot.children[0]?.implicitWidth ?? 0
+        implicitHeight: slot.children[0]?.implicitHeight ?? 0
+
+        property real _shift: root._animStep >= step ? 0 : 12
+        Behavior on _shift { NumberAnimation { duration: 300; easing.type: Easing.OutBack } }
+        opacity: root._animStep >= step ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Utils.Theme.animDurationSmall; easing.type: Easing.OutCubic } }
+        transform: Translate {
+            x: Utils.Theme.isTop ? barItem._shift : 0
+            y: Utils.Theme.isSide ? barItem._shift : 0
+        }
+
+        Item {
+            id: slot
+            anchors.fill: parent
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            visible: barItem.popout !== ""
+            hoverEnabled: true
+            onEntered: Services.Popout.showFrom(barItem, barItem.popout, root.screen)
+            onExited: Services.Popout.barItemExited()
+        }
+    }
+
+    // Layout gap that follows the bar's parallel axis.
+    component Spacer: Item {
+        property real size: 0
+        property bool fill: false
+
+        Layout.preferredWidth: Utils.Theme.isTop ? size : 0
+        Layout.preferredHeight: Utils.Theme.isSide ? size : 0
+        Layout.fillWidth: Utils.Theme.isTop && fill
+        Layout.fillHeight: Utils.Theme.isSide && fill
     }
 }

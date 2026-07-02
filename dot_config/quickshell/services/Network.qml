@@ -28,6 +28,14 @@ Singleton {
         return 0;
     }
 
+    // Nerd Font wifi glyphs by signal level 0-4; 󰤮 = disconnected
+    readonly property list<string> _signalGlyphs: ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"]
+    readonly property string signalIcon: state !== "connected" ? "󰤮" : _signalGlyphs[signalLevel]
+
+    function signalIconFor(level: int): string {
+        return _signalGlyphs[Math.min(level, 4)];
+    }
+
     // Scanning/connecting state
     property bool scanning: false
     property string connectingTo: ""

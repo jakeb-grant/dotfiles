@@ -11,16 +11,7 @@ PopoutColumn {
         spacing: Utils.Theme.spacingNormal
 
         Utils.MaterialIcon {
-            text: {
-                const p = Services.Brightness.percent;
-                if (p <= 14) return "brightness_1";
-                if (p <= 28) return "brightness_2";
-                if (p <= 42) return "brightness_3";
-                if (p <= 56) return "brightness_4";
-                if (p <= 70) return "brightness_5";
-                if (p <= 85) return "brightness_6";
-                return "brightness_7";
-            }
+            text: Services.Brightness.icon
             fill: 1
             font.pixelSize: Utils.Theme.headerIconSize
             color: {

@@ -12,6 +12,13 @@ Singleton {
     readonly property real volume: sink?.audio?.volume ?? 0
     readonly property int volumePercent: Math.round(volume * 100)
 
+    readonly property string icon: {
+        if (muted) return "volume_off";
+        if (volumePercent === 0) return "volume_mute";
+        if (volumePercent <= 25) return "volume_down";
+        return "volume_up";
+    }
+
     // All physical audio output devices (sinks, not app streams)
     readonly property var sinks: {
         const result = [];

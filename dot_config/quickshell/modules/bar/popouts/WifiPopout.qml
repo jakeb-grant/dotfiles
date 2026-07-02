@@ -26,11 +26,7 @@ PopoutColumn {
         onDisconnectClicked: Services.Network.disconnect()
 
         icon: Text {
-            text: {
-                if (Services.Network.state !== "connected") return "󰤮";
-                const icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"];
-                return icons[Services.Network.signalLevel];
-            }
+            text: Services.Network.signalIcon
             font.family: Utils.Theme.fontFamily
             font.pixelSize: Utils.Theme.headerIconSize
             color: Services.Network.state === "connected" ? Utils.Theme.accent : Utils.Theme.subtleText
@@ -74,10 +70,7 @@ PopoutColumn {
 
             // Signal strength icon
             Text {
-                text: {
-                    const icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"];
-                    return icons[Math.min(networkDelegate.signal, 4)];
-                }
+                text: Services.Network.signalIconFor(networkDelegate.signal)
                 font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.iconSizeSmall
                 color: networkDelegate.connected ? Utils.Theme.accent : Utils.Theme.subtleText

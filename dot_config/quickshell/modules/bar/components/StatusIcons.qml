@@ -14,16 +14,6 @@ Rectangle {
     radius: Utils.Theme.roundingNormal
     color: Utils.Theme.pillBg
 
-    function _showPopout(item: Item, name: string) {
-        const gp = Utils.Theme.isSide
-            ? item.mapToItem(null, 0, item.height / 2)
-            : item.mapToItem(null, item.width / 2, 0);
-        Services.Popout.show(name,
-            Utils.Theme.isTop ? gp.x : 0,
-            Utils.Theme.isSide ? gp.y : 0,
-            root.screen);
-    }
-
     GridLayout {
         id: layout
 
@@ -45,13 +35,7 @@ Rectangle {
             Utils.MaterialIcon {
                 id: volumeIcon
                 anchors.centerIn: parent
-                text: {
-                    const v = Services.Audio.volumePercent;
-                    if (Services.Audio.muted) return "volume_off";
-                    if (v === 0) return "volume_mute";
-                    if (v <= 25) return "volume_down";
-                    return "volume_up";
-                }
+                text: Services.Audio.icon
                 fill: Services.Audio.muted ? 0 : 1
                 font.pixelSize: Utils.Theme.iconSize
                 color: Utils.Theme.subtleText
@@ -66,11 +50,8 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: root._showPopout(volumeItem, "volume")
-                onExited: {
-                    Services.Popout.barItemHovered = false;
-                    Services.Popout.requestClose();
-                }
+                onEntered: Services.Popout.showFrom(volumeItem, "volume", root.screen)
+                onExited: Services.Popout.barItemExited()
             }
         }
 
@@ -86,16 +67,7 @@ Rectangle {
             Utils.MaterialIcon {
                 id: brightnessIcon
                 anchors.centerIn: parent
-                text: {
-                    const p = Services.Brightness.percent;
-                    if (p <= 14) return "brightness_1";
-                    if (p <= 28) return "brightness_2";
-                    if (p <= 42) return "brightness_3";
-                    if (p <= 56) return "brightness_4";
-                    if (p <= 70) return "brightness_5";
-                    if (p <= 85) return "brightness_6";
-                    return "brightness_7";
-                }
+                text: Services.Brightness.icon
                 fill: 1
                 font.pixelSize: Utils.Theme.iconSize
                 color: Utils.Theme.subtleText
@@ -110,11 +82,8 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: root._showPopout(brightnessItem, "brightness")
-                onExited: {
-                    Services.Popout.barItemHovered = false;
-                    Services.Popout.requestClose();
-                }
+                onEntered: Services.Popout.showFrom(brightnessItem, "brightness", root.screen)
+                onExited: Services.Popout.barItemExited()
             }
         }
 
@@ -129,11 +98,7 @@ Rectangle {
             Text {
                 id: wifiIcon
                 anchors.centerIn: parent
-                text: {
-                    if (Services.Network.state !== "connected") return "󰤮";
-                    const icons = ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"];
-                    return icons[Services.Network.signalLevel];
-                }
+                text: Services.Network.signalIcon
                 font.family: Utils.Theme.fontFamily
                 font.pixelSize: Utils.Theme.iconSize
                 color: Utils.Theme.subtleText
@@ -148,11 +113,8 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: root._showPopout(wifiItem, "wifi")
-                onExited: {
-                    Services.Popout.barItemHovered = false;
-                    Services.Popout.requestClose();
-                }
+                onEntered: Services.Popout.showFrom(wifiItem, "wifi", root.screen)
+                onExited: Services.Popout.barItemExited()
             }
         }
 
@@ -187,11 +149,8 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: root._showPopout(bluetoothItem, "bluetooth")
-                onExited: {
-                    Services.Popout.barItemHovered = false;
-                    Services.Popout.requestClose();
-                }
+                onEntered: Services.Popout.showFrom(bluetoothItem, "bluetooth", root.screen)
+                onExited: Services.Popout.barItemExited()
             }
         }
 
@@ -238,11 +197,8 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
 
-                onEntered: root._showPopout(batteryItem, "battery")
-                onExited: {
-                    Services.Popout.barItemHovered = false;
-                    Services.Popout.requestClose();
-                }
+                onEntered: Services.Popout.showFrom(batteryItem, "battery", root.screen)
+                onExited: Services.Popout.barItemExited()
             }
         }
     }

@@ -2,6 +2,7 @@ pragma Singleton
 
 import Quickshell
 import QtQuick
+import qs.utils as Utils
 
 Singleton {
     id: root
@@ -32,8 +33,27 @@ Singleton {
         barItemHovered = true;
     }
 
+    // Show anchored to a bar item — maps its center to window coords along
+    // the bar's parallel axis. The standard onEntered handler for bar items.
+    function showFrom(item: Item, name: string, screen: ShellScreen) {
+        const gp = Utils.Theme.isSide
+            ? item.mapToItem(null, 0, item.height / 2)
+            : item.mapToItem(null, item.width / 2, 0);
+        show(name,
+            Utils.Theme.isTop ? gp.x : 0,
+            Utils.Theme.isSide ? gp.y : 0,
+            screen);
+    }
+
     function requestClose() {
         closeTimer.restart();
+    }
+
+    // Counterpart to show()'s barItemHovered = true — the standard onExited
+    // handler for bar items.
+    function barItemExited() {
+        barItemHovered = false;
+        requestClose();
     }
 
     function close() {
