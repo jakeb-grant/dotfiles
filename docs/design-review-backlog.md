@@ -256,7 +256,7 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 ## 6. Docs & meta
 
-- [ ] **DOC-1 · P3** — `dot_config/quickshell/FLOATING_ISLAND_PLAN.md`: all six phases ✅, line references target pre-redesign `main`, "Removed" section describes files that no longer exist; the durable design language already lives in DEVGUIDE. Delete once `floating-bar-popouts` merges (git history preserves it).
+- [x] **DOC-1 · P3** — `FLOATING_ISLAND_PLAN.md` deleted after the `floating-bar-popouts` merge (session 6); git history preserves it.
 - [ ] **DOC-2 · P3** — Update CLAUDE.md/README as THM-1/2/3 and CHZ items land (the two-template-language explanation, the direct-write list, the graphics options list, the hypridle sentence).
 
 ---
