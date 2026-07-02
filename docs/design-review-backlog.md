@@ -9,6 +9,8 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 
 ## Session log
 
+**Session 10 (2026-07-02) — final Wave 4 batch: HYP-1/2, BIN-1 leftovers, BIN-3/4, CHZ-4/5/6 leftovers, DOC-2. Backlog complete.** HYP-1: `pcall(require, "monitors")` now captures its result; failure prints to the Hyprland log and fires a critical notify-send via `hl.exec_cmd` (single-quote escaping of the Lua error verified against a real syntax-error message; success path silent; rendered config luac-clean; live `hyprctl reload` OK). HYP-2: screenshot `sh -c` one-liner deduped into `screenshot(grab)` (output asserted byte-identical to both old binds); stale "Generated from theme template" header fixed. BIN-3: wallpaper-split requires jq up front (smoke test surfaced that jq isn't even installed on this machine), `mktemp` + EXIT trap replaces the fixed /tmp path, `magick identify`/center-crop guarded with error+continue — corrupt image in a batch now reported and skipped, batch exit 0. BIN-4: no-op `--skip-existing` removed, f-string nit fixed. BIN-1 leftovers: win-vm gets `set -euo pipefail` (notify-send `|| true` so headless survives), `connect()` dedup ×3, and open/restart now check docker/VM state like stop/status (all subcommands smoke-tested with docker inactive). CHZ-4: greetd script renamed to drop `.tmpl` with contents byte-identical — chezmoi keys run_once state on content hash, so no re-run/sudo prompt (verified 100% rename similarity + `chezmoi status` clean); start-hyprland dep, /etc-heredoc drift, and interactive-sudo caveats documented in README; theme-switch's Chromium ACL warning made actionable (re-run the setup script) — moving check-and-fix into theme-switch rejected (needs root). CHZ-5: `dot_config/age/recipients` (zero consumers) and legacy `dot_config/sddm-theme/` deleted from source; dead `.chezmoi.toml` .gitignore entry dropped; deployed `~/.config/age` + `~/.config/sddm-theme` left on disk (unmanaged) for manual removal. CHZ-6 leftovers + DOC-2: README Dependencies section lists the arch-quickstart-implied runtime deps (uv, jq+magick, fnm, setfacl, tuigreet/greeter/start-hyprland) plus install notes (sudo prompts, /etc drift, `~/knowledge` vault ordering); sddm-theme dropped from the tree. Reviews (2 agents): correctness — 1 finding fixed (`is_running`'s `grep -q` could SIGPIPE docker compose under the new pipefail and misreport a running VM; grep now consumes all input), everything else verified clean incl. gsub-in-concat truncation, set -e interactions, rename hash stability; docs — 1 finding fixed (GPU-symlinks script is `run_onchange`, not `run_once`), all dependency claims verified against code. **Every backlog item is now fixed, deferred by owner decision (CHZ-1 wallpapers-in-git, LockSurface split), or rejected with rationale. Review complete.**
+
 **Session 9 (2026-07-02) — Wave 4 Quickshell batch: QS-7..12 complete.** QS-7: Network.qml detects the station device via `iwctl device list` (wlan0 fallback until detection lands, self-corrects next poll); all five commands reference `root.device`; SSID parsing switched to right-anchored regexes (rsplit semantics — verified against live iwctl output including a real spaced SSID "Steve Home" and synthetic 2+-space/`-59`-suffix cases), including the status awk which previously truncated connected SSIDs to their last word (`$NF`); the state-flap auto-scan is debounced by a 15s Timer (status poll untouched, so nothing stalls). QS-8: `Bluetooth._syncDevices`→`refresh()`, `Launcher._submenu`→`submenu` (+`onSubmenuChanged` handlers); `Launcher.activeScreen` unified with Popout's convention — now a ShellScreen object (`Hyprland.focusedMonitor?.screen`), Drawers compares `=== scope.modelData`; new `Audio.setVolume()` replaces VolumePopout's direct `sink.audio.volume` write. QS-9: new `services/SystemInfo.qml` (kernel/hostname/shell fetched once per shell start as one combined process; uptime + pacman counts re-fetched via `refresh()` on popout open) — SystemPopout's six embedded Processes deleted; PowerPopout's per-delegate Process and Wifi/BT's impala/bluetui Processes → `Quickshell.execDetached`; `Battery.refreshProfile()` re-polls the power profile on BatteryPopout open (external keybind/TLP changes were never reflected). QS-10: dead `syncPassModel()` deleted; the two `Connections { target: LockScreen }` blocks merged at root level (the survivors had already drifted — only one reset `oldText`); unused `PersistentProperties` dropped from Drawers. QS-11: phantom `popoutWidthNarrow` token removed from DEVGUIDE; active/connected guidance switched `blue`→`accent` (code was already uniform on accent); `layer.enabled: true`→`visible` at PopoutWrapper/Drawers (both have visible bindings that only drop when fully hidden — code aligned to guide rather than vice versa); "never hardcode" rule re-scoped honestly (colors strict, one-off internal geometry may stay inline); Wifi's Nerd-Font glyph exception documented. QS-12: `_tt` merged into `animDuration` (both 400); empty-state guard item moot since QS-1 (both popouts express it via `PopoutListView.emptyText`); LockSurface file split **deferred** — pure organization, and a lockscreen regression locks the owner out. Verified: live reload clean (one known mid-apply scanner race, self-resolved), headless smoke instance of all 8 popouts + LockSurface zero warnings exit 0, regexes tested against real iwctl output. Reviews (2 agents): correctness CLEAN (rename completeness, device-binding liveness, ShellScreen identity comparison, SystemInfo registration, LockSurface id scoping, setVolume parity all verified); docs reviewer found 3 stale `blue`-as-active mentions elsewhere in DEVGUIDE (fixed: When-to-Use table, Common Mistakes, import example). **Wave 4 Quickshell track done; remaining: HYP-1/2, BIN-3/4, CHZ-4/5, DOC-2.**
 
 **Session 8 (2026-07-02) — THM-5 complete: btop + pane-fm themes generated from palettes.** The 20 hand-maintained files (10 btop `.theme`, 10 pane-fm `.css`) replaced by two chezmoi templates reading `active.json`: `btop/themes/palette.theme.tmpl` (the upstream Catppuccin role mapping applied to whichever palette is active — renders **byte-identical** to the four deleted Catppuccin themes; everforest/nord/rosé-pine intentionally shift from their upstream artistic btop themes, some of whose colors weren't even in the palettes, to the uniform role-mapped look) and `pane-fm/themes/palette.css.tmpl` (the 10 old files were already one uniform role mapping — verified identical across all 10 palettes modulo hex case and `0.7`→`0.70`; `--accent` = `_accent`, `--accent-hover` = sapphire). Both apps now point at the generated theme statically — `color_theme = "palette"` in btop.conf, `theme = "palette"` in pane-fm's config, which became `config.toml.tmpl` so `light_icons` follows `{{ eq $p._variant "light" }}` (verified `true` under latte). `_btop_theme`/`_pane_fm_theme` deleted from all 10 palettes + their validation checks; `update_btop`/`update_pane_fm` deleted from theme-switch. **Drive-by bug found & fixed: THM-2 had silently broken `update_zed`** — it copied the raw `settings.json.tmpl` text (now containing `{{ }}` tokens post-conversion) over live Zed settings every switch, then apply's rename "fixed" it, killing the inode watch the function existed to protect. Replaced by `sync_rendered_in_place()` (renders via `chezmoi cat`, writes in place pre-apply) over `INODE_WATCHED_TARGETS` = Zed settings + pane-fm `palette.css` — pane-fm's theme watcher is an inode-level `notify` watch too (confirmed in its Rust source: `watcher.watch(&file)`), and with `theme = "palette"` now constant, the config-watcher reload path that used to mask this is gone. Verified: parity as above (4/4 catppuccin btop identical, 10/10 pane-fm), `theme-switch rose-pine` → `catppuccin-mocha` roundtrip (correct colors in both generated files, Zed live settings properly *rendered*, `light_icons` flip, `chezmoi status` clean, `--list` works, py_compile passes); stale deployed per-palette theme files removed from `~/.config`. Reviews (2 agents): correctness CLEAN (ordering active.json→cat→apply, `~` expansion, TOML validity, all role refs exist, no dangling references repo-wide; 1 nit fixed — `rewrite_config_keys`' `uncomment` param went dead with `update_pane_fm`); docs CLEAN (1 wording nit fixed). Net −1000 lines. Adding a palette is now: palette JSON + hand-made Zed theme + `_ghostty_theme` check — btop/pane-fm come free. **Wave 3 Track A complete.**
@@ -196,39 +198,39 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - README.md:239 lists graphics options `amd, prime, nvidia` but the template offers `amd, intel, prime, nvidia` — sync.
 - (The rest of the file is good: `promptChoiceOnce`, lspci-autodetected PCI defaults.)
 
-### CHZ-4 · P2 · S — run-script hygiene
+### CHZ-4 · P2 · S — run-script hygiene ✅ session 10
 
-- [ ] `run_once_setup-greetd.sh.tmpl` has **zero** template directives — the `.tmpl` suffix is a latent trap (any future `{{` in the heredoc'd PAM/greetd config would be parsed as a template action). Rename to drop `.tmpl`. Document the `start-hyprland` system-binary dependency (from arch-quickstart). Heredoc'd `/etc` config means out-of-band drift is invisible to `chezmoi diff` — accept + document, or manage via a diffable mechanism.
-- [ ] `run_once_setup-chromium-policies.sh`: clean, but `run_once` never re-fixes lost ACLs (package reinstall, later Chrome install); theme-switch degrades to a warning. Consider a check-and-fix inside theme-switch instead.
+- [x] ✅ session 10 — renamed to `run_once_setup-greetd.sh` with contents byte-identical (chezmoi keys run_once state on the content hash, so the rename never re-runs it / never sudo-prompts). `start-hyprland` dependency and the /etc-heredoc-drift trade-off documented in README's Dependencies section instead of in the script — keeping the hash stable.
+- [x] ✅ session 10 — check-and-fix inside theme-switch **rejected**: setfacl needs root, and sudo prompts inside a theme switcher is the wrong trade. Instead the PermissionError warning now names the fix: re-run the script via `bash "$(chezmoi source-path)/run_once_setup-chromium-policies.sh"` (idempotent).
 - [ ] `run_onchange_setup-gpu-symlinks.sh.tmpl` and `run_once_before_create-default-monitors-lua.sh`: correct lifecycles, idempotent — no action.
-- [ ] Three scripts need interactive sudo → unattended `chezmoi init --apply` blocks/fails. Fine for a personal repo; add a README note.
+- [x] ✅ session 10 — README Install notes now state the setup scripts need interactive sudo (unattended init --apply stops and prompts).
 
-### CHZ-5 · P2 · S — Vestigial and legacy pieces
+### CHZ-5 · P2 · S — Vestigial and legacy pieces ✅ session 10
 
-- [ ] `dot_config/age/recipients` (public key) has zero consumers — no `encrypted_` files, no `[age]` stanza, no script references. Wire it up or delete it so it stops implying encryption exists.
-- [ ] `dot_config/sddm-theme/` is labeled "legacy, replaced by greetd" (README.md:88) yet still deploys to `~/.config/sddm-theme`. Remove or ignore.
-- [ ] `.gitignore:26` `.chezmoi.toml` is a dead entry (rendered config lives in `~/.config/chezmoi/`). Harmless; delete.
+- [x] ✅ session 10 — deleted from source (zero consumers confirmed again). Deployed `~/.config/age` left on disk, now unmanaged — remove by hand if unwanted.
+- [x] ✅ session 10 — removed from source + README tree (git history preserves it). Deployed `~/.config/sddm-theme` left on disk, now unmanaged — remove by hand.
+- [x] ✅ session 10 — deleted.
 
-### CHZ-6 · P2 · S — Bootstrap gaps (fresh-machine story)
+### CHZ-6 · P2 · S — Bootstrap gaps (fresh-machine story) ✅ session 10
 
 - [x] ✅ session 1 — `dot_bashrc:22` `eval "$(fnm env)"` is unguarded — every interactive shell errors on a machine without fnm. Guard: `command -v fnm >/dev/null && eval "$(fnm env)"`.
-- [ ] Implicit runtime deps assumed from arch-quickstart with no listing or checks: `uv` (theme-switch shebang), `setfacl`, `tuigreet` + `greeter` user, `start-hyprland`, `fnm`, jq (wallpaper-split). Add a deps section to README (or a doctor script).
-- [ ] `~/knowledge` vault must be cloned separately or chezmoi creates a bare `.obsidian` skeleton in an empty dir — document ordering.
+- [x] ✅ session 10 — README Dependencies section now lists uv, jq + ImageMagick, fnm, setfacl, tuigreet/greeter/start-hyprland with what needs each.
+- [x] ✅ session 10 — documented in README Install notes.
 - [x] ~~Nothing enforces `.theme` ↔ `.tmpl` sync~~ — moot since THM-2 (session 7): `.theme` sources no longer exist; `.tmpl` files are the only sources.
 
 ---
 
 ## 4. Hyprland
 
-### HYP-1 · P2 · S — `pcall(require, "monitors")` swallows errors silently
+### HYP-1 · P2 · S — `pcall(require, "monitors")` swallows errors silently ✅ session 10
 
-- [ ] `hyprland.lua.theme:51` (and the `.tmpl` copy): a syntax error in hand-edited `~/.config/hypr/monitors.lua` → no monitor config, no diagnostic. Capture the pcall result and surface it (`notify-send` via `hl.exec_cmd`, or print).
+- [x] ✅ session 10 — pcall result captured; on failure the error is printed to the Hyprland log **and** raised as a critical notify-send via `hl.exec_cmd` (single-quote escaping of the Lua error message tested against a real syntax-error string; success path verified silent).
 
-### HYP-2 · P3 · S — Doc drift
+### HYP-2 · P3 · S — Doc drift ✅ session 10
 
 - [x] ✅ session 1 — both `HYPRLAND_0.55_*.md` files archived into `docs/`.
 - [x] ✅ session 1 — CLAUDE.md hypridle sentence fixed.
-- [ ] Trivial: screenshot `sh -c` one-liner duplicated (`hyprland.lua.theme:136-137`).
+- [x] ✅ session 10 — deduped into a local `screenshot(grab)` helper; output asserted byte-identical to both old command strings. Stale "Generated from theme template" file header also fixed (hand-edited chezmoi template).
 
 *(Positive: the dropped-auto-suspend cleanup is exemplary — `hypridle.conf` comments point to `dot_config/hypr/README.md`, which documents the xe crash, the removed listener verbatim, and a re-test procedure. Keybind organization, table-driven animations, and in-place quirk comments are all clean.)*
 
@@ -236,29 +238,29 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 ## 5. Bin scripts
 
-### BIN-1 · P0 · S — win-vm exposes RDP/web UI on all interfaces with default creds <a name="bin-1"></a>
+### BIN-1 · P0 · S — win-vm exposes RDP/web UI on all interfaces with default creds <a name="bin-1"></a> ✅ sessions 1+10
 
 - [x] ✅ session 1 — compose ports now bound to `127.0.0.1` (takes effect on next `docker compose up`, i.e. container recreate).
-- [ ] No `set -euo pipefail` — e.g. a failed `docker compose up -d` in `start-and-open` (`:105`) still toasts "Starting VM…" and spins the 60-iteration wait loop.
-- [ ] `sdl-freerdp3` invocation duplicated ×3 (`:97,103,111`) → `connect()` function.
+- [x] ✅ session 10 — `set -euo pipefail` added; `notify-send || true` so headless runs survive; all subcommand paths smoke-tested with docker inactive.
+- [x] ✅ session 10 — `connect()` function (includes the "Connecting to VM..." toast; `open` gains it too).
 - [x] ✅ session 1 — `:18` message now says "log out and back in".
-- [ ] `open`/`restart` don't check whether docker/VM is running; `stop`/`status` do — align.
+- [x] ✅ session 10 — `open` exits 1 with a hint when docker/VM is down; `restart` notifies "VM is not running." and exits 0, matching `stop`.
 
 ### BIN-2 · P0 · S — toggle-bar-mode causes chezmoi-source drift <a name="bin-2"></a> ✅ session 1
 
 - [x] Done: writes both live and chezmoi-source `active.json`, matching theme-switch's format exactly (`indent=2`, no trailing newline — intentional, to avoid diff churn against theme-switch's writes).
 
-### BIN-3 · P2 · S — wallpaper-split robustness
+### BIN-3 · P2 · S — wallpaper-split robustness ✅ session 10
 
-- [ ] `:96-98` — under `set -e`, an unreadable image aborts the whole batch with stderr discarded → guard with `|| { echo "[error] …" >&2; continue; }`.
-- [ ] Fixed temp path `/tmp/_wpp_cropped.${FORMAT}` (`:118,127,131,140`) — concurrent runs clobber; use `mktemp`.
-- [ ] jq is a soft dependency but registering sets in `wallpapers.json` is half the script's purpose — require it up front.
+- [x] ✅ session 10 — `magick identify` and the center-crop both guarded with `[error] … — skipping` + continue (verified: corrupt PNG in a batch is reported and skipped, batch completes exit 0).
+- [x] ✅ session 10 — `mktemp --suffix=.$FORMAT` + EXIT trap (no leftover temp files after run).
+- [x] ✅ session 10 — required up front with a clear error; the per-image `if command -v jq` branch removed. (Surfaced by the smoke test: jq isn't currently installed on this machine — `pacman -S jq` before the next split run.)
 - (Otherwise the best-hygiene script of the set.)
 
-### BIN-4 · P3 · S — wallpaper-upscale nits
+### BIN-4 · P3 · S — wallpaper-upscale nits ✅ session 10
 
-- [ ] `--skip-existing` (`:71-72`) is `store_true` with `default=True` — always-on no-op flag; remove it (behavior is already default), keep `--force`.
-- [ ] `:81` f-string has no placeholders.
+- [x] ✅ session 10 — removed; `--force` help text now notes skipping is the default.
+- [x] ✅ session 10 — plain string.
 
 *(The two wallpaper scripts are sequential pipeline stages in different domains — don't merge them.)*
 
@@ -267,7 +269,7 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 ## 6. Docs & meta
 
 - [x] **DOC-1 · P3** — `FLOATING_ISLAND_PLAN.md` deleted after the `floating-bar-popouts` merge (session 6); git history preserves it.
-- [ ] **DOC-2 · P3** — Update CLAUDE.md/README as THM-1/2/3 and CHZ items land (the two-template-language explanation, the direct-write list, the graphics options list, the hypridle sentence).
+- [x] **DOC-2 · P3** ✅ session 10 — everything had already landed incrementally (single-pipeline story session 7, direct-write list session 8, graphics list + hypridle session 1); this session added the Dependencies/Install-notes section and dropped sddm-theme from the tree. Nothing left.
 
 ---
 
@@ -282,4 +284,4 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - Track B: ~~QS-1 (popout components)~~ ✅ session 3 → ~~QS-3 (BarItem) / QS-5/QS-6 (ladders, exit protocol)~~ ✅ session 4 → ~~QS-4 (launcher scorer)~~ ✅ session 5. **Track B complete.**
 - Track C: ~~CHZ-1 (wallpaper degit + history purge)~~ ⏸ deferred session 9 — wallpapers stay in git by owner decision. **All Wave 3 tracks closed.**
 
-**Wave 4 — polish:** ~~QS-7/8/9/10/11/12~~ ✅ session 9 · ~~DOC-1~~ ✅ session 6 · remaining: HYP-1/2, BIN-3/4, CHZ-4/5, DOC-2.
+**Wave 4 — polish:** ~~QS-7/8/9/10/11/12~~ ✅ session 9 · ~~DOC-1~~ ✅ session 6 · ~~HYP-1/2, BIN-3/4, CHZ-4/5, DOC-2~~ ✅ session 10 (+ BIN-1/CHZ-6 leftovers). **Backlog complete — every item fixed, deferred by owner decision (CHZ-1, LockSurface split), or rejected with rationale.**

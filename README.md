@@ -63,6 +63,20 @@ chezmoi apply
 
 These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), which provides a custom Arch ISO with all required packages pre-installed.
 
+On any other base system, the configs and scripts additionally assume:
+
+- `uv` — `theme-switch` runs via a `uv run --script` shebang
+- `jq` and ImageMagick (`magick`) — `wallpaper-split`
+- `fnm` — sourced in `.bashrc` (guarded; skipped if absent)
+- `setfacl` (acl package) — the Chromium policy setup script
+- `tuigreet`, a `greeter` user, and `start-hyprland` — the greetd setup script writes `/etc/greetd/config.toml` pointing at all three (`start-hyprland` is a system binary installed by arch-quickstart)
+
+Install notes:
+
+- The `run_once` setup scripts (greetd, Chromium policies) and the `run_onchange` GPU-symlinks script (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt.
+- The greetd script heredocs its config straight into `/etc`, so later out-of-band edits there are invisible to `chezmoi diff` — accepted trade-off for a personal repo; the script is the source of truth.
+- Clone the `~/knowledge` Obsidian vault before expecting the Obsidian theme to work — chezmoi only manages the `.obsidian` theme files inside it, so applying without the vault just creates a bare `.obsidian` skeleton in an empty directory.
+
 ## What's Included
 
 ```
@@ -85,7 +99,6 @@ dot_config/
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
 ├── grub/               # GRUB bootloader theme
-├── sddm-theme/         # SDDM login theme (legacy, replaced by greetd)
 ├── windows-vm/         # Windows VM (docker-compose)
 ├── palette/            # Theme palette definitions (JSON)
 └── wallpapers/         # Flat image pool + wallpapers.json config

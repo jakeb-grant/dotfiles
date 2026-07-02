@@ -325,7 +325,10 @@ def update_chromium(palette_data: dict) -> None:
             (policy_dir / "theme.json").write_text(policy_text)
             print(f"    {policy_dir.parent.parent.name}: seed {seed_color}, scheme: {scheme_label}")
         except PermissionError:
-            print(f"    Warning: No write permission to {policy_dir}, skipping")
+            print(
+                f"    Warning: No write permission to {policy_dir}, skipping"
+                " — re-run setup-chromium-policies (bash \"$(chezmoi source-path)/run_once_setup-chromium-policies.sh\") to restore ACLs"
+            )
 
     if not found_dir:
         print("    Warning: No Chromium/Chrome policy dirs found, skipping")

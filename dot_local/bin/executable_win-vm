@@ -1,13 +1,16 @@
 #!/bin/bash
 # Windows VM management script
 
+set -euo pipefail
+
 COMPOSE_DIR="$HOME/.config/windows-vm"
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yaml"
 
 notify() {
     local urgency="${2:-normal}"
     echo "$1"
-    notify-send -a "Windows VM" -u "$urgency" "Windows VM" "$1"
+    # || true: no notification daemon (headless/SSH) shouldn't kill the script
+    notify-send -a "Windows VM" -u "$urgency" "Windows VM" "$1" || true
 }
 
 ensure_docker() {
@@ -32,7 +35,14 @@ ensure_docker() {
 }
 
 is_running() {
-    docker compose -f "$COMPOSE_FILE" ps --status running 2>/dev/null | grep -q windows
+    # grep without -q consumes all input — -q's early exit could SIGPIPE
+    # docker under pipefail and misreport a running VM as stopped
+    docker compose -f "$COMPOSE_FILE" ps --status running 2>/dev/null | grep windows >/dev/null
+}
+
+connect() {
+    notify "Connecting to VM..."
+    sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
 }
 
 show_help() {
@@ -76,7 +86,10 @@ case "${1:-start-and-open}" in
         notify "VM stopped."
         ;;
     restart)
-        ensure_docker
+        if ! systemctl is-active --quiet docker || ! is_running; then
+            notify "VM is not running."
+            exit 0
+        fi
         docker compose -f "$COMPOSE_FILE" restart
         notify "VM restarted."
         ;;
@@ -94,21 +107,23 @@ case "${1:-start-and-open}" in
         fi
         ;;
     open)
-        sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+        if ! systemctl is-active --quiet docker || ! is_running; then
+            notify "VM is not running. Start it with 'win-vm start'."
+            exit 1
+        fi
+        connect
         ;;
     start-and-open)
         ensure_docker
         if is_running; then
-            notify "Connecting to VM..."
-            sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+            connect
         else
             docker compose -f "$COMPOSE_FILE" up -d
             notify "Starting VM... Waiting for RDP to become available"
             for i in $(seq 1 60); do
                 if timeout 1 bash -c 'echo > /dev/tcp/localhost/3389' 2>/dev/null; then
                     sleep 2  # Brief settle after port opens
-                    notify "Connecting to VM..."
-                    sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+                    connect
                     exit 0
                 fi
                 sleep 2

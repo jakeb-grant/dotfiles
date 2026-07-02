@@ -64,6 +64,15 @@ if [[ ! -d "$INPUT_DIR" ]]; then
     exit 1
 fi
 
+# Registering sets in wallpapers.json is half the point — fail early, not per-image
+if ! command -v jq &>/dev/null; then
+    echo "Error: jq is required (registers sets in wallpapers.json)" >&2
+    exit 1
+fi
+
+CROPPED=$(mktemp --suffix=".${FORMAT}")
+trap 'rm -f "$CROPPED"' EXIT
+
 mkdir -p "$OUTPUT_DIR"
 
 # Ensure wallpapers.json exists
@@ -93,7 +102,11 @@ for img in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR
         continue
     fi
 
-    dims=$(magick identify -format "%w %h" "$img" 2>/dev/null)
+    if ! dims=$(magick identify -format "%w %h" "$img" 2>/dev/null) || [[ -z "$dims" ]]; then
+        echo "[error] cannot read $basename — skipping" >&2
+        skipped=$((skipped + 1))
+        continue
+    fi
     img_w=$(echo "$dims" | cut -d" " -f1)
     img_h=$(echo "$dims" | cut -d" " -f2)
 
@@ -112,10 +125,14 @@ for img in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR
     echo "[split] $basename (${img_w}x${img_h} → ${NUM_MONITORS} × ${slice_w}x${target_h})"
 
     # Center crop to correct aspect ratio
-    magick "$img" \
+    if ! magick "$img" \
         -gravity center \
         -crop "${target_w}x${target_h}+0+0" +repage \
-        "/tmp/_wpp_cropped.${FORMAT}"
+        "$CROPPED"; then
+        echo "[error] crop failed for $basename — skipping" >&2
+        skipped=$((skipped + 1))
+        continue
+    fi
 
     # Split into slices
     image_list=""
@@ -124,11 +141,11 @@ for img in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR
         out_name="${name}-$((i + 1)).${FORMAT}"
         out="$OUTPUT_DIR/$out_name"
         if [[ "$FORMAT" == "png" ]]; then
-            magick "/tmp/_wpp_cropped.${FORMAT}" \
+            magick "$CROPPED" \
                 -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
                 "$out"
         else
-            magick "/tmp/_wpp_cropped.${FORMAT}" \
+            magick "$CROPPED" \
                 -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
                 -quality "$QUALITY" \
                 "$out"
@@ -137,18 +154,11 @@ for img in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR
     done
     image_list="[${image_list%,}]"
 
-    rm -f "/tmp/_wpp_cropped.${FORMAT}"
-
-    # Add set to wallpapers.json
-    if command -v jq &>/dev/null; then
-        # Remove existing set with same name, then add new one
-        jq --arg name "$name" --argjson images "$image_list" --argjson palettes "$PALETTES" '
-            .sets = (.sets // [] | map(select(.name != $name))) + [{name: $name, images: $images, palettes: $palettes}]
-        ' "$CONFIG" > "${CONFIG}.tmp" && mv "${CONFIG}.tmp" "$CONFIG"
-        echo "  → registered set \"$name\" in wallpapers.json"
-    else
-        echo "  → jq not found, skipping wallpapers.json update"
-    fi
+    # Add set to wallpapers.json: remove existing set with same name, then add new one
+    jq --arg name "$name" --argjson images "$image_list" --argjson palettes "$PALETTES" '
+        .sets = (.sets // [] | map(select(.name != $name))) + [{name: $name, images: $images, palettes: $palettes}]
+    ' "$CONFIG" > "${CONFIG}.tmp" && mv "${CONFIG}.tmp" "$CONFIG"
+    echo "  → registered set \"$name\" in wallpapers.json"
 
     count=$((count + 1))
 done
