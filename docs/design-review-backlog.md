@@ -31,7 +31,7 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 
 1. ~~**`chezmoi apply` un-themes the system.**~~ ✅ session 2 — direct-writes now target the chezmoi source and propagate via `chezmoi apply`; diff/status verified clean. → [THM-1](#thm-1)
 2. **The Jinja stage is largely vestigial.** Most generated `.tmpl` files contain zero Go template syntax; `hyprland.lua.theme` → `.tmpl` is a byte-identical copy. Chezmoi-native templates reading `active.json` via `fromJson` would eliminate the second template language, the committed-generated-file class, and the "edit the wrong file" trap. → [THM-2](#thm-2)
-3. **The repo is 630 MB** — 558 MB of upscaled wallpaper PNGs in the working tree plus a deleted prior generation still in pack history. → [CHZ-1](#chz-1)
+3. ~~**The repo is 630 MB**~~ deferred session 9 — wallpapers deliberately stay in git (owner's call); revisit only if churn makes the repo painful. → [CHZ-1](#chz-1)
 4. **Repo docs are deployed into `$HOME`.** `.chezmoiignore` gaps mean `~/HYPRLAND_0.55_*.md`, `~/LICENSE`, `~/references/`, and inert `~/.config/theme-templates/` exist right now. → [CHZ-2](#chz-2)
 5. ~~**Quickshell popouts have no shared component library.**~~ ✅ session 3 — 12-component library in `modules/bar/popouts/components/`, all popouts rewritten, net −679 lines. → [QS-1](#qs-1)
 
@@ -176,10 +176,11 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 ## 3. Chezmoi structure & bootstrap
 
-### CHZ-1 · P1 · M — Repo is 630 MB of mostly regenerable wallpaper PNGs <a name="chz-1"></a>
+### CHZ-1 · P1 · M — Repo is 630 MB of mostly regenerable wallpaper PNGs <a name="chz-1"></a> ⏸ deferred session 9
 
 - [ ] `dot_config/wallpapers/` is 558 MB in the working tree (27 PNGs; `mars-race3.png` 25 MB); `git count-objects` size-pack is **630.71 MiB** — history also contains a deleted earlier generation of per-palette wallpaper trees. These are upscaled (`wallpaper-upscale` EDSR 4×) artifacts, i.e., regenerable.
 - **Fix:** move wallpapers out of git — `.chezmoiexternal.toml` pointing at a release archive/separate repo, or git-lfs; `git filter-repo` to purge history; store pre-upscale JPG sources, keep `wallpapers.json` in-repo. (History rewrite — coordinate with any other clones.)
+- **Deferred (session 9, owner decision): wallpapers deliberately stay in git** — a current version in the dots repo is wanted. Costs accepted: 630 MB clones and monotonic pack growth (history keeps every swapped-out PNG forever; one dead generation is already in the pack). Revisit if churn makes the repo painful — preferred shape then is a separate wallpapers git repo pulled via `.chezmoiexternal.toml` (still versioned, dots drop to ~5 MB), plus a one-time `git filter-repo` purge.
 
 ### CHZ-2 · P0 · S — `.chezmoiignore` gaps: repo docs deployed into `$HOME` <a name="chz-2"></a> ✅ session 1
 
@@ -277,6 +278,6 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 **Wave 3 — structural (M/L, independent tracks):**
 - Track A: ~~THM-2 (chezmoi-native templates)~~ ✅ sessions 6–7 → ~~THM-5 (generate btop/pane-fm)~~ ✅ session 8. **Track A complete.**
 - Track B: ~~QS-1 (popout components)~~ ✅ session 3 → ~~QS-3 (BarItem) / QS-5/QS-6 (ladders, exit protocol)~~ ✅ session 4 → ~~QS-4 (launcher scorer)~~ ✅ session 5. **Track B complete.**
-- Track C: CHZ-1 (wallpaper degit + history purge) — schedule deliberately; it's a history rewrite.
+- Track C: ~~CHZ-1 (wallpaper degit + history purge)~~ ⏸ deferred session 9 — wallpapers stay in git by owner decision. **All Wave 3 tracks closed.**
 
 **Wave 4 — polish:** QS-7/8/9/10/11/12, HYP-1/2, BIN-3/4, CHZ-4/5, DOC-1/2.
