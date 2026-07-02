@@ -16,12 +16,14 @@ Usage: theme-switch [THEME]
 
 import asyncio
 import json
+import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader, Environment, StrictUndefined
+from jinja2.exceptions import UndefinedError
 
 
 def notify(message: str, urgency: str = "normal") -> None:
@@ -36,7 +38,19 @@ def notify(message: str, urgency: str = "normal") -> None:
 # Configuration
 # =============================================================================
 
-CHEZMOI_ROOT = Path.home() / ".local/share/chezmoi"
+def _chezmoi_root() -> Path:
+    try:
+        result = subprocess.run(
+            ["chezmoi", "source-path"], capture_output=True, text=True, timeout=5
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return Path(result.stdout.strip())
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return Path.home() / ".local/share/chezmoi"
+
+
+CHEZMOI_ROOT = _chezmoi_root()
 CHEZMOI_SOURCE_DIR = CHEZMOI_ROOT / "dot_config"
 PALETTE_DIR = CHEZMOI_SOURCE_DIR / "palette"
 TEMPLATE_DIR = CHEZMOI_SOURCE_DIR / "theme-templates"
@@ -139,6 +153,7 @@ def hex_to_hsl(color: str) -> tuple[int, int, int]:
 def create_jinja_env() -> Environment:
     env = Environment(
         loader=BaseLoader(),
+        undefined=StrictUndefined,
         variable_start_string="{<",
         variable_end_string=">}",
         block_start_string="{%<",
@@ -172,6 +187,60 @@ def load_palette(theme_name: str) -> dict:
         return json.load(f)
 
 
+# The 26 color roles every palette must define (Catppuccin naming).
+REQUIRED_ROLES = [
+    "crust", "mantle", "base", "surface0", "surface1", "surface2",
+    "overlay0", "overlay1", "overlay2", "subtext0", "subtext1", "text",
+    "rosewater", "flamingo", "pink", "mauve", "red", "maroon", "peach",
+    "yellow", "green", "teal", "sky", "sapphire", "blue", "lavender",
+]
+
+HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def installed_zed_themes() -> set[str]:
+    names = set()
+    for theme_file in (CHEZMOI_SOURCE_DIR / "zed" / "themes").glob("*.json"):
+        try:
+            data = json.loads(theme_file.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        names.update(t.get("name", "") for t in data.get("themes", []))
+    return names
+
+
+def validate_palette(theme_name: str, palette_data: dict) -> None:
+    errors = []
+
+    for role in REQUIRED_ROLES:
+        value = palette_data.get(role)
+        if value is None:
+            errors.append(f"missing role: {role}")
+        elif not isinstance(value, str) or not HEX_RE.match(value):
+            errors.append(f"bad hex for {role}: {value!r}")
+
+    btop_theme = palette_data.get("_btop_theme", "")
+    if btop_theme and not (CHEZMOI_SOURCE_DIR / "btop" / "themes" / f"{btop_theme}.theme").exists():
+        errors.append(f"_btop_theme {btop_theme!r} has no btop/themes/{btop_theme}.theme")
+
+    pane_fm_theme = palette_data.get("_pane_fm_theme", "")
+    if pane_fm_theme and not (CHEZMOI_SOURCE_DIR / "pane-fm" / "themes" / f"{pane_fm_theme}.css").exists():
+        errors.append(f"_pane_fm_theme {pane_fm_theme!r} has no pane-fm/themes/{pane_fm_theme}.css")
+
+    zed_names = installed_zed_themes()
+    variant = palette_data.get("_variant", "dark")
+    for key in ("_zed_theme_dark", "_zed_theme_light"):
+        value = palette_data.get(key, "")
+        if value and value not in zed_names:
+            errors.append(f"{key} {value!r} not found in zed/themes/*.json")
+    if not palette_data.get(f"_zed_theme_{variant}", ""):
+        errors.append(f"_zed_theme_{variant} is empty but _variant is {variant!r}")
+
+    if errors:
+        notify(f"Palette {theme_name} failed validation:\n" + "\n".join(errors), "critical")
+        sys.exit(1)
+
+
 def process_templates(env: Environment, palette_data: dict) -> None:
     for template_file in TEMPLATE_DIR.rglob("*.theme"):
         relative = template_file.relative_to(TEMPLATE_DIR)
@@ -189,7 +258,11 @@ def process_templates(env: Environment, palette_data: dict) -> None:
 
         template_content = template_file.read_text()
         template = env.from_string(template_content)
-        result = template.render(**palette_data)
+        try:
+            result = template.render(**palette_data)
+        except UndefinedError as e:
+            notify(f"Template {relative}: {e}", "critical")
+            sys.exit(1)
 
         output_path.write_text(result)
 
@@ -234,7 +307,44 @@ def update_palette_lua(palette_data: dict) -> None:
     print(f"    palette.lua: {len(roles)} roles")
 
 
-GHOSTTY_CONFIG = Path.home() / ".config/ghostty/config"
+# These write into the chezmoi *source*; `chezmoi apply` propagates to ~/.config,
+# so a plain `chezmoi apply` never reverts the theme.
+GHOSTTY_CONFIG = CHEZMOI_SOURCE_DIR / "ghostty" / "config"
+BTOP_CONFIG = CHEZMOI_SOURCE_DIR / "btop" / "btop.conf"
+PANE_FM_CONFIG = CHEZMOI_SOURCE_DIR / "pane-fm" / "config.toml"
+
+
+def rewrite_config_keys(path: Path, replacements: dict[str, str], uncomment: bool = False) -> bool:
+    """Replace `key = value` lines in a config file, inserting missing keys at the top.
+
+    replacements maps key -> full replacement line. With uncomment, commented-out
+    keys (`# key = ...`) are matched and uncommented too.
+    """
+    if not path.exists():
+        print(f"    Warning: {path} not found, skipping")
+        return False
+
+    new_lines = []
+    found = set()
+    for line in path.read_text().splitlines():
+        target = line.lstrip("# ") if uncomment else line
+        for key, replacement in replacements.items():
+            if target.startswith(f"{key} =") or target.startswith(f"{key}="):
+                new_lines.append(replacement)
+                found.add(key)
+                break
+        else:
+            new_lines.append(line)
+
+    # Fallback only — the source configs commit these keys, and top-of-file
+    # insertion is wrong for keys that belong inside a TOML section.
+    missing = [line for key, line in replacements.items() if key not in found]
+    for i, replacement in enumerate(missing):
+        print(f"    Warning: {path.name} was missing a managed key, inserted at top: {replacement}")
+        new_lines.insert(i, replacement)
+
+    path.write_text("\n".join(new_lines) + "\n")
+    return True
 
 
 def update_ghostty(palette_data: dict) -> None:
@@ -243,36 +353,12 @@ def update_ghostty(palette_data: dict) -> None:
         print("    Warning: No _ghostty_theme in palette, skipping Ghostty")
         return
 
-    if not GHOSTTY_CONFIG.exists():
-        print("    Warning: Ghostty config not found, skipping")
-        return
-
     opacity = palette_data.get("_blur_opacity", 0.9)
-
-    lines = GHOSTTY_CONFIG.read_text().splitlines()
-    new_lines = []
-    found_theme = False
-    found_opacity = False
-    for line in lines:
-        if line.startswith("theme =") or line.startswith("theme="):
-            new_lines.append(f"theme = {theme_name}")
-            found_theme = True
-        elif line.startswith("background-opacity =") or line.startswith("background-opacity="):
-            new_lines.append(f"background-opacity = {opacity}")
-            found_opacity = True
-        else:
-            new_lines.append(line)
-
-    if not found_theme:
-        new_lines.insert(0, f"theme = {theme_name}")
-    if not found_opacity:
-        new_lines.insert(1, f"background-opacity = {opacity}")
-
-    GHOSTTY_CONFIG.write_text("\n".join(new_lines) + "\n")
-    print(f"    Ghostty theme: {theme_name}, opacity: {opacity}")
-
-
-BTOP_CONFIG = Path.home() / ".config/btop/btop.conf"
+    if rewrite_config_keys(GHOSTTY_CONFIG, {
+        "theme": f"theme = {theme_name}",
+        "background-opacity": f"background-opacity = {opacity}",
+    }):
+        print(f"    Ghostty theme: {theme_name}, opacity: {opacity}")
 
 
 def update_btop(palette_data: dict) -> None:
@@ -281,28 +367,10 @@ def update_btop(palette_data: dict) -> None:
         print("    Warning: No _btop_theme in palette, skipping btop")
         return
 
-    if not BTOP_CONFIG.exists():
-        print("    Warning: btop config not found, skipping")
-        return
-
-    lines = BTOP_CONFIG.read_text().splitlines()
-    new_lines = []
-    found = False
-    for line in lines:
-        if line.startswith("color_theme =") or line.startswith("color_theme="):
-            new_lines.append(f'color_theme = "{theme_name}"')
-            found = True
-        else:
-            new_lines.append(line)
-
-    if not found:
-        new_lines.insert(0, f'color_theme = "{theme_name}"')
-
-    BTOP_CONFIG.write_text("\n".join(new_lines) + "\n")
-    print(f"    btop theme: {theme_name}")
-
-
-PANE_FM_CONFIG = Path.home() / ".config/pane-fm/config.toml"
+    if rewrite_config_keys(BTOP_CONFIG, {
+        "color_theme": f'color_theme = "{theme_name}"',
+    }):
+        print(f"    btop theme: {theme_name}")
 
 
 def update_pane_fm(palette_data: dict) -> None:
@@ -311,35 +379,13 @@ def update_pane_fm(palette_data: dict) -> None:
         print("    Warning: No _pane_fm_theme in palette, skipping pane-fm")
         return
 
-    if not PANE_FM_CONFIG.exists():
-        print("    Warning: pane-fm config not found, skipping")
-        return
-
     variant = palette_data.get("_variant", "dark")
     light_icons = "true" if variant == "light" else "false"
-
-    lines = PANE_FM_CONFIG.read_text().splitlines()
-    new_lines = []
-    found_theme = False
-    found_icons = False
-    for line in lines:
-        stripped = line.lstrip("# ")
-        if stripped.startswith("theme =") or stripped.startswith("theme="):
-            new_lines.append(f'theme = "{theme_name}"')
-            found_theme = True
-        elif stripped.startswith("light_icons =") or stripped.startswith("light_icons="):
-            new_lines.append(f"light_icons = {light_icons}")
-            found_icons = True
-        else:
-            new_lines.append(line)
-
-    if not found_theme:
-        new_lines.insert(0, f'theme = "{theme_name}"')
-    if not found_icons:
-        new_lines.insert(1, f"light_icons = {light_icons}")
-
-    PANE_FM_CONFIG.write_text("\n".join(new_lines) + "\n")
-    print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
+    if rewrite_config_keys(PANE_FM_CONFIG, {
+        "theme": f'theme = "{theme_name}"',
+        "light_icons": f"light_icons = {light_icons}",
+    }, uncomment=True):
+        print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
 
 
 CHROME_POLICY_DIRS = [
@@ -364,18 +410,18 @@ def update_chromium(palette_data: dict) -> None:
     }
     policy_text = json.dumps(policy, indent=2) + "\n"
 
-    wrote = False
+    found_dir = False
     for policy_dir in CHROME_POLICY_DIRS:
         if not policy_dir.exists():
             continue
+        found_dir = True
         try:
             (policy_dir / "theme.json").write_text(policy_text)
             print(f"    {policy_dir.parent.parent.name}: seed {seed_color}, scheme: {scheme_label}")
-            wrote = True
         except PermissionError:
             print(f"    Warning: No write permission to {policy_dir}, skipping")
 
-    if not wrote:
+    if not found_dir:
         print("    Warning: No Chromium/Chrome policy dirs found, skipping")
 
 
@@ -444,7 +490,6 @@ async def reload_all(palette_data: dict) -> None:
     await asyncio.gather(
         reload_hyprland(),
         reload_ghostty(),
-        reload_btop(),
         set_gtk_theme(palette_data),
         reload_chromium(),
         reload_portal(),
@@ -456,12 +501,22 @@ async def reload_all(palette_data: dict) -> None:
 # =============================================================================
 
 
+def write_json_atomic(path: Path, data: dict) -> None:
+    # Quickshell watches active.json — write via temp + rename so it never
+    # observes a partial file.
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w") as f:
+        json.dump(data, f, indent=2)
+    tmp.replace(path)
+
+
 async def main() -> None:
     theme_name = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_THEME
 
-    # 1. Load palette
+    # 1. Load and validate palette
     notify(f"Switching to {theme_name}...")
     palette_data = load_palette(theme_name)
+    validate_palette(theme_name, palette_data)
 
     # 2. Copy palette → active.json (both chezmoi source and live config)
     #    Preserve barMode from current active.json so toggling survives theme switches
@@ -476,17 +531,14 @@ async def main() -> None:
         except (json.JSONDecodeError, OSError):
             pass
 
-    src = PALETTE_DIR / f"{theme_name}.json"
-    with open(src) as f:
-        new_palette = json.load(f)
     if active_bar_mode:
-        new_palette.setdefault("_quickshell", {})["barMode"] = active_bar_mode
+        palette_data.setdefault("_quickshell", {})["barMode"] = active_bar_mode
     live_palette.parent.mkdir(parents=True, exist_ok=True)
     for active_path in [PALETTE_DIR / "active.json", live_palette]:
-        with open(active_path, "w") as f:
-            json.dump(new_palette, f, indent=2)
+        write_json_atomic(active_path, palette_data)
 
-    # 3. Compute accent HSL for templates that need it (e.g. Obsidian)
+    # 3. Compute accent HSL for templates that need it (e.g. Obsidian).
+    #    After the active.json writes — these keys are render-time only.
     accent = palette_data.get("_quickshell", {}).get("accent") or palette_data.get("blue", "")
     if accent:
         palette_data["_accent"] = accent
@@ -501,7 +553,17 @@ async def main() -> None:
     process_templates(env, palette_data)
     update_palette_lua(palette_data)
 
-    # 5. Apply chezmoi (only theme-dependent configs, not large static files)
+    # 5. Update direct-write app configs in the chezmoi source
+    print("==> Updating app configs...")
+    update_ghostty(palette_data)
+    update_btop(palette_data)
+    update_pane_fm(palette_data)
+    update_chromium(palette_data)
+
+    # 6. Apply chezmoi (only theme-dependent configs, not large static files).
+    #    btop saves its config on clean shutdown — kill it first so its
+    #    exit-save can't overwrite the freshly applied theme.
+    await reload_btop()
     print("==> Applying chezmoi (themed configs)...")
     themed_targets = [
         "~/.config/hypr",
@@ -510,6 +572,8 @@ async def main() -> None:
         "~/.config/yazi",
         "~/.config/phylax",
         "~/.config/zed/settings.json",
+        "~/.config/ghostty",
+        "~/.config/btop",
         "~/.config/pane-fm",
         "~/knowledge/.obsidian",
     ]
@@ -517,13 +581,13 @@ async def main() -> None:
         "chezmoi", "apply", "--force", *themed_targets
     )
     await proc.wait()
-
-    # 6. Write app configs directly (after chezmoi so they aren't overwritten)
-    print("==> Updating app configs...")
-    update_ghostty(palette_data)
-    update_btop(palette_data)
-    update_pane_fm(palette_data)
-    update_chromium(palette_data)
+    if proc.returncode != 0:
+        notify(
+            f"chezmoi apply failed (exit {proc.returncode}) — app configs are stale. "
+            "Fix and re-run theme-switch.",
+            "critical",
+        )
+        sys.exit(1)
 
     # 7. Reload apps in parallel
     await reload_all(palette_data)

@@ -9,13 +9,15 @@ Effort: **S** < 1h · **M** ≈ half-day · **L** = multi-day.
 
 ## Session log
 
+**Session 2 (2026-07-01) — Wave 2 complete (theme-system integrity).** Fixed: THM-1 (ghostty/btop/pane-fm direct-writes retargeted to the chezmoi source, run before `chezmoi apply`; ghostty+btop added to `themed_targets`; acceptance: `chezmoi diff`/`status` fully clean after a switch), THM-8 (shared `rewrite_config_keys` helper replaces the ×3 copy-paste; single palette load; chromium warning fix; `CHEZMOI_ROOT` via `chezmoi source-path`), THM-6 (atomic active.json via temp+rename; chezmoi exit code checked → critical notify + exit 1; success toast only on real success), THM-4 (`StrictUndefined` + `validate_palette`: 26 roles/hex/btop+pane-fm file existence/zed names; all 10 palettes pass, negative tests rejected), THM-7 remainder (accent added to 3 catppuccin darks = their blue; real `_zed_theme_dark` for 3 light palettes; rose-pine "inversion" re-checked — moon inverts too, consistent upstream overlay→base mapping, intentional; `islandShadowColor` already documented in Theme.qml). Two review agents: verifier 6/6 pass; code reviewer found no blocking bugs + 3 minor items — 2 fixed (btop now killed *before* apply so its exit-save can't clobber the theme; missing-key insertion warns), 1 accepted as-is (chromium PermissionError still non-fatal — cosmetic wash). Ghostty source header tidied. Re-ran `theme-switch catppuccin-mocha` end-to-end: clean.
+
 **Session 1 (2026-07-01) — Wave 1 complete.** Fixed: CHZ-2 (ignore gaps; HYPRLAND docs moved to `docs/`; stray `~/HYPRLAND_*.md`, `~/LICENSE`, `~/references/`, `~/.config/theme-templates/` deleted), CHZ-3 (phantom prompts removed; README graphics list synced), BIN-1 partial (compose ports → 127.0.0.1; "restart" message fixed), BIN-2 (toggle-bar-mode writes both copies), THM-7 partial (hyprlock bg → `path = screenshot` + palette color fallback; `_wallpaper` key deleted from all 11 palettes), QS-2 (IconCache singleton), CHZ-6 partial (fnm guard), THM-3 (deleted duplicate `hyprland.lua.theme`; CLAUDE.md/README updated), HYP-2 partial (hypridle doc sentence fixed; migration docs archived to `docs/`). Regenerated via `theme-switch catppuccin-mocha` + targeted `chezmoi apply`; two review agents on the diff → 1 real finding (stale README:164 reference, fixed), 1 false positive rejected (reviewer claimed ghostty chezmoi-diff was clean — re-verified: **THM-1 still reproduces**, apply would delete Ghostty's theme lines). Icon-cache startup-window race accepted as-is (self-heals per open; optional `rev` hardening declined).
 
 ---
 
 ## 0. TL;DR — the five findings that matter most
 
-1. **`chezmoi apply` un-themes the system.** Direct-write apps (ghostty/btop/pane-fm) are mutated in the *live* config while the chezmoi *source* holds stale content. Verified: `chezmoi diff` today would **delete** Ghostty's `theme =` and `background-opacity =` lines. → [THM-1](#thm-1)
+1. ~~**`chezmoi apply` un-themes the system.**~~ ✅ session 2 — direct-writes now target the chezmoi source and propagate via `chezmoi apply`; diff/status verified clean. → [THM-1](#thm-1)
 2. **The Jinja stage is largely vestigial.** Most generated `.tmpl` files contain zero Go template syntax; `hyprland.lua.theme` → `.tmpl` is a byte-identical copy. Chezmoi-native templates reading `active.json` via `fromJson` would eliminate the second template language, the committed-generated-file class, and the "edit the wrong file" trap. → [THM-2](#thm-2)
 3. **The repo is 630 MB** — 558 MB of upscaled wallpaper PNGs in the working tree plus a deleted prior generation still in pack history. → [CHZ-1](#chz-1)
 4. **Repo docs are deployed into `$HOME`.** `.chezmoiignore` gaps mean `~/HYPRLAND_0.55_*.md`, `~/LICENSE`, `~/references/`, and inert `~/.config/theme-templates/` exist right now. → [CHZ-2](#chz-2)
@@ -27,11 +29,9 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 ## 1. Theme system
 
-### THM-1 · P0 · M — Direct-write apps break under plain `chezmoi apply` <a name="thm-1"></a>
+### THM-1 · P0 · M — Direct-write apps break under plain `chezmoi apply` ✅ session 2 <a name="thm-1"></a>
 
-- [ ] `executable_theme-switch:237-342` writes `theme =` / `color_theme =` / `light_icons =` into the **live** `~/.config/{ghostty/config, btop/btop.conf, pane-fm/config.toml}`, while the chezmoi sources hold different content (`dot_config/ghostty/config` has only a "managed by theme-switch" comment; `dot_config/btop/btop.conf:4` and `dot_config/pane-fm/config.toml:8-9` hardcode mocha).
-- **Verified live:** `chezmoi status` shows `MM` for ghostty/zed/obsidian; `chezmoi diff` would delete Ghostty's theme + opacity lines. btop/pane-fm only match because the active theme happens to be mocha — switch themes and they're permanently dirty, reverted by any external `chezmoi apply`.
-- **Fix:** point the line-rewrite machinery at `CHEZMOI_SOURCE_DIR` instead of `Path.home()` (the pattern `palette.lua` generation at `:201-233` already uses), add these files to `themed_targets` (`:513`), and let `chezmoi apply` propagate. Also fixes [BIN-2](#bin-2)'s sibling problem.
+- [x] Fixed: ghostty/btop/pane-fm writes now target `CHEZMOI_SOURCE_DIR`, run **before** `chezmoi apply`, and `~/.config/ghostty` + `~/.config/btop` were added to `themed_targets`. Acceptance verified: `chezmoi diff` for ghostty/btop/pane-fm/palette is empty after `theme-switch catppuccin-mocha`; `chezmoi status` fully clean.
 
 ### THM-2 · P1 · L — Replace the Jinja stage with chezmoi-native templates <a name="thm-2"></a>
 
@@ -45,10 +45,9 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - [x] Verified: `dot_config/theme-templates/hypr/hyprland.lua.theme` and `dot_config/hypr/hyprland.lua.tmpl` are identical (13,037 bytes, 298 lines). Since ec0a596 the file has zero `{< >}` tokens (colors come via `require("palette")`), so the Jinja render is an identity copy — double diffs on every edit, and editing the `.tmpl` directly gets silently clobbered. The "Generated from theme template" header (`.theme:3`) is false in the source itself.
 - **Fix:** delete the `.theme`, make `dot_config/hypr/hyprland.lua.tmpl` the single edited source, skip it in `process_templates` (`executable_theme-switch:176-194`). Update CLAUDE.md. (Subsumed by THM-2 if that lands first.)
 
-### THM-4 · P1 · S — No validation anywhere; Jinja renders missing keys as empty strings
+### THM-4 · P1 · S — No validation anywhere; Jinja renders missing keys as empty strings ✅ session 2
 
-- [ ] No schema check, no existence check for referenced per-app theme files, and `create_jinja_env` (`executable_theme-switch:139-160`) uses default `Undefined` — a typo'd role silently renders as `""` into live configs.
-- **Fix:** `StrictUndefined` + a ~30-line validate step in theme-switch: required keys present, hex format, `_btop_theme`/`_zed_theme_*`/pane-fm CSS files exist, `_ghostty_theme` sanity.
+- [x] Fixed: `StrictUndefined` in the Jinja env (render errors notify-critical + exit 1 with the template name) and `validate_palette()` runs before anything is written: 26 required roles present + hex format, `_btop_theme`/`_pane_fm_theme` files exist, zed theme names checked against `dot_config/zed/themes/*.json`, the active variant's zed theme must be nonempty. All 10 palettes pass; negative tests (missing role, bad hex, bogus refs, undefined token) all rejected. `_ghostty_theme` stays nonempty-only — built-in Ghostty themes have no cheap existence check.
 
 ### THM-5 · P1 · M — Adding a palette = 5 artifacts, 4 naming conventions; generate the generatable ones
 
@@ -56,27 +55,26 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 - Coverage today is 10/10/10/10 — discipline has held, but nothing enforces it.
 - **Fix:** btop and pane-fm formats are flat `key = "#hex"` lists — generate them from the palette (template or generate-all-N) and delete 20 hand-maintained files. Zed genuinely earns hand-maintenance (per-role alpha nuance); keep it, but validate its existence (THM-4).
 
-### THM-6 · P1 · S — theme-switch has no failure handling
+### THM-6 · P1 · S — theme-switch has no failure handling ✅ session 2
 
-- [ ] `active.json` is written (both copies, `:485-487`) **before** templates render or chezmoi applies — a mid-run death leaves Quickshell live-switched while everything else is stale.
-- [ ] The `chezmoi apply` exit code is discarded (`:516-519`) and the "Switched to X" notification (`:531`) fires unconditionally — a failed apply looks like success.
-- [ ] Writes are non-atomic; Quickshell's watcher can observe a partially-written `active.json`.
-- **Fix:** temp-file + `os.replace` for active.json; check the chezmoi exit code and notify-critical + exit non-zero on failure. (Re-running is fully idempotent — good — but the success toast hides when a re-run is needed.)
+- [x] `chezmoi apply` exit code now checked → notify-critical + exit 1; success toast only fires after everything succeeded.
+- [x] `active.json` writes are atomic (`write_json_atomic`: temp + rename) — Quickshell can never observe a partial file.
+- [x] Validation failures (THM-4) abort *before* active.json is touched. active.json-first ordering kept deliberately (instant Quickshell feedback); a mid-run death is now loudly reported instead of silently half-applied, and re-running remains idempotent.
 
-### THM-7 · P2 · S — Palette schema drift + dead keys
+### THM-7 · P2 · S — Palette schema drift + dead keys ✅ session 2
 
-- [ ] `catppuccin-mocha`, `-frappe`, `-macchiato` (and `active.json`) lack `_quickshell.accent`; the other 7 define it. Fallback to `blue` works (`Theme.qml:92`, `theme-switch:490`) but the inconsistency is accidental. Decide policy and normalize.
-- [ ] `islandShadowColor` exists only in the 3 light palettes — if intentional, document; if not, normalize.
+- [x] ✅ session 2 — `_quickshell.accent` added to mocha/frappe/macchiato, set to each palette's `blue` (identical to the existing fallback, so rendering is unchanged; accent is a deliberate per-palette choice elsewhere — e.g. Everforest green).
+- [x] ✅ session 2 — `islandShadowColor` verified intentional and already documented at `utils/Theme.qml:145` ("defaults to crust; light variants override to overlay0"). No change.
 - [x] ✅ session 1 — `_wallpaper` key deleted from all 11 palettes; hyprlock background now `path = screenshot` (blurred desktop) with `color = {< base | hypr_rgb >}` fallback.
-- [ ] `rose-pine.json`: `surface0 #21202e` is **darker than** `base #26233a`, inverting the elevation ordering every other palette follows — likely a mapping slip; check surface0-on-base contrast visually.
-- [ ] Light palettes set `_zed_theme_dark: ""` → `"dark": ""` in generated settings.json. Harmless (mode is forced) but worth a real value.
+- [x] ✅ session 2 — rose-pine inversion re-checked: **rose-pine-moon inverts too** (`surface0 #2a283e` < `base #393552`), so the original finding's premise ("every other palette follows") was wrong. Both dark Rosé Pines consistently map upstream *overlay* → `base` and *surface* → `surface0` (a deliberate brightening of the very dark upstream base). Intentional; no change.
+- [x] ✅ session 2 — light palettes now set real `_zed_theme_dark` counterparts: latte → "Catppuccin Mocha", everforest-light → "Everforest", rose-pine-dawn → "Rosé Pine" (all verified installed in `zed/themes/*.json`).
 
-### THM-8 · P2 · S — theme-switch code cleanup
+### THM-8 · P2 · S — theme-switch code cleanup ✅ session 2
 
-- [ ] `update_ghostty` (`:240-272`) / `update_btop` (`:278-302`) / `update_pane_fm` (`:308-342`) are the same rewrite-keys loop ×3 → one `rewrite_config_keys(path, {key: value}, uncomment=False)` helper; makes THM-1 a one-liner per app.
-- [ ] Palette loaded twice (`:464` and `:479-481`); only the second gets the `barMode` merge — currently harmless, latent trap.
-- [ ] `update_chromium` (`:351-379`): after `PermissionError` it prints the per-dir warning *and then* "No Chromium/Chrome policy dirs found" (because `wrote` stays False) — misleading.
-- [ ] `CHEZMOI_ROOT` hardcodes `~/.local/share/chezmoi` (`:39`); prefer `chezmoi source-path`.
+- [x] Shared `rewrite_config_keys(path, {key: line}, uncomment=False)` helper replaces the ×3 copy-paste; preserves original semantics (replace all matches, insert missing at top, pane-fm uncomment mode); tested against key-prefix collisions (`theme_background` vs `theme`).
+- [x] Palette loaded once; `barMode` merged into `palette_data` before the active.json writes; computed `_accent*` keys added only after, so they're never persisted.
+- [x] `update_chromium` now distinguishes "no policy dirs exist" from "dir exists but no write permission".
+- [x] `CHEZMOI_ROOT` resolved via `chezmoi source-path` (5s timeout, hardcoded fallback).
 
 ---
 
@@ -271,8 +269,7 @@ Plus one security item: **win-vm exposes RDP + web UI on 0.0.0.0 with default cr
 
 **Wave 1 — quick wins, active bugs (all S):** ✅ done session 1.
 
-**Wave 2 — theme-system integrity (S/M):**
-THM-1 (direct-writes → source) with THM-8's `rewrite_config_keys` helper → THM-6 (failure handling) → THM-4 (validation + StrictUndefined) → THM-7 remainder (schema normalize, rose-pine check).
+**Wave 2 — theme-system integrity (S/M):** ✅ done session 2 (THM-1, THM-4, THM-6, THM-7, THM-8).
 
 **Wave 3 — structural (M/L, independent tracks):**
 - Track A: THM-2 (chezmoi-native templates) then THM-5 (generate btop/pane-fm) — decide THM-2 first since it changes where generation lives.

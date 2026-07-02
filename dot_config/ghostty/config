@@ -1,5 +1,7 @@
 # Ghostty Configuration
-# theme line is managed by theme-switch
+# theme and background-opacity are managed by theme-switch
+theme = Catppuccin Mocha
+background-opacity = 0.9
 
 # Disable close confirmation dialog
 confirm-close-surface = false
