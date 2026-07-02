@@ -388,6 +388,28 @@ def update_pane_fm(palette_data: dict) -> None:
         print(f"    pane-fm theme: {theme_name}, light_icons: {light_icons}")
 
 
+def update_zed() -> None:
+    """Write the rendered Zed settings over the live file, in place.
+
+    Zed's settings hot-reload watches settings.json via an inotify watch on
+    the file's inode. chezmoi applies files by atomic rename, which replaces
+    the inode and kills the watch — hot reload works for the first switch of
+    a Zed session (the dying watch's last event) and never again. Syncing the
+    target in place *before* apply keeps chezmoi's rename away from this file
+    entirely: apply sees no diff, the inode never changes, and the in-place
+    write is a plain IN_MODIFY the watcher survives.
+    """
+    source = CHEZMOI_SOURCE_DIR / "zed" / "settings.json.tmpl"
+    target = Path.home() / ".config" / "zed" / "settings.json"
+    content = source.read_text()
+    if target.exists() and target.read_text() == content:
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with open(target, "w") as f:
+        f.write(content)
+    print("    Zed settings synced in place (hot reload)")
+
+
 CHROME_POLICY_DIRS = [
     Path("/etc/chromium/policies/managed"),
     Path("/etc/opt/chrome/policies/managed"),
@@ -559,6 +581,7 @@ async def main() -> None:
     update_btop(palette_data)
     update_pane_fm(palette_data)
     update_chromium(palette_data)
+    update_zed()
 
     # 6. Apply chezmoi (only theme-dependent configs, not large static files).
     #    btop saves its config on clean shutdown — kill it first so its
