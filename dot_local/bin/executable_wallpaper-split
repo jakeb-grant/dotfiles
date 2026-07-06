@@ -6,6 +6,13 @@ set -euo pipefail
 WALLPAPER_DIR="$HOME/.config/wallpapers"
 CONFIG="$WALLPAPER_DIR/wallpapers.json"
 
+# Chezmoi source copies — slices and registrations are written to both the
+# live dir and the source, like theme-switch/toggle-bar-mode, so a plain
+# `chezmoi apply` never reverts them and new sets are tracked in the repo.
+SOURCE_ROOT=$(chezmoi source-path 2>/dev/null) || SOURCE_ROOT="$HOME/.local/share/chezmoi"
+SOURCE_WALLPAPER_DIR="$SOURCE_ROOT/dot_config/wallpapers"
+SOURCE_CONFIG="$SOURCE_WALLPAPER_DIR/wallpapers.json"
+
 usage() {
     cat <<'EOF'
 Usage: wallpaper-split [OPTIONS] <input_dir>
@@ -75,6 +82,16 @@ trap 'rm -f "$CROPPED"' EXIT
 
 mkdir -p "$OUTPUT_DIR"
 
+# Sets are registered (and slices mirrored into the chezmoi source) only when
+# writing into the real wallpaper dir — Quickshell resolves registered images
+# relative to ~/.config/wallpapers, so entries for files elsewhere render
+# nothing.
+REGISTER=true
+if [[ "$(realpath "$OUTPUT_DIR")" != "$(realpath "$WALLPAPER_DIR")" ]]; then
+    REGISTER=false
+    echo "Note: output dir is not $WALLPAPER_DIR — slices will NOT be registered in wallpapers.json" >&2
+fi
+
 # Ensure wallpapers.json exists
 if [[ ! -f "$CONFIG" ]]; then
     echo '{"wallpapers":[],"sets":[]}' > "$CONFIG"
@@ -134,31 +151,48 @@ for img in "$INPUT_DIR"/*.jpg "$INPUT_DIR"/*.jpeg "$INPUT_DIR"/*.png "$INPUT_DIR
         continue
     fi
 
-    # Split into slices
+    # Split into slices. A failed slice skips the whole image (removing the
+    # partial slices already written) instead of aborting the batch — a
+    # half-split image would otherwise satisfy the [skip] check on re-runs.
     image_list=""
+    slice_failed=false
+    quality_args=()
+    [[ "$FORMAT" != "png" ]] && quality_args=(-quality "$QUALITY")
     for i in $(seq 0 $((NUM_MONITORS - 1))); do
         offset_x=$((i * slice_w))
         out_name="${name}-$((i + 1)).${FORMAT}"
         out="$OUTPUT_DIR/$out_name"
-        if [[ "$FORMAT" == "png" ]]; then
-            magick "$CROPPED" \
-                -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
-                "$out"
-        else
-            magick "$CROPPED" \
-                -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
-                -quality "$QUALITY" \
-                "$out"
+        if ! magick "$CROPPED" \
+            -crop "${slice_w}x${target_h}+${offset_x}+0" +repage \
+            "${quality_args[@]}" \
+            "$out"; then
+            echo "[error] slice $((i + 1)) failed for $basename — skipping image" >&2
+            rm -f "$OUTPUT_DIR/${name}"-[0-9]*."${FORMAT}"
+            slice_failed=true
+            break
         fi
         image_list="${image_list}\"${out_name}\","
     done
+    if [[ "$slice_failed" == true ]]; then
+        skipped=$((skipped + 1))
+        continue
+    fi
     image_list="[${image_list%,}]"
 
-    # Add set to wallpapers.json: remove existing set with same name, then add new one
-    jq --arg name "$name" --argjson images "$image_list" --argjson palettes "$PALETTES" '
-        .sets = (.sets // [] | map(select(.name != $name))) + [{name: $name, images: $images, palettes: $palettes}]
-    ' "$CONFIG" > "${CONFIG}.tmp" && mv "${CONFIG}.tmp" "$CONFIG"
-    echo "  → registered set \"$name\" in wallpapers.json"
+    if [[ "$REGISTER" == true ]]; then
+        # Mirror slices into the chezmoi source so the set survives a fresh
+        # clone, then register it in both configs (replace same-named set).
+        for i in $(seq 1 "$NUM_MONITORS"); do
+            cp "$OUTPUT_DIR/${name}-${i}.${FORMAT}" "$SOURCE_WALLPAPER_DIR/"
+        done
+        for cfg in "$CONFIG" "$SOURCE_CONFIG"; do
+            [[ -f "$cfg" ]] || { echo "[warn] $cfg missing — set \"$name\" not registered there" >&2; continue; }
+            jq --arg name "$name" --argjson images "$image_list" --argjson palettes "$PALETTES" '
+                .sets = (.sets // [] | map(select(.name != $name))) + [{name: $name, images: $images, palettes: $palettes}]
+            ' "$cfg" > "${cfg}.tmp" && mv "${cfg}.tmp" "$cfg"
+        done
+        echo "  → registered set \"$name\" in wallpapers.json (live + source)"
+    fi
 
     count=$((count + 1))
 done

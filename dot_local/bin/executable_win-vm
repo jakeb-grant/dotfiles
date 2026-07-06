@@ -41,8 +41,22 @@ is_running() {
 }
 
 connect() {
+    if ! command -v sdl-freerdp3 >/dev/null; then
+        notify "sdl-freerdp3 is not installed." critical
+        exit 1
+    fi
     notify "Connecting to VM..."
     sdl-freerdp3 /v:localhost /u:Docker /p:admin /clipboard /sound /cert:ignore +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
+    local rdp_pid=$!
+    # The port probe only proves docker-proxy accepts — Windows' RDP stack may
+    # not be up yet (worst on first boot). A session that dies within seconds
+    # never connected; surface that instead of exiting silently.
+    (
+        sleep 5
+        if ! kill -0 "$rdp_pid" 2>/dev/null; then
+            notify "RDP connection failed — Windows may still be booting. Retry 'win-vm open' or use http://localhost:8006" critical
+        fi
+    ) &
 }
 
 show_help() {

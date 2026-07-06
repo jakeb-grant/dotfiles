@@ -52,7 +52,17 @@ def upscale_tiled(img: Image.Image, model) -> Image.Image:
             tile_out = preds.squeeze(0).permute(1, 2, 0).clamp(0, 1).mul(255).byte()
             tile_img = Image.fromarray(tile_out.cpu().numpy())
 
-            out.paste(tile_img, (x0 * SCALE, y0 * SCALE))
+            # Trim the model's edge-artifact border on sides that have a
+            # neighbor: half the overlap belongs to each adjacent tile, so
+            # what lands in `out` is interior pixels on both sides of every
+            # tile boundary. Leading edges only — the later tile's kept
+            # region overwrites the earlier tile's trailing artifact zone.
+            trim_x = (OVERLAP // 2) * SCALE if x0 > 0 else 0
+            trim_y = (OVERLAP // 2) * SCALE if y0 > 0 else 0
+            if trim_x or trim_y:
+                tile_img = tile_img.crop((trim_x, trim_y, tile_img.width, tile_img.height))
+
+            out.paste(tile_img, (x0 * SCALE + trim_x, y0 * SCALE + trim_y))
 
             done += 1
             print(f"    tile {done}/{total}", end="\r", flush=True)

@@ -158,6 +158,12 @@ def validate_palette(theme_name: str, palette_data: dict) -> None:
         elif not isinstance(value, str) or not HEX_RE.match(value):
             errors.append(f"bad hex for {role}: {value!r}")
 
+    # The accent is parsed by hex_to_hsl before the active.json writes —
+    # validate it here so a typo gets the notify+exit path, not a traceback.
+    accent = (palette_data.get("_quickshell") or {}).get("accent", "")
+    if accent and (not isinstance(accent, str) or not HEX_RE.match(accent)):
+        errors.append(f"bad hex for _quickshell.accent: {accent!r}")
+
     zed_names = installed_zed_themes()
     variant = palette_data.get("_variant", "dark")
     for key in ("_zed_theme_dark", "_zed_theme_light"):
@@ -363,7 +369,15 @@ async def reload_ghostty() -> None:
 
 
 async def reload_btop() -> None:
-    await run_async(["pkill", "-x", "btop"])
+    if not await run_async(["pkill", "-x", "btop"]):
+        return  # nothing to kill
+    # pkill returns before btop finishes its SIGTERM shutdown, which writes
+    # btop.conf — wait until it's actually gone so that save can't land after
+    # chezmoi apply and drift btop.conf from the source.
+    for _ in range(20):
+        if not await run_async(["pgrep", "-x", "btop"]):
+            break
+        await asyncio.sleep(0.1)
     print("    btop killed (will use new theme on next launch)")
 
 
