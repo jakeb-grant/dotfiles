@@ -60,6 +60,20 @@ re-verified before fixing. Live checks where possible.
   connect shows "Connecting…" then nothing. *Fix: detect early freerdp death
   and notify with a hint; check the binary exists. Full verification needs a
   real VM boot → owner-verify.*
+- [x] **WV-2 (follow-up): No visual feedback during boot, worst on first boot.**
+  First boot = 20-45 min of ISO download + install with one failure
+  notification then silence; warm boot waited on the fake TCP probe. *Fix:
+  real readiness probe (`sdl-freerdp3 +auth-only` — authenticates against
+  Windows' actual RDP stack, immune to docker-proxy); first-boot detection
+  via `~/Windows/data.img` absence → opens dockurr's live noVNC console
+  (http://localhost:8006, shows the real install screen), waits up to 60 min,
+  auto-connects when done; warm boot waits up to 6 min on the real probe;
+  `open` pre-checks readiness and says "still booting" instead of launching a
+  doomed freerdp.* Gotcha found live: auth-only exit codes are useless —
+  1 on auth SUCCESS (it cancels the connection by design), 134 on logon
+  failure, 141 when nothing answers — so the probe matches the
+  "Authentication only, exit status SUCCESS" log marker instead. Warm boot
+  observed at 3-5 min after a container recreate, hence the 6 min timeout.
 
 ## Checked and cleared (no action)
 - **screenshot `-A`/`--wait` hang** — refuted live: timed run returned in 5s
@@ -99,6 +113,7 @@ re-verified before fixing. Live checks where possible.
 - screenshot: `timeout 30 screenshot full` → exit 0 in 5s; `pgrep -af screenshot` empty
 
 ## Owner-verify
-- win-vm: cold boot → `win-vm` should wait through Windows install/boot and
-  connect exactly once; `win-vm open` failure notification on a dead VM.
+- win-vm: real *first* boot (WV-2 path) — wipe/absent `~/Windows/data.img` →
+  console auto-opens, install visible, auto-connect at the end. Warm boot was
+  verified live 2026-07-05.
 - wallpaper-upscale: visual seam check on a real upscale after UP-1.
