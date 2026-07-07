@@ -20,6 +20,10 @@ Singleton {
     }
 
     function monitorFor(screen: ShellScreen): HyprlandMonitor {
+        // HyprlandMonitor objects are destroyed and recreated on monitor
+        // remove/add; reading monitors.values here gives caller bindings a
+        // dependency so they re-resolve instead of holding the dead object.
+        void Hyprland.monitors.values;
         return Hyprland.monitorFor(screen);
     }
 
@@ -28,7 +32,15 @@ Singleton {
         return root.workspaceRules[monitorName] ?? [];
     }
 
+    // Setting running=true on an in-flight Process is a no-op, and that run
+    // returns pre-reload rules — queue the request and re-run on exit.
+    property bool _rulesRefreshQueued: false
+
     function refreshWorkspaceRules(): void {
+        if (wsRulesProc.running) {
+            root._rulesRefreshQueued = true;
+            return;
+        }
         wsRulesProc.running = true;
     }
 
@@ -36,6 +48,13 @@ Singleton {
         id: wsRulesProc
         command: ["hyprctl", "workspacerules", "-j"]
         running: true
+
+        onExited: {
+            if (root._rulesRefreshQueued) {
+                root._rulesRefreshQueued = false;
+                wsRulesProc.running = true;
+            }
+        }
 
         stdout: SplitParser {
             splitMarker: ""
@@ -57,6 +76,14 @@ Singleton {
         }
     }
 
+    // Belt-and-braces: dock transitions can interleave monitor events with
+    // hyprpier's config rewrite; re-query once after the churn settles.
+    Timer {
+        id: rulesSettleTimer
+        interval: 1000
+        onTriggered: root.refreshWorkspaceRules()
+    }
+
     Connections {
         target: Hyprland
 
@@ -76,6 +103,7 @@ Singleton {
                  "configreloaded"].includes(name)) {
                 Hyprland.refreshMonitors();
                 root.refreshWorkspaceRules();
+                rulesSettleTimer.restart();
             }
         }
     }
