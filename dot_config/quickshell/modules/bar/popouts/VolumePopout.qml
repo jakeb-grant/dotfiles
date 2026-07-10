@@ -286,6 +286,71 @@ PopoutColumn {
         }
     }
 
+    Separator {
+        visible: sourceRepeater.count > 0
+    }
+
+    SectionLabel {
+        text: "Input"
+        visible: sourceRepeater.count > 0
+    }
+
+    Column {
+        Layout.fillWidth: true
+        spacing: Utils.Theme.spacingTiny
+        visible: sourceRepeater.count > 0
+
+        Repeater {
+            id: sourceRepeater
+            model: Services.Audio.sources
+
+            delegate: ListRow {
+                id: sourceDelegate
+
+                required property var modelData
+
+                readonly property bool isDefault: modelData === Pipewire.defaultAudioSource
+
+                width: parent?.width ?? 0
+                interactive: !isDefault
+                onClicked: Services.Audio.setSource(modelData)
+
+                // Device type icon
+                Utils.MaterialIcon {
+                    text: {
+                        const desc = (sourceDelegate.modelData.description ?? "").toLowerCase();
+                        if (desc.includes("headphone") || desc.includes("headset")) return "headset_mic";
+                        if (desc.includes("webcam") || desc.includes("camera")) return "videocam";
+                        return "mic";
+                    }
+                    font.pixelSize: Utils.Theme.iconSizeSmall
+                    color: sourceDelegate.isDefault ? Utils.Theme.accent : Utils.Theme.subtleText
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                // Device name
+                Text {
+                    text: sourceDelegate.modelData.description || sourceDelegate.modelData.nickname || sourceDelegate.modelData.name || "Unknown"
+                    font.family: Utils.Theme.fontFamily
+                    font.pixelSize: Utils.Theme.listFontSize
+                    color: Utils.Theme.text
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                }
+
+                // Active check
+                Utils.MaterialIcon {
+                    visible: sourceDelegate.isDefault
+                    text: "check"
+                    font.pixelSize: Utils.Theme.headerFontSize
+                    color: Utils.Theme.accent
+                    Layout.alignment: Qt.AlignVCenter
+                }
+            }
+        }
+    }
+
     function _formatTime(seconds: real): string {
         if (seconds <= 0) return "0:00";
         const m = Math.floor(seconds / 60);

@@ -34,6 +34,18 @@ Singleton {
         return result;
     }
 
+    // All physical capture devices. Matched on the exact AudioSource flag —
+    // a webcam also exposes a VideoSource node that a looser filter would catch.
+    readonly property var sources: {
+        const result = [];
+        const nodes = Pipewire.nodes.values;
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            if (n.type === PwNodeType.AudioSource) result.push(n);
+        }
+        return result;
+    }
+
     function toggleMute(): void {
         if (sink?.audio)
             sink.audio.muted = !sink.audio.muted;
@@ -53,7 +65,11 @@ Singleton {
         Pipewire.preferredDefaultAudioSink = node;
     }
 
+    function setSource(node: PwNode): void {
+        Pipewire.preferredDefaultAudioSource = node;
+    }
+
     PwObjectTracker {
-        objects: root.sinks.concat([root.sink, root.source])
+        objects: root.sinks.concat(root.sources).concat([root.sink, root.source])
     }
 }
