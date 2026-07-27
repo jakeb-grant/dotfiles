@@ -1,5 +1,5 @@
 ---
-name: writing-skill
+name: writing-voice
 description: Write and revise prose in Jacob's voice — simple, elegant, teaching-first analytical writing, scaled by length from Slack messages to full papers. Use for papers, docs, memos, client letters, emails, blog posts, and any prose Jacob publishes under his own name; also for revising or critiquing a draft Jacob wrote.
 ---
 
