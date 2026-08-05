@@ -188,7 +188,10 @@ Rectangle {
                 }
                 fillMode: Image.PreserveAspectFit
                 visible: status === Image.Ready
-                asynchronous: true
+                // Deliberately synchronous. An async source routes image://icon/
+                // requests onto the QQuickPixmapReader thread, where the provider's
+                // QIcon::pixmap() call is not thread-safe and aborts the process.
+                // These are 48px icons; loading them on the GUI thread is free.
                 sourceSize: Qt.size(48, 48)
             }
 

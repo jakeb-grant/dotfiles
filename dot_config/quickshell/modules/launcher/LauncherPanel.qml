@@ -158,12 +158,29 @@ ColumnLayout {
                         // Icon from desktop entry or named icon; _iconUrl is a
                         // ready image URL (tray items) used as-is — iconPath
                         // only resolves theme icon *names*.
+                        //
+                        // Existence is checked against IconCache, not via
+                        // Quickshell.iconPath(name, true): the `check` argument runs
+                        // QIcon::fromTheme on the GUI thread, and a desktop-entry
+                        // rescan fires hundreds of those while the pixmap reader
+                        // thread is inside the icon provider's own QIcon calls.
+                        // Concurrent access to Qt's global icon cache aborts the
+                        // process. Gating here keeps all QIcon use on one thread.
                         Image {
                             id: appIcon
-                            source: (item.modelData._iconUrl ?? "").length > 0
-                                ? item.modelData._iconUrl
-                                : ((item.modelData.icon ?? "").length > 0
-                                    ? Quickshell.iconPath(item.modelData.icon, true) : "")
+                            source: {
+                                // Registers a dependency: IconCache.icons is mutated
+                                // in place and emits no change signal on its own.
+                                const _rev = Services.IconCache.revision;
+
+                                const ready = item.modelData._iconUrl ?? "";
+                                if (ready.length > 0)
+                                    return ready;
+
+                                const name = item.modelData.icon ?? "";
+                                return Services.IconCache.has(name)
+                                    ? Quickshell.iconPath(name) : "";
+                            }
                             sourceSize.width: Utils.Theme.iconSize
                             sourceSize.height: Utils.Theme.iconSize
                             Layout.preferredWidth: Utils.Theme.iconSize
