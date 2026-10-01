@@ -1,0 +1,7 @@
+# Managed by chezmoi (run_onchange_after_setup-ipu7-camera.sh)
+# Hide the raw IPU7 ISYS capture nodes from desktop apps. They advertise
+# YUYV/UYVY, so Chromium/Electron list all 32 as cameras, but they only carry
+# raw Bayer. Only ipu7-camera-relay.service (group ipu7cam) may open them.
+# Ordered after 70-uaccess.rules adds the tag and before 73-seat-late.rules
+# turns it into a session ACL.
+SUBSYSTEM=="video4linux", ATTR{name}=="Intel IPU7 ISYS Capture *", GROUP="ipu7cam", MODE="0660", TAG-="uaccess"

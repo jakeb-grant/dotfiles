@@ -1,0 +1,120 @@
+#!/bin/bash
+# Set up the Intel IPU7 integrated camera (OV08X40 sensor, e.g. Dell XPS 16
+# DA16260) for apps that only speak V4L2, like Slack/Electron.
+#
+# The sensor is MIPI, not UVC: its /dev/video* nodes emit raw Bayer that only
+# libcamera can turn into video. ipu7-camera-relay.service pipes libcamera into
+# a v4l2loopback device ("Integrated Camera", /dev/video50) on demand, and a
+# udev rule hides the raw nodes so apps can't pick them.
+#
+# The /etc files are rendered from .chezmoitemplates/ipu7-camera/, so editing
+# any of them changes this script and re-runs it. Packages come from
+# arch-quickstart's package lists; this script only wires them up. "after" so
+# the WirePlumber rules and check script are already deployed.
+#
+# check script: {{ include "dot_local/bin/executable_ipu7-camera-check" | sha256sum }}
+# wireplumber rules: {{ include "dot_config/wireplumber/wireplumber.conf.d/50-ipu7-camera.conf" | sha256sum }}
+
+set -e
+
+# Gate on firmware-described hardware, not on drivers having bound: a boot
+# where IPU7 or the sensor failed to probe mustn't record "no camera" forever.
+# PCI 8086:b05d is the Panther Lake IPU7; OVTI08F4 is the OV08X40's ACPI HID.
+if ! grep -qsx 0xb05d /sys/bus/pci/devices/*/device || ! compgen -G '/sys/bus/acpi/devices/OVTI08F4:*' > /dev/null; then
+    echo "No IPU7 / OV08X40 camera, skipping camera relay setup."
+    exit 0
+fi
+
+PACKAGES=(libcamera libcamera-ipa gst-plugin-libcamera gst-plugins-good v4l2loopback-dkms v4l-utils v4l2-relayd)
+missing=()
+for pkg in "${PACKAGES[@]}"; do
+    pacman -Q "$pkg" &>/dev/null || missing+=("$pkg")
+done
+if [ ${#missing[@]} -gt 0 ]; then
+    # Non-zero exit leaves this script unrecorded, so the next apply retries
+    echo "Camera relay setup needs: ${missing[*]}" >&2
+    echo "Install them (v4l2-relayd is AUR: yay -S v4l2-relayd), then re-run chezmoi apply." >&2
+    exit 1
+fi
+
+echo "Setting up IPU7 camera relay..."
+echo "This requires sudo access."
+
+# Only write when content differs, so unchanged reruns don't touch /etc.
+# Returns 0 when the file was (re)written.
+write_if_changed() {
+    local path="$1" content="$2"
+    [ "$(cat "$path" 2>/dev/null)" = "$content" ] && return 1
+    # || exit: set -e doesn't apply inside a function called from && / ||
+    printf '%s\n' "$content" | sudo tee "$path" > /dev/null || exit 1
+    sudo chmod 644 "$path" || exit 1
+    echo "  Wrote $path"
+}
+
+write_if_changed /etc/sysusers.d/ipu7-camera.conf "$(cat <<'EOF'
+{{ template "ipu7-camera/sysusers.conf" . }}
+EOF
+)" || true
+write_if_changed /etc/udev/rules.d/72-ipu7-camera.rules "$(cat <<'EOF'
+{{ template "ipu7-camera/udev.rules" . }}
+EOF
+)" || true
+modprobe_changed=false
+write_if_changed /etc/modprobe.d/ipu7-camera-loopback.conf "$(cat <<'EOF'
+{{ template "ipu7-camera/modprobe.conf" . }}
+EOF
+)" && modprobe_changed=true
+write_if_changed /etc/modules-load.d/ipu7-camera-loopback.conf "$(cat <<'EOF'
+{{ template "ipu7-camera/modules-load.conf" . }}
+EOF
+)" || true
+write_if_changed /etc/systemd/system/ipu7-camera-relay.service "$(cat <<'EOF'
+{{ template "ipu7-camera/relay.service" . }}
+EOF
+)" || true
+
+sudo systemd-sysusers /etc/sysusers.d/ipu7-camera.conf
+sudo systemctl enable ipu7-camera-relay.service
+
+# Installer runs chezmoi inside arch-chroot, where the kernel and systemd are
+# the live ISO's (arch-chroot bind-mounts its /run, so only detect-virt can
+# tell; it needs root to compare /proc/1/root). The files above take effect
+# on first boot.
+if sudo systemd-detect-virt -q --chroot; then
+    echo "Not booted into this system (chroot); camera relay starts on first boot."
+    exit 0
+fi
+
+sudo systemctl daemon-reload
+sudo udevadm control --reload
+sudo udevadm trigger --subsystem-match=video4linux --action=change
+udevadm settle
+# Untagging doesn't revoke an ACL the session already got; drop it so the raw
+# nodes match what a fresh boot gives (a reboot would do the same)
+for dev in /sys/class/video4linux/video*; do
+    if [[ "$(cat "$dev/name")" == "Intel IPU7 ISYS Capture "* ]]; then
+        sudo setfacl -b "/dev/${dev##*/}"
+    fi
+done
+
+# A module loaded with other options (e.g. by v4l2-relayd's own modules-load.d
+# entry before ours existed) has to be reloaded to pick ours up
+if $modprobe_changed || [ "$(cat /sys/class/video4linux/video50/name 2>/dev/null)" != "Integrated Camera" ]; then
+    sudo systemctl stop ipu7-camera-relay.service
+    if lsmod | grep -q '^v4l2loopback '; then
+        if ! sudo modprobe -r v4l2loopback; then
+            echo "v4l2loopback is in use by another program; reboot to finish camera setup." >&2
+            exit 1
+        fi
+    fi
+    sudo modprobe v4l2loopback
+fi
+
+sudo systemctl restart ipu7-camera-relay.service
+# Pick up the rules hiding the raw ipu7 / libcamera nodes; after the relay so
+# the loopback already advertises capture when WirePlumber enumerates it
+systemctl --user restart wireplumber
+
+# Diagnostic only: a failure shouldn't leave this script unrecorded, or every
+# apply would restart WirePlumber and the relay again
+"$HOME/.local/bin/ipu7-camera-check" || echo "Camera check failed (see above); re-run ipu7-camera-check after fixing." >&2

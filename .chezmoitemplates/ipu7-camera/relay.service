@@ -1,0 +1,30 @@
+# Managed by chezmoi (run_onchange_after_setup-ipu7-camera.sh)
+[Unit]
+Description=Intel IPU7 camera relay (libcamera -> v4l2loopback "Integrated Camera")
+After=systemd-modules-load.service
+ConditionPathExists=/dev/video50
+
+[Service]
+# A system service so it can hold the ipu7cam group (the raw ISYS nodes) that
+# the login session deliberately lacks, and kvm for libcamera's /dev/udmabuf
+# buffers. Runs as the desktop user so Mesa's shader cache lives in $HOME.
+User={{ .chezmoi.username }}
+SupplementaryGroups=ipu7cam kvm
+# v4l2-relayd runs the input pipeline only while a client has /dev/video50
+# open, and the black splash otherwise, so the sensor is off between calls.
+#
+# Input: request 2560x1440 so libcamera keeps the sensor in its full
+# 3856x2176 mode (the binned mode crashes libcamera 0.7.2's software ISP),
+# then scale down and rotate; the sensor is mounted upside down but firmware
+# reports rotation 0.
+ExecStart=/usr/bin/v4l2-relayd \
+    -i "libcamerasrc ! video/x-raw,width=2560,height=1440 ! videoscale ! video/x-raw,width=1280,height=720 ! videoflip method=rotate-180 ! videoconvert" \
+    -s "videotestsrc is-live=true pattern=black" \
+    -o "appsrc name=appsrc caps=video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1 ! v4l2sink name=v4l2sink device=/dev/video50 sync=false"
+# always: v4l2-relayd exits 0 when its output pipeline errors (e.g. after a
+# v4l2loopback reload), and /dev/video50 is useless to apps without it
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,140 @@
+#!/bin/bash
+# Verify the Intel IPU7 integrated-camera relay end to end: hardware, packages,
+# v4l2loopback device, raw-node hiding, relay service, WirePlumber rules, and a
+# live capture.
+# Run after kernel/libcamera updates; run_onchange_after_setup-ipu7-camera.sh
+# also runs it on every setup change.
+# Usage: ipu7-camera-check   (exit 0 = all checks passed)
+
+# no -e: every check reports its own result and the script keeps going
+set -uo pipefail
+
+DEV=/dev/video50
+LABEL="Integrated Camera"
+SERVICE=ipu7-camera-relay.service
+FRAMES=60
+SNAPSHOT="${XDG_RUNTIME_DIR:-/tmp}/ipu7-camera-check.jpg"
+PACKAGES=(libcamera libcamera-ipa gst-plugin-libcamera gst-plugins-good v4l2loopback-dkms v4l-utils v4l2-relayd imagemagick)
+
+failures=0
+pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; }
+fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; failures=$((failures + 1)); }
+info() { printf '       %s\n' "$1"; }
+
+echo "Hardware"
+if [ -d /sys/bus/pci/drivers/intel-ipu7 ] && grep -qs '^ov08x40 ' /sys/class/video4linux/v4l-subdev*/name; then
+    pass "IPU7 with OV08X40 sensor"
+else
+    fail "IPU7 / OV08X40 not found — this machine doesn't need the relay"
+    exit 1
+fi
+
+echo "Packages"
+missing=()
+for pkg in "${PACKAGES[@]}"; do
+    pacman -Q "$pkg" &>/dev/null || missing+=("$pkg")
+done
+if [ ${#missing[@]} -eq 0 ]; then
+    pass "all installed"
+else
+    fail "missing: ${missing[*]}"
+fi
+
+echo "Loopback device"
+if [ -e "$DEV" ] && [ "$(cat "/sys/class/video4linux/${DEV#/dev/}/name" 2>/dev/null)" = "$LABEL" ]; then
+    pass "$DEV is \"$LABEL\""
+else
+    fail "$DEV missing or not \"$LABEL\" (is v4l2loopback loaded with /etc/modprobe.d/ipu7-camera-loopback.conf?)"
+fi
+# exclusive_caps makes the device advertise CAPTURE only, which Chromium needs
+if [[ "$(cat /sys/module/v4l2loopback/parameters/exclusive_caps 2>/dev/null)" == Y* ]]; then
+    pass "exclusive_caps enabled"
+else
+    fail "exclusive_caps not enabled — Chromium/Electron won't list the device"
+fi
+
+echo "Raw capture nodes"
+# udev hands /dev/video0-31 to group ipu7cam with no session ACL, so
+# Chromium/Electron can't list them as cameras
+raw=0 exposed=()
+for dev in /sys/class/video4linux/video*; do
+    [[ "$(cat "$dev/name")" == "Intel IPU7 ISYS Capture "* ]] || continue
+    raw=$((raw + 1))
+    node="/dev/${dev##*/}"
+    [ "$(stat -c %G "$node")" = ipu7cam ] && ! [ -r "$node" ] || exposed+=("$node")
+done
+if [ "$raw" -gt 0 ] && [ ${#exposed[@]} -eq 0 ]; then
+    pass "$raw raw nodes hidden from this session (group ipu7cam)"
+elif [ "$raw" -eq 0 ]; then
+    fail "no raw IPU7 capture nodes — intel_ipu7_isys not loaded?"
+else
+    fail "${#exposed[@]} raw nodes still openable by this session, e.g. ${exposed[0]} (/etc/udev/rules.d/72-ipu7-camera.rules)"
+fi
+
+echo "Relay service"
+if systemctl is-enabled --quiet "$SERVICE" && systemctl is-active --quiet "$SERVICE"; then
+    pass "$SERVICE enabled and active"
+else
+    fail "$SERVICE not enabled/active (systemctl status $SERVICE)"
+fi
+
+echo "WirePlumber rules"
+# Device enumeration lags a WirePlumber restart; give it a few seconds
+video=""
+for _ in 1 2 3 4 5; do
+    video=$(wpctl status 2>/dev/null | sed -n '/^Video/,/^Settings/p')
+    grep -q "$LABEL" <<<"$video" && break
+    sleep 1
+done
+if grep -qE 'ipu7|ov08x40' <<<"$video"; then
+    fail "raw ipu7 / libcamera nodes still visible in PipeWire"
+else
+    pass "raw ipu7 and libcamera nodes hidden"
+fi
+# Informational: Slack/Electron open V4L2 directly; only PipeWire-camera apps
+# (portal browsers) depend on this
+if grep -q "$LABEL" <<<"$video"; then
+    pass "\"$LABEL\" visible in PipeWire"
+else
+    info "\"$LABEL\" not in PipeWire (only matters for PipeWire-camera apps; systemctl --user restart wireplumber)"
+fi
+
+echo "Live capture"
+restarts_before=$(systemctl show -p NRestarts --value "$SERVICE")
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+start=$(date +%s.%N)
+if timeout 20 gst-launch-1.0 -q v4l2src device="$DEV" num-buffers="$FRAMES" \
+        ! jpegenc ! multifilesink location="$tmp/%03d.jpg" &>"$tmp/gst.log"; then
+    elapsed=$(awk -v s="$start" -v e="$(date +%s.%N)" 'BEGIN { printf "%.1f", e - s }')
+    pass "$FRAMES frames in ${elapsed}s (includes sensor start-up)"
+    last=$(ls "$tmp"/*.jpg | tail -1)
+    cp "$last" "$SNAPSHOT"
+    # The relay emits black splash frames when the camera isn't feeding it
+    mean=$(magick "$last" -colorspace gray -format '%[fx:mean]' info: 2>/dev/null)
+    if [ -z "$mean" ]; then
+        fail "couldn't measure brightness (is imagemagick installed?)"
+    elif awk -v m="$mean" 'BEGIN { exit !(m > 0.03) }'; then
+        pass "image has content (mean brightness $mean)"
+    else
+        fail "image is black (mean brightness $mean) — relay is showing its splash, or the room is dark"
+    fi
+    info "snapshot: $SNAPSHOT — check it's upright"
+else
+    fail "capture from $DEV failed or timed out"
+    info "$(tail -3 "$tmp/gst.log")"
+fi
+# A libcamera abort (e.g. the binned-mode assertion) restarts the relay
+if [ "$(systemctl show -p NRestarts --value "$SERVICE")" = "$restarts_before" ]; then
+    pass "relay didn't crash during capture"
+else
+    fail "relay restarted during capture (journalctl -u $SERVICE)"
+fi
+
+echo
+if [ "$failures" -eq 0 ]; then
+    echo "All checks passed."
+else
+    echo "$failures check(s) failed."
+fi
+exit $((failures > 0))
