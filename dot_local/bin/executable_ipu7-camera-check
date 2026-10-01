@@ -105,7 +105,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 start=$(date +%s.%N)
 if timeout 20 gst-launch-1.0 -q v4l2src device="$DEV" num-buffers="$FRAMES" \
-        ! jpegenc ! multifilesink location="$tmp/%03d.jpg" &>"$tmp/gst.log"; then
+        ! videoconvert ! jpegenc ! multifilesink location="$tmp/%03d.jpg" &>"$tmp/gst.log"; then
     elapsed=$(awk -v s="$start" -v e="$(date +%s.%N)" 'BEGIN { printf "%.1f", e - s }')
     pass "$FRAMES frames in ${elapsed}s (includes sensor start-up)"
     last=$(ls "$tmp"/*.jpg | tail -1)

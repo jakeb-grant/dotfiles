@@ -17,10 +17,15 @@ SupplementaryGroups=ipu7cam kvm
 # 3856x2176 mode (the binned mode crashes libcamera 0.7.2's software ISP),
 # then scale down and rotate; the sensor is mounted upside down but firmware
 # reports rotation 0.
+# v4l2loopback keeps whatever output format it last had (640x480 BGRx after
+# load) and v4l2sink won't renegotiate it, so pin it before the relay opens it
+ExecStartPre=/usr/bin/v4l2-ctl --device=/dev/video50 --set-fmt-video-out=width=1280,height=720,pixelformat=YUYV
+# videoconvert before v4l2sink: the device wants bt601 colorimetry, while
+# GStreamer defaults 720p YUY2 to bt709 and the bare caps fail to negotiate
 ExecStart=/usr/bin/v4l2-relayd \
     -i "libcamerasrc ! video/x-raw,width=2560,height=1440 ! videoscale ! video/x-raw,width=1280,height=720 ! videoflip method=rotate-180 ! videoconvert" \
     -s "videotestsrc is-live=true pattern=black" \
-    -o "appsrc name=appsrc caps=video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1 ! v4l2sink name=v4l2sink device=/dev/video50 sync=false"
+    -o "appsrc name=appsrc caps=video/x-raw,format=YUY2,width=1280,height=720,framerate=30/1 ! videoconvert ! v4l2sink name=v4l2sink device=/dev/video50 sync=false"
 # always: v4l2-relayd exits 0 when its output pipeline errors (e.g. after a
 # v4l2loopback reload), and /dev/video50 is useless to apps without it
 Restart=always
