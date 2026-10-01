@@ -46,6 +46,7 @@ write_if_changed() {
     local path="$1" content="$2"
     [ "$(cat "$path" 2>/dev/null)" = "$content" ] && return 1
     # || exit: set -e doesn't apply inside a function called from && / ||
+    sudo mkdir -p "$(dirname "$path")" || exit 1
     printf '%s\n' "$content" | sudo tee "$path" > /dev/null || exit 1
     sudo chmod 644 "$path" || exit 1
     echo "  Wrote $path"
