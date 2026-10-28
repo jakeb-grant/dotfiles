@@ -3,7 +3,7 @@
 ## Current state (as of 2026-05-14)
 
 - **Lock at 10 min idle** → `loginctl lock-session` → quickshell lock surface
-- **Displays off at 30 min idle** → `hyprctl dispatch 'hl.dsp.dpms("off")'` (kept longer than the lock timeout so the lockscreen stays visible for ~20 min before screens sleep)
+- **Displays off at 30 min idle** → `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'` (kept longer than the lock timeout so the lockscreen stays visible for ~20 min before screens sleep)
 - **No auto-suspend.** Intentionally removed.
 
 ## Why no auto-suspend
