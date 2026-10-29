@@ -20,3 +20,6 @@ alias grep='grep --color=auto'
 
 # fnm (Fast Node Manager)
 command -v fnm >/dev/null && eval "$(fnm env)"
+
+# Railway CLI
+[[ -f "$HOME/.railway/env" ]] && source "$HOME/.railway/env"
