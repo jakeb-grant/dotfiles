@@ -464,6 +464,7 @@ panel Launcher {
   on key "alt+r" { view = tray_list; query = ""; armed = ""; problem = "" }
   on key "alt+m" { view = media_list; query = ""; armed = ""; problem = "" }
   on key "alt+k" { view = keys_list; query = ""; armed = ""; problem = "" }
+  on key "alt+d" { if drives.all.len > 0 { view = drives_list; query = ""; armed = ""; problem = "" } }
   // on the Tray page: Right opens the selected app's menu here, Left goes back out
   when picked_tray != null && (picked_tray?.menu?.items?.len ?? 0) > 0 {
     on key "right" { tray_open = picked_tray?.id ?? ""; tray_sub = null; query = ""; picked_tray?.menu?.open() }
@@ -701,23 +702,31 @@ panel Launcher {
       // the keys of the page, and while Alt is held every page's letter in their
       // place: one over the other, crossfading, so neither moves the other
       stack { height: hint_h; shrink: 0
-        // Alt held: every page's letter (a click goes there too)
-        row { pad: 0, 14; gap: 9; align: center
+        // Alt held: every page's letter (a click goes there too); at home the
+        // pages' rows carry their own, lit
+        row { pad: 0, 14; gap: 14; align: center
           opacity: (keyboard.alt ? 1 : 0) ~ hint_fade
           when !keyboard.alt { hit: none }
-          Jump "A" { name: "apps"; to: app_list }
-          Jump "W" { name: "spaces"; to: spaces }
-          Jump "N" { name: "wi-fi"; to: wifi }
-          Jump "B" { name: "bluetooth"; to: bt }
-          Jump "S" { name: "sound"; to: sound }
-          Jump "C" { name: "clips"; to: clips }
-          Jump "I" { name: "inbox"; to: notes }
-          Jump "T" { name: "themes"; to: theme_list }
-          Jump "L" { name: "walls"; to: wall_list }
-          Jump "R" { name: "tray"; to: tray_list }
-          Jump "M" { name: "media"; to: media_list }
-          Jump "K" { name: "keys"; to: keys_list }
-          Jump "P" { name: "power"; to: power }
+          if view == home {
+            Cap "Alt"
+            text "and a page's letter opens it" { color: $fg.alpha(0.5); font: sans 11px 500 }
+          } else {
+            Cap "Alt"
+            Jump "A" { glyph: "apps"; to: app_list }
+            Jump "W" { glyph: "space_dashboard"; to: spaces }
+            Jump "N" { glyph: "wifi"; to: wifi }
+            Jump "B" { glyph: "bluetooth"; to: bt }
+            Jump "S" { glyph: "volume_up"; to: sound }
+            Jump "C" { glyph: "content_paste"; to: clips }
+            Jump "I" { glyph: "notifications"; to: notes }
+            Jump "T" { glyph: "palette"; to: theme_list }
+            Jump "L" { glyph: "wallpaper"; to: wall_list }
+            if tray.items.len > 0 { Jump "R" { glyph: "widgets"; to: tray_list } }
+            if media.players.len > 0 { Jump "M" { glyph: "music_note"; to: media_list } }
+            if drives.all.len > 0 { Jump "D" { glyph: "usb"; to: drives_list } }
+            Jump "K" { glyph: "keyboard"; to: keys_list }
+            Jump "P" { glyph: "power_settings_new"; to: power }
+          }
         }
         row { pad: 0, 14; gap: 14; align: center
           opacity: (keyboard.alt ? 0 : 1) ~ hint_fade
@@ -804,12 +813,13 @@ component Cap(key: text) {
     border: 1, $fg.alpha(0.18); align: center }
 }
 
-// one part's letter in the hint row: Alt and it, or a click, goes there
-component Jump(letter: text, name: text, to: View) {
-  row { id: j; gap: 3; shrink: 0; align: center; cursor: pointer
+// one part's letter in the hint row, after its icon (its row's at home): Alt
+// and it, or a click, goes there
+component Jump(letter: text, glyph: text, to: View) {
+  row { id: j; gap: 4; shrink: 0; align: center; cursor: pointer
     on click { view = to; query = ""; armed = ""; problem = "" }
+    text glyph { font: "Material Symbols Rounded" 15; color: (view == to ? $accent : j.hover ? $fg.alpha(0.85) : $fg.alpha(0.55)) }
     text letter { color: (view == to ? $accent : $fg.alpha(0.8)); font: mono 10px 700 }
-    text name { color: (j.hover ? $fg.alpha(0.85) : $fg.alpha(0.5)); font: sans 11px 500 }
   }
 }
 
@@ -853,8 +863,31 @@ component Part(c: Command) {
     on activate { query = ""; armed = ""; problem = ""; view = view_of(c.id) }
     Glyph c.glyph
     text c.name { color: $fg; grow: 1 }
+    PartKey part_letter(c.id)
+  }
+}
+
+// a page's Alt letter, at the end of its row: quiet, lit while Alt is held
+component PartKey(l: text) {
+  if l != "" {
+    row { gap: 3; shrink: 0; align: center
+      for k in ["Alt", l] key k {
+        text k { font: mono 10px 700; height: 16; pad: 0, 4; radius: 4; shrink: 0; align: center
+          color: (keyboard.alt ? $accent : $fg.alpha(0.5)) ~ hint_fade
+          border: 1, $fg.alpha(0.16)
+          when keyboard.alt { border: 1, $accent.alpha(0.45) }
+        }
+      }
+    }
+  } else {
     text "›" { color: $fg.alpha(0.5); shrink: 0 }
   }
+}
+
+fn part_letter(id: text) -> text {
+  id == "apps" ? "A" : id == "spaces" ? "W" : id == "wifi" ? "N" : id == "bt" ? "B" : id == "sound" ? "S"
+    : id == "clips" ? "C" : id == "notes" ? "I" : id == "themes" ? "T" : id == "walls" ? "L" : id == "tray" ? "R"
+    : id == "media" ? "M" : id == "drives" ? "D" : id == "keys" ? "K" : id == "power" ? "P" : ""
 }
 
 // starts or stops a recording of the focused monitor (record.strand); it folds
