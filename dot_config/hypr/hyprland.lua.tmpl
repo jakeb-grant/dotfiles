@@ -78,80 +78,83 @@ end)
 -- ------------------------------------------------------------------------------
 -- Keybindings
 -- ------------------------------------------------------------------------------
+-- Each bind's description, "Group: what it does", is what the Strand launcher's
+-- Keys page lists (it reads `hyprctl binds -j`): binds sharing one are shown as
+-- one line. A bind without one is listed under Other.
 
 -- Applications
-hl.bind(mod .. " + Space",         hl.dsp.exec_cmd("strand toggle launcher.open"))
-hl.bind(mod .. " + Return",        hl.dsp.exec_cmd(terminal))
-hl.bind(mod .. " + SHIFT + B",     hl.dsp.exec_cmd("xdg-open https://"))
-hl.bind(mod .. " + SHIFT + F",     hl.dsp.exec_cmd(file_manager))
-hl.bind(mod .. " + SHIFT + Z",     hl.dsp.exec_cmd(editor))
+hl.bind(mod .. " + Space",         hl.dsp.exec_cmd("strand toggle launcher.open"), { description = "Shell: Launcher" })
+hl.bind(mod .. " + Return",        hl.dsp.exec_cmd(terminal), { description = "Apps: Terminal" })
+hl.bind(mod .. " + SHIFT + B",     hl.dsp.exec_cmd("xdg-open https://"), { description = "Apps: Browser" })
+hl.bind(mod .. " + SHIFT + F",     hl.dsp.exec_cmd(file_manager), { description = "Apps: Files" })
+hl.bind(mod .. " + SHIFT + Z",     hl.dsp.exec_cmd(editor), { description = "Apps: Editor" })
 
 -- Window management
-hl.bind(mod .. " + W", hl.dsp.window.close())
-hl.bind(mod .. " + T", hl.dsp.window.float({ action = "toggle" }))
-hl.bind(mod .. " + O", hl.dsp.window.pin())
-hl.bind(mod .. " + P", hl.dsp.window.pseudo())
-hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"))
-hl.bind(mod .. " + F", hl.dsp.window.fullscreen())
-hl.bind(mod .. " + L", hl.dsp.exec_cmd("loginctl lock-session"))
+hl.bind(mod .. " + W", hl.dsp.window.close(), { description = "Windows: Close" })
+hl.bind(mod .. " + T", hl.dsp.window.float({ action = "toggle" }), { description = "Windows: Float or tile" })
+hl.bind(mod .. " + O", hl.dsp.window.pin(), { description = "Windows: Pin to every workspace" })
+hl.bind(mod .. " + P", hl.dsp.window.pseudo(), { description = "Windows: Pseudo-tile" })
+hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"), { description = "Windows: Turn the split" })
+hl.bind(mod .. " + F", hl.dsp.window.fullscreen(), { description = "Windows: Fullscreen" })
+hl.bind(mod .. " + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Shell: Lock" })
 
 -- Notifications (Strand: the one showing, or every one waiting)
-hl.bind(mod .. " + comma",         hl.dsp.exec_cmd("strand toggle notify.clear_key"))
-hl.bind(mod .. " + SHIFT + comma", hl.dsp.exec_cmd("strand toggle notify.clear_all_key"))
+hl.bind(mod .. " + comma",         hl.dsp.exec_cmd("strand toggle notify.clear_key"), { description = "Shell: Clear the notification" })
+hl.bind(mod .. " + SHIFT + comma", hl.dsp.exec_cmd("strand toggle notify.clear_all_key"), { description = "Shell: Clear every notification" })
 
 -- Move focus + swap windows with arrow keys
 local dirs = { left = "l", right = "r", up = "u", down = "d" }
 for key, d in pairs(dirs) do
-  hl.bind(mod .. " + " .. key,         hl.dsp.focus({ direction = d }))
-  hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = d }))
+  hl.bind(mod .. " + " .. key,         hl.dsp.focus({ direction = d }), { description = "Arrange: Focus" })
+  hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = d }), { description = "Arrange: Swap" })
 end
 
 -- Resize windows (relative = true for delta-style resize, matching the legacy
 -- `resizeactive 50 0` behavior; without the flag, x/y are treated as absolute).
-hl.bind(mod .. " + equal",         hl.dsp.window.resize({ x =  50, y =   0, relative = true }), { repeating = true })
-hl.bind(mod .. " + minus",         hl.dsp.window.resize({ x = -50, y =   0, relative = true }), { repeating = true })
-hl.bind(mod .. " + SHIFT + equal", hl.dsp.window.resize({ x =   0, y =  50, relative = true }), { repeating = true })
-hl.bind(mod .. " + SHIFT + minus", hl.dsp.window.resize({ x =   0, y = -50, relative = true }), { repeating = true })
+hl.bind(mod .. " + equal",         hl.dsp.window.resize({ x =  50, y =   0, relative = true }), { description = "Arrange: Wider or narrower", repeating = true })
+hl.bind(mod .. " + minus",         hl.dsp.window.resize({ x = -50, y =   0, relative = true }), { description = "Arrange: Wider or narrower", repeating = true })
+hl.bind(mod .. " + SHIFT + equal", hl.dsp.window.resize({ x =   0, y =  50, relative = true }), { description = "Arrange: Taller or shorter", repeating = true })
+hl.bind(mod .. " + SHIFT + minus", hl.dsp.window.resize({ x =   0, y = -50, relative = true }), { description = "Arrange: Taller or shorter", repeating = true })
 
 -- Switch workspaces + move active window to workspace
 for digit = 0, 9 do
   local ws  = digit == 0 and 10 or digit
   local key = tostring(digit)
-  hl.bind(mod .. " + " .. key,         hl.dsp.focus({ workspace = ws }))
-  hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = ws }))
+  hl.bind(mod .. " + " .. key,         hl.dsp.focus({ workspace = ws }), { description = "Workspaces: Go to" })
+  hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = ws }), { description = "Workspaces: Send the window to" })
 end
-hl.bind(mod .. " + Tab",         hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "e-1" }))
-hl.bind(mod .. " + CTRL + Tab",  hl.dsp.focus({ workspace = "previous" }))
+hl.bind(mod .. " + Tab",         hl.dsp.focus({ workspace = "e+1" }), { description = "Workspaces: Next" })
+hl.bind(mod .. " + SHIFT + Tab", hl.dsp.focus({ workspace = "e-1" }), { description = "Workspaces: Previous" })
+hl.bind(mod .. " + CTRL + Tab",  hl.dsp.focus({ workspace = "previous" }), { description = "Workspaces: Last one" })
 
 -- Special workspace (scratchpad)
-hl.bind(mod .. " + S",         hl.dsp.workspace.toggle_special("magic"))
-hl.bind(mod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }))
+hl.bind(mod .. " + S",         hl.dsp.workspace.toggle_special("magic"), { description = "Workspaces: Scratchpad" })
+hl.bind(mod .. " + SHIFT + S", hl.dsp.window.move({ workspace = "special:magic" }), { description = "Workspaces: Send the window to the scratchpad" })
 
 -- Scroll through workspaces
-hl.bind(mod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
-hl.bind(mod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
+hl.bind(mod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }), { description = "Workspaces: Next" })
+hl.bind(mod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }), { description = "Workspaces: Previous" })
 
 -- Mouse bindings
-hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
-hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { description = "Arrange: Move", mouse = true })
+hl.bind(mod .. " + mouse:273", hl.dsp.window.resize(), { description = "Arrange: Resize", mouse = true })
 
 -- Screenshots (~/.local/bin/screenshot: capture, clipboard, notification)
-hl.bind("Print",         hl.dsp.exec_cmd("screenshot region"))
-hl.bind("SHIFT + Print", hl.dsp.exec_cmd("screenshot full"))
-hl.bind(mod .. " + Print", hl.dsp.exec_cmd("hyprpicker -a"))
+hl.bind("Print",         hl.dsp.exec_cmd("screenshot region"), { description = "Screen: Screenshot of an area" })
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("screenshot full"), { description = "Screen: Screenshot of everything" })
+hl.bind(mod .. " + Print", hl.dsp.exec_cmd("hyprpicker -a"), { description = "Screen: Pick a colour" })
 
 -- Laptop function keys
-hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl set +5%"),                       { repeating = true, locked = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"),                       { repeating = true, locked = true })
-hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"), { repeating = true, locked = true })
-hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),    { repeating = true, locked = true })
-hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),   { repeating = true, locked = true })
-hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { repeating = true, locked = true })
-hl.bind("XF86AudioPlay",         hl.dsp.exec_cmd("strand toggle island.play_key"), { locked = true })
-hl.bind("XF86AudioPause",        hl.dsp.exec_cmd("strand toggle island.play_key"), { locked = true })
-hl.bind("XF86AudioNext",         hl.dsp.exec_cmd("strand toggle island.next_key"), { locked = true })
-hl.bind("XF86AudioPrev",         hl.dsp.exec_cmd("strand toggle island.prev_key"), { locked = true })
+hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl set +5%"),                       { description = "Screen: Brightness", repeating = true, locked = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"),                       { description = "Screen: Brightness", repeating = true, locked = true })
+hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"), { description = "Sound: Volume", repeating = true, locked = true })
+hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),    { description = "Sound: Volume", repeating = true, locked = true })
+hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),   { description = "Sound: Mute", repeating = true, locked = true })
+hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { description = "Sound: Mute the microphone", repeating = true, locked = true })
+hl.bind("XF86AudioPlay",         hl.dsp.exec_cmd("strand toggle island.play_key"), { description = "Sound: Play or pause", locked = true })
+hl.bind("XF86AudioPause",        hl.dsp.exec_cmd("strand toggle island.play_key"), { description = "Sound: Play or pause", locked = true })
+hl.bind("XF86AudioNext",         hl.dsp.exec_cmd("strand toggle island.next_key"), { description = "Sound: Next track", locked = true })
+hl.bind("XF86AudioPrev",         hl.dsp.exec_cmd("strand toggle island.prev_key"), { description = "Sound: Previous track", locked = true })
 
 -- ------------------------------------------------------------------------------
 -- General Settings
