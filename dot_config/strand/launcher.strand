@@ -113,6 +113,7 @@ let list_w   = 380             // and that list
 let row_h    = 36
 let rows     = 8
 let hint_h   = 28
+let hint_fade = 140ms          // the page's keys and the pages' letters, crossfading on Alt
 let box_h    = closed_h + rows * row_h + hint_h
 let gap_top  = 6
 let island_zone = 42           // what the island keeps from windows: this sits over it
@@ -697,27 +698,30 @@ panel Launcher {
       }
       }
 
-      row { height: hint_h; shrink: 0; pad: 0, 14; gap: 14; align: center
-        if keyboard.alt {
-          // Alt held: every page's letter (a click goes there too)
-          row { gap: 11; shrink: 0; align: center
-            enter { opacity: 0 }
-            Cap "Alt"
-            Jump "A" { name: "apps"; to: app_list }
-            Jump "W" { name: "spaces"; to: spaces }
-            Jump "N" { name: "wi-fi"; to: wifi }
-            Jump "B" { name: "bluetooth"; to: bt }
-            Jump "S" { name: "sound"; to: sound }
-            Jump "C" { name: "clips"; to: clips }
-            Jump "I" { name: "inbox"; to: notes }
-            Jump "T" { name: "themes"; to: theme_list }
-            Jump "L" { name: "walls"; to: wall_list }
-            Jump "R" { name: "tray"; to: tray_list }
-            Jump "M" { name: "media"; to: media_list }
-            Jump "K" { name: "keys"; to: keys_list }
-            Jump "P" { name: "power"; to: power }
-          }
-        } else {
+      // the keys of the page, and while Alt is held every page's letter in their
+      // place: one over the other, crossfading, so neither moves the other
+      stack { height: hint_h; shrink: 0
+        // Alt held: every page's letter (a click goes there too)
+        row { pad: 0, 14; gap: 9; align: center
+          opacity: (keyboard.alt ? 1 : 0) ~ hint_fade
+          when !keyboard.alt { hit: none }
+          Jump "A" { name: "apps"; to: app_list }
+          Jump "W" { name: "spaces"; to: spaces }
+          Jump "N" { name: "wi-fi"; to: wifi }
+          Jump "B" { name: "bluetooth"; to: bt }
+          Jump "S" { name: "sound"; to: sound }
+          Jump "C" { name: "clips"; to: clips }
+          Jump "I" { name: "inbox"; to: notes }
+          Jump "T" { name: "themes"; to: theme_list }
+          Jump "L" { name: "walls"; to: wall_list }
+          Jump "R" { name: "tray"; to: tray_list }
+          Jump "M" { name: "media"; to: media_list }
+          Jump "K" { name: "keys"; to: keys_list }
+          Jump "P" { name: "power"; to: power }
+        }
+        row { pad: 0, 14; gap: 14; align: center
+          opacity: (keyboard.alt ? 0 : 1) ~ hint_fade
+          when keyboard.alt { hit: none }
           let enter_what = asked ? asked_does(kind) : on_hidden ? "name it" : enter_does(picked, picked_ap, results.selected_index ?? 0)
           if enter_what != "" { Hint "Enter" { what: enter_what } }
           Hint "Esc" { what: (asked ? "refuse" : asking != "" || naming ? "cancel" : query != "" ? "clear" : view != home ? "back" : "close") }
