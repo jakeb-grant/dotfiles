@@ -30,6 +30,26 @@ where they can show the check is working.
 
 ## Open
 
+### A lock moves to the GPU only to read its frames back, slower than the CPU
+
+Found 2026-11-05 on Strand `3714cc62`, on this laptop (Hyprland, Arc B390, three monitors), with
+`STRAND_LOG=info,damage`.
+
+**What happens:** a lock whose frames change more than 0.2 Mpx while something animates (here a
+full-screen fade) is promoted to the GPU like any surface, but a lock surface is never presented by
+the GPU thread (`raw_handles` refuses it, so the lock's commits never wait on it): it is attached
+for readback. Its first GPU frames took 217, 141 and 76 ms, one monitor after the other, so for about
+400 ms Hyprland showed its own background where the lock should be; then 32 to 40 ms a frame
+against 15 to 18 ms on the CPU, and CPU and GPU frames alternated, the blur drawn differently by
+each, so the lock flickered.
+
+**What it should do:** a lock stays on the CPU (readback buys it nothing), or is presented by the GPU
+like a panel. Either way no frame of it is slower than the CPU's and nothing alternates.
+
+**Worked around:** only the island moves, so no frame of the lock changes more than about 0.13 Mpx
+and it never leaves the CPU: first frame 18 to 20 ms after the request, frames 1.1 ms median and
+3.7 ms p95 on all three monitors.
+
 ### A lock's first frames come before its still of the screen
 
 Found 2026-11-05 on Strand `3714cc62`, in the lock VM (owner_lock scratch test, frames grabbed back
@@ -44,7 +64,7 @@ for its stills (`Feeds::before_map`, `HOLD`); a lock's doesn't.
 **What it should do:** a lock's first frame waits (bounded, like `HOLD`) until its thumbnails have
 their stills, so it can open on the desktop and change from there.
 
-**Worked around:** the lock opens dark and the blurred desktop fades up behind a veil.
+**Worked around:** the lock shows no desktop behind it.
 
 ### Full-screen blur is slow on the GPU, and a backdrop's first draw differs
 
@@ -67,8 +87,7 @@ content as a 1920x1200 overlay panel; probe in Strand's `target/try/notes/lockgp
 nothing after; a backdrop looks the same from its first frame; an animated soft shadow fits in a
 120 Hz frame.
 
-**Worked around:** the backdrop fades in from nothing under the veil (6 to 7 ms median, 9 to 12 ms
-p95, under 20 ms worst), and the card has no shadow.
+**Worked around:** the lock has no blur and the card no shadow (and see the next issue).
 
 ### A `shadow:` inside a lock shrinks the lock and delays it
 
