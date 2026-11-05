@@ -2,9 +2,27 @@
 
 ## Current state (as of 2026-05-14)
 
-- **Lock at 10 min idle** → `loginctl lock-session` → hyprlock (until Strand's own lock is tried on this hardware)
+- **Lock at 10 min idle** → `loginctl lock-session` → Strand's lock screen (`strand/lock.strand`); hyprlock only while Strand isn't running
 - **Displays off at 30 min idle** → `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'` (kept longer than the lock timeout so the lockscreen stays visible for ~20 min before screens sleep)
 - **No auto-suspend.** Intentionally removed.
+
+## Locking, and handing off to hyprlock
+
+Super+L, the launcher's Lock, the idle timeout and sleep all run `loginctl lock-session`. Strand's
+lock follows that request (`on session.lock_requested` in `lock.strand`); hypridle's `lock_cmd`
+starts hyprlock only when no `strand` process is running, so one locker answers. `inhibit_sleep = 3`
+holds sleep until a lock is actually up.
+
+If Strand's lock dies while locked, the session stays locked (Hyprland shows its "lockscreen
+died" screen) and nothing unlocks until another locker takes over. `misc:allow_session_lock_restore`
+in `hyprland.lua.tmpl` lets one:
+
+1. Ctrl+Alt+F2 and log in on the text console.
+2. `hyprctl -i 0 dispatch 'hl.dsp.exec_cmd("hyprlock")'`
+3. Ctrl+Alt+F1 (the session is on VT1) and unlock with hyprlock.
+
+Then start the shell again: `hyprctl dispatch 'hl.dsp.exec_cmd("strand run")'`. If Strand's lock
+itself breaks while it is up, Strand shows its own plain password field instead; that unlocks too.
 
 ## Why no auto-suspend
 

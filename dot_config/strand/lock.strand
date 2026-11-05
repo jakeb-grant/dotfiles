@@ -2,14 +2,14 @@
 // password; Esc empties it. Only your password takes it down. If anything in it breaks,
 // Strand shows its own password field instead. A first, plain version: its look comes later.
 //
-// While it is tried, only `strand set lock.locked true` puts it up: Super+L, idle and
-// sleep still lock with hyprlock. Once it has held, it follows logind as they do:
-//   on session.lock_requested { locked = true }
-// If it ever dies while locked: Ctrl+Alt+F2, log in, then
+// Super+L, the launcher's Lock, idle and sleep all ask logind to lock (loginctl
+// lock-session), and logind's request puts it up; hypridle starts hyprlock instead
+// only while Strand isn't running. If it ever dies while locked: Ctrl+Alt+F2, log in,
 //   hyprctl -i 0 dispatch 'hl.dsp.exec_cmd("hyprlock")'
-// and Ctrl+Alt+F1 back to unlock with hyprlock.
+// and Ctrl+Alt+F1 back to unlock with hyprlock (hypr/README.md).
 
 export state locked = false
+on session.lock_requested { locked = true }
 
 let lock_sans = "IBM Plex Sans"
 let lock_mono = "JetBrainsMono Nerd Font"
