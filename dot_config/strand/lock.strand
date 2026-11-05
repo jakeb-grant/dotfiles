@@ -1,6 +1,6 @@
-// lock.strand: the lock screen, on every monitor. It grows out of the island: the lock
-// opens on a blurred, darkened still of the desktop as it was, the island swells and
-// drops to the middle, and the time, the date and a field for your password come up
+// lock.strand: the lock screen, on every monitor. It grows out of the island: the
+// screen goes dark and the desktop comes back up blurred behind the island as it swells
+// and drops to the middle, and the time, the date and a field for your password come up
 // inside it. Esc empties the field; a wrong password shakes it.
 // Only your password takes it down. If anything in it breaks, Strand shows its own
 // password field instead. Everything you would tune is in the first block.
@@ -35,6 +35,7 @@ let lock_date  = "%A %-d %B"
 let lock_swell = spring(380, 0.86)   // the island growing, with a little give
 let lock_shake = spring(2200, 0.18)  // a refused password
 let lock_mist  = 420ms               // what the island holds coming up
+let lock_dawn  = 360ms               // the desktop coming up behind it
 
 export state locked = false
 on session.lock_requested { locked = true }
@@ -55,57 +56,63 @@ lock {
   open: <-> locked
   bg: lock_ink
   stack { width: screen.width; height: screen.height
-    // the desktop as it was just before locking, blurred and darkened
+    // the desktop as it was just before locking (blurred and darkened by the face)
     thumbnail screen { width: screen.width; height: screen.height; fit: cover }
-    box { width: screen.width; height: screen.height; bg: lock_haze; backdrop: blur(lock_blur) }
     // a new face each lock: it plays its way in from the island on its first frame
     if lock_n % 2 == 0 { LockFace } else { LockFace }
   }
 }
 
 component LockFace {
-  // the island, where island.strand has it, grown and dropped to the middle
-  col { width: screen.width; height: screen.height; align: center; pad: lock_gap_top, 0, 0, 0
-    stack {
-      width: card_w ~ lock_swell
-      height: card_h ~ lock_swell
-      y: (screen.height / 2 - card_h / 2 - lock_gap_top) ~ lock_swell
-      x: (nudge ? 10 : 0) ~ lock_shake
-      enter { width: lock_island_w; height: lock_island_h; y: 0 }
-      // its shadow, a blurred box: a `shadow:` inside a lock shrinks the lock (strand-issues.md)
-      box { width: 100%; height: 100%; y: 16; radius: lock_corner; bg: $shadow.alpha(0.5); filter: blur(22) }
-      stack { width: 100%; height: 100%; clip: true
-        radius: lock_corner; corners: squircle
-        bg: lock_ink; border: 1, lock_edge
-        when wrong { border: 1, $red.alpha(0.7) }
+  stack { width: screen.width; height: screen.height
+    // the desktop, blurred and darkened, coming up out of the dark: a lock's first
+    // frames are drawn before its still of the screen (strand-issues.md), so it opens
+    // dark rather than flicker
+    box { width: screen.width; height: screen.height; bg: lock_haze; backdrop: blur(lock_blur)
+      opacity: 1 ~ lock_dawn; enter { opacity: 0 } }
+    box { width: screen.width; height: screen.height; bg: lock_ink
+      opacity: 0 ~ lock_dawn; enter { opacity: 1 } }
+    // the island, where island.strand has it, grown and dropped to the middle
+    col { width: screen.width; height: screen.height; align: center; pad: lock_gap_top, 0, 0, 0
+      stack {
+        width: card_w ~ lock_swell
+        height: card_h ~ lock_swell
+        y: (screen.height / 2 - card_h / 2 - lock_gap_top) ~ lock_swell
+        x: (nudge ? 10 : 0) ~ lock_shake
+        enter { width: lock_island_w; height: lock_island_h; y: 0 }
+        stack { width: 100%; height: 100%; clip: true
+          radius: lock_corner; corners: squircle
+          bg: lock_ink; border: 1, lock_edge
+          when wrong { border: 1, $red.alpha(0.7) }
 
-        col { width: card_w; height: card_h; pad: 30, 28, 22, 28; align: center
-          opacity: 1 ~ lock_mist; enter { opacity: 0 }
-          text clock.format(lock_clock) { color: $fg; font: lock_mono 64px 600 }
-          text clock.format(lock_date) { color: $fg.alpha(0.55); font: lock_sans 15px 500 }
-          box { grow: 1 }
+          col { width: card_w; height: card_h; pad: 30, 28, 22, 28; align: center
+            opacity: 1 ~ lock_mist; enter { opacity: 0 }
+            text clock.format(lock_clock) { color: $fg; font: lock_mono 64px 600 }
+            text clock.format(lock_date) { color: $fg.alpha(0.55); font: lock_sans 15px 500 }
+            box { grow: 1 }
 
-          // the field, as the polkit prompt's
-          row { width: 100%; height: lock_island_h; pad: 0, 10; gap: 8; align: center; radius: 8
-            bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
-            when wrong { border: 1, $red.alpha(0.5) }
-            text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
-              color: wrong ? $red : $fg.alpha(0.7) }
-            input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg; font: lock_sans 13px 600
-              placeholder: "Password"
-              opacity: (auth.busy ? 0.4 : 1) ~ 120ms
-              // an empty Return (waking the screen) is not sent: it would count as a failed try
-              on activate { if auth.busy { queued = true } else if secret != "" { auth.submit(secret); secret = "" } }
-              on key "escape" { secret = ""; queued = false }
+            // the field, as the polkit prompt's
+            row { width: 100%; height: lock_island_h; pad: 0, 10; gap: 8; align: center; radius: 8
+              bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
+              when wrong { border: 1, $red.alpha(0.5) }
+              text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
+                color: wrong ? $red : $fg.alpha(0.7) }
+              input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg; font: lock_sans 13px 600
+                placeholder: "Password"
+                opacity: (auth.busy ? 0.4 : 1) ~ 120ms
+                // an empty Return (waking the screen) is not sent: it would count as a failed try
+                on activate { if auth.busy { queued = true } else if secret != "" { auth.submit(secret); secret = "" } }
+                on key "escape" { secret = ""; queued = false }
+              }
+              if auth.busy { text "checking" { color: $fg.alpha(0.45); shrink: 0; font: lock_sans 12px 500 } }
             }
-            if auth.busy { text "checking" { color: $fg.alpha(0.45); shrink: 0; font: lock_sans 12px 500 } }
-          }
 
-          // what is going on: refused, what PAM says (a fingerprint reader), Caps Lock
-          row { height: 26; gap: 12; align: end; font: lock_sans 12px 500
-            if wrong { text "Wrong password" { color: $red } }
-            else if auth.message != "" { text auth.message { color: $fg.alpha(0.7); max_lines: 1; ellipsis: end } }
-            if keyboard.caps_lock { text "Caps Lock is on" { color: $orange } }
+            // what is going on: refused, what PAM says (a fingerprint reader), Caps Lock
+            row { height: 26; gap: 12; align: end; font: lock_sans 12px 500
+              if wrong { text "Wrong password" { color: $red } }
+              else if auth.message != "" { text auth.message { color: $fg.alpha(0.7); max_lines: 1; ellipsis: end } }
+              if keyboard.caps_lock { text "Caps Lock is on" { color: $orange } }
+            }
           }
         }
       }

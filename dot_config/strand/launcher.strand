@@ -82,6 +82,7 @@ type Command { id: text; name: text; glyph: text }
 state view: View = home
 state query = ""
 state armed = ""                // the power command that needs one more Enter
+state lock_next = false         // Lock chosen: it locks once the launcher has closed, so the lock's still is without it
 state problem = ""              // the last thing that failed, shown in the hint row
 state asking = ""               // the Wi-Fi network whose password is being typed
 state secret = ""               // that password, only ever sent to the network
@@ -323,7 +324,7 @@ on change open {
 on change open after turn { if open { dropped = true } else { wide = false } }
 on change open after fold { if !open { shown = false } }
 // a click away or losing focus takes the surface at once
-on change shown { if !shown { open = false } }
+on change shown { if !shown { open = false; if lock_next { lock_next = false; session.lock() } } }
 
 on network.failed(ssid, error) {
   problem = (ssid != "" ? ssid + ": " : "") + error
@@ -1143,13 +1144,13 @@ component ClipRow(m: Match<ClipboardEntry>) {
   }
 }
 
-// Lock goes at once; the others ask for Enter again within three seconds, the
+// Lock goes once the launcher has closed; the others ask for Enter again within three seconds, the
 // time left draining under the ask
 component PowerRow(m: Match<Command>) {
   let asks = armed == m.item.id
   Row {
     on activate {
-      if m.item.id == "lock" { session.lock(); open = false }
+      if m.item.id == "lock" { lock_next = true; open = false }
       else if !asks { armed = m.item.id }
       else {
         if m.item.id == "suspend" { session.suspend() }

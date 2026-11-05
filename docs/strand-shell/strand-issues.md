@@ -30,6 +30,46 @@ where they can show the check is working.
 
 ## Open
 
+### A lock's first frames come before its still of the screen
+
+Found 2026-11-05 on Strand `3714cc62`, in the lock VM (owner_lock scratch test, frames grabbed back
+to back).
+
+**What happens:** a `thumbnail screen` inside `lock { }` shows nothing in the lock's first frames:
+its still, taken before the lock, is only handed to the thumbnail once a frame has shown the
+thumbnail is visible (`Feeds::demand`). A lock meant to open on the desktop as it was opens on its
+own background for a few frames and then cuts to the still, a flicker. A panel's first frame waits
+for its stills (`Feeds::before_map`, `HOLD`); a lock's doesn't.
+
+**What it should do:** a lock's first frame waits (bounded, like `HOLD`) until its thumbnails have
+their stills, so it can open on the desktop and change from there.
+
+**Worked around:** the lock opens dark and the blurred desktop fades up behind a veil.
+
+### Full-screen blur is slow on the GPU, and a backdrop's first draw differs
+
+Found 2026-11-05 on Strand `3714cc62`, on this laptop's Intel Arc B390 in `gpu.sh` (the lock's
+content as a 1920x1200 overlay panel; probe in Strand's `target/try/notes/lockgpu`).
+
+**What happens:**
+- `filter: blur(36)` on a full-screen image of the still takes about 500 ms to come up: the panel
+  draws without it meanwhile and it pops in.
+- A full-screen `backdrop: blur(36)` costs a 70 ms frame when it first draws at full strength, and
+  that first draw lets the sharp desktop show through; the next frame snaps to the full blur. The
+  surface is promoted to the GPU mid-animation, and the CPU's quarter-scale blur and the GPU's
+  full-resolution one don't match.
+- A box with `filter: blur(22)` whose size animates (a soft shadow on a growing card) costs about
+  20 ms every frame (27 ms median, 49 ms p95 with the backdrop).
+- An `image` drawn small with `filter: blur` and `scale: 8` is rasterised at full size again, so it
+  comes out barely blurred.
+
+**What it should do:** a blur of something that doesn't change is drawn once, cached, and costs
+nothing after; a backdrop looks the same from its first frame; an animated soft shadow fits in a
+120 Hz frame.
+
+**Worked around:** the backdrop fades in from nothing under the veil (6 to 7 ms median, 9 to 12 ms
+p95, under 20 ms worst), and the card has no shadow.
+
 ### A `shadow:` inside a lock shrinks the lock and delays it
 
 Found 2026-11-05 on Strand `3714cc62`. No check folder: it needs the lock VM
@@ -46,7 +86,8 @@ outer stack changes nothing. The first frame also comes about 530 ms later than 
 **What it should do:** a shadow inside a lock is paint, like anywhere else: the lock fills its output
 and the shadow is cut at its edge.
 
-**Worked around:** the card's shadow is a blurred box behind it (`filter: blur(22)`), not `shadow:`.
+**Worked around:** the card has no shadow. A blurred box standing in for one cost about 20 ms a frame
+while the card grew (below).
 
 ### A lock can't play its way out
 
