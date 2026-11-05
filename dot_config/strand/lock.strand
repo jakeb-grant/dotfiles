@@ -1,0 +1,57 @@
+// lock.strand: the lock screen, on every monitor. The time and date, and a field for your
+// password; Esc empties it. Only your password takes it down. If anything in it breaks,
+// Strand shows its own password field instead. A first, plain version: its look comes later.
+//
+// While it is tried, only `strand set lock.locked true` puts it up: Super+L, idle and
+// sleep still lock with hyprlock. Once it has held, it follows logind as they do:
+//   on session.lock_requested { locked = true }
+// If it ever dies while locked: Ctrl+Alt+F2, log in, then
+//   hyprctl -i 0 dispatch 'hl.dsp.exec_cmd("hyprlock")'
+// and Ctrl+Alt+F1 back to unlock with hyprlock.
+
+export state locked = false
+
+let lock_sans = "IBM Plex Sans"
+let lock_mono = "JetBrainsMono Nerd Font"
+let field_w = 320
+let field_h = 34
+
+lock {
+  open: <-> locked
+  bg: $surface_lowest
+  state secret = ""
+  state wrong = false             // a refused password, shown until typing starts again
+  on change auth.failed { if auth.failed { wrong = true } }
+  on change secret { if secret != "" { wrong = false } }
+  state queued = false            // Return pressed while the last password was still being checked
+  on change locked { if !locked { secret = ""; wrong = false; queued = false } }
+  // PAM takes a moment to refuse one; what was typed meanwhile goes as soon as it has
+  on change auth.busy { if !auth.busy && queued { queued = false; if secret != "" { auth.submit(secret); secret = "" } } }
+
+  col { width: 100%; height: 100%; align: center; justify: center; gap: 10
+    text clock.format("%H:%M") { color: $fg; font: lock_mono 72px 600 }
+    text clock.format("%A %-d %B") { color: $fg.alpha(0.6); font: lock_sans 16px 500 }
+
+    row { width: field_w; height: field_h; margin: 28, 0, 0, 0; pad: 0, 10; gap: 8; align: center; radius: 8
+      bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
+      when wrong { border: 1, $red.alpha(0.7) }
+      text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
+        color: wrong ? $red : $fg.alpha(0.7) }
+      input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg; font: lock_sans 13px 600
+        placeholder: "Password"
+        opacity: (auth.busy ? 0.4 : 1) ~ 120ms
+        // an empty Return (waking the screen) is not sent: it would count as a failed try
+        on activate { if auth.busy { queued = true } else if secret != "" { auth.submit(secret); secret = "" } }
+        on key "escape" { secret = ""; queued = false }
+      }
+    }
+
+    // what is going on: checking, refused, what PAM says (a fingerprint reader), Caps Lock
+    col { height: 40; gap: 4; align: center; font: lock_sans 12px 500
+      if auth.busy { text "Checking" { color: $fg.alpha(0.55) } }
+      else if wrong { text "Wrong password" { color: $red } }
+      else if auth.message != "" { text auth.message { color: $fg.alpha(0.7) } }
+      if keyboard.caps_lock { text "Caps Lock is on" { color: $orange } }
+    }
+  }
+}
