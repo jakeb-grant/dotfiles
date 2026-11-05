@@ -2,6 +2,8 @@
 // size. Left, that monitor's workspaces as numbered chips. Right, status, the date
 // and the clock, each in its own place. When volume, the microphone or a backlight changes, all that fades away for a
 // moment and the island shows that one level. Everything you would tune is in the first block.
+// An admin password polkit asks for swells out of it as a notification does, but
+// takes the keyboard and stays until it is answered or cancelled.
 
 // colour: whichever palette theme-switch last wrote, followed live, and `from`
 // for anything that file doesn't say, or if it is ever missing or broken
@@ -87,6 +89,174 @@ on change skipped after 2s { skipped = 0 }
 
 keyframes bump { 0%, 100% { scale: 1 }; 40% { scale: 1.18 }; duration: 420ms }
 
+// An admin password polkit asks for (pkexec, a settings page changing the system):
+// the island on the focused monitor swells into the question as it does into a
+// notification, and takes the keyboard. It stays until it is answered, cancelled
+// (Esc) or withdrawn by the program; nothing else closes it. Meanwhile a
+// notification waits (notify.strand) and the launcher folds away and stays shut.
+// The password goes to polkit and nowhere else.
+let ask_w    = 640              // the island's width: it only grows down
+let ask_face = 36
+let island_zone = gap_top + island_h + gap_low  // what the island keeps from windows: this sits over it
+let swell  = spring(900, 0.82)  // growing, with a little give (a notification's)
+let settle = spring(1400, 1)    // back into the island
+let ask_fill = 140ms            // the box this far grown before what it asks shows
+let ask_fold = 360ms            // going, from emptying to back in the island
+let shake  = spring(2200, 0.18) // a refused password
+
+let asked = polkit.request != null
+let ask_cmd = polkit.request?.command ?? ""
+let ask_info = polkit.request?.info ?? ""
+let ask_h = 140 + (ask_cmd != "" ? 36 : 0) + (ask_info != "" ? 28 : 0)
+
+// as a notification's: the surface stays up while the box empties and settles
+// back into the island, and goes once it is there
+state ask_shown = false
+state ask_grown = false
+state ask_filled = false
+state nudge = false             // the box knocked aside, for a refused password
+state wrong = false             // a refused password, shown until typing starts again
+on change asked {
+  if asked { ask_shown = true; ask_grown = true; launcher.open = false } else { ask_filled = false; wrong = false }
+}
+on change asked after ask_fill { if asked { ask_filled = true } else { ask_grown = false } }
+on change asked after ask_fold { if !asked { ask_shown = false } }
+// while it asks, the launcher stays shut: the question keeps the keyboard
+on change launcher.open { if launcher.open && asked { launcher.open = false } }
+on change polkit.failed { if polkit.failed { wrong = true; nudge = true } }
+on change nudge after 70ms { nudge = false }
+
+panel Polkit {
+  screens: focused; layer: overlay; anchor: top; margin: gap_top - island_zone, 0, 0
+  keyboard: exclusive; size: auto; hit: none
+  open: ask_shown
+
+  state pw = ""                 // the password, only ever sent to polkit
+  on show { pw = "" }
+  on hide { pw = "" }
+  // another user chosen, or the next request: what was typed was for the last one
+  on change polkit.request?.user { pw = "" }
+  // typing again: the red goes
+  on change pw { if pw != "" { wrong = false } }
+
+  let users = polkit.request?.users ?? []
+  let user = polkit.request?.user ?? ""
+  on key "escape" { pw = ""; polkit.cancel() }
+  // more than one user polkit would take a password from: the arrows pick another
+  when users.len > 1 {
+    on key "left" { pw = ""; polkit.choose(user_at(users, user, -1)) }
+    on key "right" { pw = ""; polkit.choose(user_at(users, user, 1)) }
+  }
+
+  // the surface keeps its size, with room for the swell's give, so only the box moves
+  row { width: ask_w + 24; height: ask_h + 12; justify: center; align: start; hit: none
+    stack { clip: true
+      width: (ask_grown ? ask_w : island_w) ~ (ask_grown ? swell : settle)
+      height: (ask_grown ? ask_h : island_h) ~ (ask_grown ? swell : settle)
+      x: (nudge ? 10 : 0) ~ shake
+      radius: corner; corners: squircle
+      bg: ink; border: 1, edge
+      shadow: 0 3px 10px $shadow.alpha(0.3)
+      when ask_grown { shadow: 0 8px 24px $shadow.alpha(0.32) }
+      when wrong { border: 1, $red.alpha(0.7) }
+      font: sans 13px 600
+      enter { width: island_w; height: island_h }
+
+      col { width: ask_w; pad: 14, 18, 12, 14; gap: 12
+        opacity: (ask_filled ? 1 : 0) ~ (ask_filled ? 220ms : 90ms)
+        // what asks, and what for
+        row { gap: 12; align: center
+          AskFace polkit.request?.icon ?? ""
+          col { grow: 1; shrink: 1; gap: 2
+            text "Admin password" { color: $fg.alpha(0.55); font: sans 12px 400 }
+            text polkit.request?.message ?? "" { color: $fg; max_lines: 2; ellipsis: end }
+          }
+          if polkit.waiting > 0 {
+            text num(polkit.waiting, 0) + " more waiting" { color: $fg.alpha(0.55); shrink: 0; font: mono 11px 600 }
+          }
+        }
+        // the command it would run, as the program asked: what you allow
+        if ask_cmd != "" {
+          text ask_cmd { color: $fg.alpha(0.7); font: mono 11px 500; max_lines: 1; ellipsis: end
+            pad: 6, 10; radius: 6; bg: $fg.alpha(0.05) }
+        }
+        // whose password, and the field
+        row { height: island_h; pad: 0, 10; gap: 8; align: center; radius: 8
+          bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
+          text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
+            color: wrong ? $red : $fg.alpha(0.7) }
+          text (users.len > 1 ? "‹ " + user + " ›" : user) { color: $accent; shrink: 0; max_width: 200; ellipsis: end
+            pad: 2, 8; radius: 6; bg: $accent.alpha(0.15); font: sans 13px 600; cursor: pointer
+            on click { pw = ""; polkit.choose(user_after(users, user)) } }
+          input { type: (polkit.request?.echo ?? false) ? text : password; text: <-> pw; focus: true; grow: 1; color: $fg
+            opacity: (polkit.busy ? 0.4 : 1) ~ 120ms
+            placeholder: asks_for(polkit.request?.prompt ?? "")
+            // sent only once PAM asks (not while it checks, or while a reader waits), so
+            // nothing typed is dropped unseen; it stays in the field until then
+            on activate { if pw != "" && (polkit.request?.prompt ?? "") != "" { polkit.respond(pw); pw = "" } }
+          }
+          if polkit.busy { text "checking" { color: $fg.alpha(0.45); shrink: 0; font: sans 12px 500 } }
+        }
+        // what PAM says meanwhile (a fingerprint reader waiting)
+        if ask_info != "" {
+          row { gap: 6; align: center
+            text "info" { font: "Material Symbols Rounded" 14; color: $fg.alpha(0.5); shrink: 0 }
+            text ask_info { color: $fg.alpha(0.7); font: sans 12px 500; ellipsis: end; shrink: 1 }
+          }
+        }
+        row { gap: 14; align: center
+          AskHint "Enter" { what: "authenticate" }
+          AskHint "Esc" { what: "cancel" }
+          if users.len > 1 { AskHint "← →" { what: "user" } }
+          spacer {}
+          if wrong {
+            text "Wrong password, try again" { color: $red; shrink: 1; ellipsis: end; font: sans 11px 600 }
+          } else if polkit.error != "" {
+            text polkit.error { color: $red; shrink: 1; ellipsis: end; font: sans 11px 600 }
+          }
+        }
+      }
+    }
+  }
+}
+
+// the program's icon, else a lock, as a notification's face
+component AskFace(icon: text) {
+  if icon != "" {
+    image icon { size: ask_face; radius: 9; corners: squircle; shrink: 0 }
+  } else {
+    row { width: ask_face; height: ask_face; radius: 9; corners: squircle; justify: center; align: center; shrink: 0
+      bg: (wrong ? $red : $accent).alpha(0.16)
+      text "admin_panel_settings" { font: "Material Symbols Rounded" 20; color: wrong ? $red : $accent }
+    }
+  }
+}
+
+// a key and what it does, as the launcher's hint row has them
+component AskHint(key: text, what: text) {
+  row { gap: 5; shrink: 0; align: center
+    text key { color: $fg.alpha(0.75); font: mono 10px 700; height: 16; pad: 0, 4; radius: 4; shrink: 0
+      border: 1, $fg.alpha(0.18); align: center }
+    text what { color: $fg.alpha(0.5); font: sans 11px 500 }
+  }
+}
+
+// PAM's question as the field's placeholder ("Password: " as "Password")
+fn asks_for(p: text) -> text {
+  p.trim() == "" ? (polkit.busy ? "" : "Password")
+    : p.trim().ends_with(":") ? p.trim().slice(0, -1) : p.trim()
+}
+
+// the user `step` along from `user`, held at either end (the arrows)
+fn user_at(users: [text], user: text, step: int) -> text {
+  users.skip(clamp((users.index_of(u => u == user) ?? 0) + step, 0, max(users.len - 1, 0)).round()).first ?? user
+}
+
+// the user after `user`, round again past the last (a click)
+fn user_after(users: [text], user: text) -> text {
+  users.skip(users.len > 0 ? ((users.index_of(u => u == user) ?? 0) + 1) % users.len : 0).first ?? user
+}
+
 panel Island {
   screens: all; anchor: top; margin: gap_top, 0, 0
   size: auto
@@ -152,9 +322,9 @@ component Body(armed: bool) {
 
     row { height: island_h; pad: 0, pad; align: center
       opacity: (moment == idle ? 1 : 0) ~ (moment == idle ? clear_back : clear_out)
-      // the launcher or a notification growing out of this island: it is the island
-      // now, so nothing of this shows through it
-      when (launcher.open || notify.shown) && screens.focused?.name == screen.name { opacity: 0 ~ 80ms }
+      // the launcher, a notification or an admin password growing out of this island:
+      // it is the island now, so nothing of this shows through it
+      when (launcher.open || notify.shown || ask_shown) && screens.focused?.name == screen.name { opacity: 0 ~ 80ms }
       row { width: left_w; height: island_h; align: center; shrink: 0; clip: true
         row { id: chipbox; height: island_h; align: center; shrink: 0; Chips (shown ?? now) }
       }
@@ -171,7 +341,7 @@ component Body(armed: bool) {
     // what plays, live, in the middle
     row { height: island_h; justify: center; align: center; hit: none
       opacity: (moment == idle ? 1 : 0) ~ (moment == idle ? clear_back : clear_out)
-      when (launcher.open || notify.shown) && screens.focused?.name == screen.name { opacity: 0 ~ 80ms }
+      when (launcher.open || notify.shown || ask_shown) && screens.focused?.name == screen.name { opacity: 0 ~ 80ms }
       // mounted while it plays; the room, measured, only fades it (a mount that
       // waited on the boxes would move them)
       if waving { PlayWave { room: wave_room; at: chips_end + wave_gap - (chipbox.box.x - pad); len: max(wave_len, wave_min) } }

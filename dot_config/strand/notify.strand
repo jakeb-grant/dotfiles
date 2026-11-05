@@ -33,8 +33,10 @@ let fold   = 360ms             // going, from emptying to back in the island
 let wait   = 5s                // how long one shows, at most
 let urgent_wait = 10s          // an urgent one
 
-// the newest; the launcher open takes its place, so it waits for it to close
-let current = launcher.open ? null : notifications.popups.last
+// the newest; the launcher open, or an admin password asked for (island.strand),
+// takes its place, so it waits for that to close
+let asked = polkit.request != null
+let current = launcher.open || asked ? null : notifications.popups.last
 
 on change open_key { current?.activate() }
 on change clear_key { current?.dismiss() }
@@ -60,6 +62,8 @@ on change has after fill { if has { filled = true } else { grown = false } }
 on change has after fold { if !has { shown = false } }
 // the launcher opening takes the island at once
 on change launcher.open { if launcher.open { shown = false; grown = false; filled = false } }
+// and so does an admin password asked for
+on change asked { if asked { shown = false; grown = false; filled = false } }
 
 panel Notify {
   screens: focused; layer: overlay; anchor: top; margin: gap_top - island_zone, 0, 0
@@ -82,7 +86,7 @@ panel Notify {
 
       stack { opacity: (filled ? 1 : 0) ~ (filled ? 220ms : 90ms)
         // keyed, so a new one slides in over the one it replaces
-        for n in notifications.popups.reverse().take(launcher.open ? 0 : 1) { Note n }
+        for n in notifications.popups.reverse().take(launcher.open || asked ? 0 : 1) { Note n }
       }
     }
   }

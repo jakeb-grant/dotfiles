@@ -72,7 +72,7 @@ Mark each line: **keep**, **later** or **drop**.
 | Camera and screencast indicator | `video.streams` |
 | Battery detail | Time left, charge history as a graph, peripheral batteries |
 | Graphs that have history when opened | `cpu`, `memory`, network and battery |
-| Your own polkit dialog | `polkit`, if `phylax` turns out to be your agent |
+| Your own polkit dialog | `polkit`, in place of `phylax`: the island grows into the admin password prompt, takes the keyboard and stays until answered or cancelled. In the shell since 2026-11-05; it takes over once phylax stops (branch `retire-phylax`) |
 | Your own login screen | `greetd`, in place of `tuigreet` |
 | Display settings | `outputs`, though `hyprpier` owns this today, so it may not belong here |
 | Command line control | `strand toggle`, `set`, `get`, `call`. Quickshell has no IPC today |
