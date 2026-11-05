@@ -98,7 +98,7 @@ shrinks to 0, carrying its gap), so the siblings never have a jump to glide over
 **Done when:** the siblings' glide can take a curve (`~` on the container, say), or a node can follow
 another's laid-out box without scaling. The docs should name the curve either way.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md glide-curve). A glide (and a wheel step, and a dragged row let go) plays the `$motion.spatial` in effect where the node is, so `set { $motion.spatial: glide }` names the curve; no new syntax. Inside a content-sized surface springing over a step, glides still ride the step's curve. **In this config:** the chips can drop their width-from-0 springs and the row can take `set { $motion.spatial: glide }`. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md glide-curve). A glide (and a wheel step, and a dragged row let go) plays the `$motion.spatial` in effect where the node is, so `set { $motion.spatial: glide }` names the curve; no new syntax. Inside a content-sized surface springing over a step, glides still ride the step's curve. **In this config:** kept as it is (decided 2026-11-05). The highlight behind the chips is placed by sums of their widths on `glide`, so each chip still has to size itself on that spring: a chip left to Strand's sibling glide would snap wider when it gains an app while the highlight springs, and the two would part for a moment. The fix still matters for a row without such a highlight.
 
 ### A `list` has no way to start on a row
 
