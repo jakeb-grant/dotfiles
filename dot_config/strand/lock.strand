@@ -1,6 +1,9 @@
-// lock.strand: the lock screen, on every monitor. The time and date, and a field for your
-// password; Esc empties it. Only your password takes it down. If anything in it breaks,
-// Strand shows its own password field instead. A first, plain version: its look comes later.
+// lock.strand: the lock screen, on every monitor. It grows out of the island: the lock
+// opens on a blurred, darkened still of the desktop as it was, the island swells and
+// drops to the middle, and the time, the date and a field for your password come up
+// inside it. Esc empties the field; a wrong password shakes it.
+// Only your password takes it down. If anything in it breaks, Strand shows its own
+// password field instead. Everything you would tune is in the first block.
 //
 // Super+L, the launcher's Lock, idle and sleep all ask logind to lock (loginctl
 // lock-session), and logind's request puts it up; hypridle starts hyprlock instead
@@ -8,50 +11,104 @@
 //   hyprctl -i 0 dispatch 'hl.dsp.exec_cmd("hyprlock")'
 // and Ctrl+Alt+F1 back to unlock with hyprlock (hypr/README.md).
 
+// colour (island.strand's palette)
+let lock_ink   = $surface_lowest              // the island
+let lock_edge  = $fg.alpha(0.09)              // its hairline
+let lock_haze  = $surface_lowest.alpha(0.45)  // over the blurred desktop
+
+// shape: the island as island.strand draws it, and what it grows into
+let lock_island_w = 640
+let lock_island_h = 34
+let lock_gap_top  = 6
+let lock_corner   = 12
+let card_w = 420
+let card_h = 268
+let lock_blur = 36
+
+// what it says
+let lock_sans = "IBM Plex Sans"
+let lock_mono = "JetBrainsMono Nerd Font"
+let lock_clock = "%H:%M"
+let lock_date  = "%A %-d %B"
+
+// time
+let lock_swell = spring(380, 0.86)   // the island growing, with a little give
+let lock_shake = spring(2200, 0.18)  // a refused password
+let lock_mist  = 420ms               // what the island holds coming up
+
 export state locked = false
 on session.lock_requested { locked = true }
 
-let lock_sans = "IBM Plex Sans"
-let lock_mono = "JetBrainsMono Nerd Font"
-let field_w = 320
-let field_h = 34
+state lock_n = 0                // each lock counted, so its face is new and grows again
+state secret = ""
+state wrong = false             // a refused password, shown until typing starts again
+state nudge = false             // the island knocked aside, for a refused password
+state queued = false            // Return pressed while the last password was still being checked
+on change locked { if locked { lock_n += 1 } else { secret = ""; wrong = false; queued = false } }
+on change auth.failed { if auth.failed { wrong = true; nudge = true } }
+on change nudge after 70ms { nudge = false }
+on change secret { if secret != "" { wrong = false } }
+// PAM takes a moment to refuse one; what was typed meanwhile goes as soon as it has
+on change auth.busy { if !auth.busy && queued { queued = false; if secret != "" { auth.submit(secret); secret = "" } } }
 
 lock {
   open: <-> locked
-  bg: $surface_lowest
-  state secret = ""
-  state wrong = false             // a refused password, shown until typing starts again
-  on change auth.failed { if auth.failed { wrong = true } }
-  on change secret { if secret != "" { wrong = false } }
-  state queued = false            // Return pressed while the last password was still being checked
-  on change locked { if !locked { secret = ""; wrong = false; queued = false } }
-  // PAM takes a moment to refuse one; what was typed meanwhile goes as soon as it has
-  on change auth.busy { if !auth.busy && queued { queued = false; if secret != "" { auth.submit(secret); secret = "" } } }
+  bg: lock_ink
+  stack { width: screen.width; height: screen.height
+    // the desktop as it was just before locking, blurred and darkened
+    thumbnail screen { width: screen.width; height: screen.height; fit: cover }
+    box { width: screen.width; height: screen.height; bg: lock_haze; backdrop: blur(lock_blur) }
+    // a new face each lock: it plays its way in from the island on its first frame
+    if lock_n % 2 == 0 { LockFace } else { LockFace }
+  }
+}
 
-  col { width: 100%; height: 100%; align: center; justify: center; gap: 10
-    text clock.format("%H:%M") { color: $fg; font: lock_mono 72px 600 }
-    text clock.format("%A %-d %B") { color: $fg.alpha(0.6); font: lock_sans 16px 500 }
+component LockFace {
+  // the island, where island.strand has it, grown and dropped to the middle
+  col { width: screen.width; height: screen.height; align: center; pad: lock_gap_top, 0, 0, 0
+    stack {
+      width: card_w ~ lock_swell
+      height: card_h ~ lock_swell
+      y: (screen.height / 2 - card_h / 2 - lock_gap_top) ~ lock_swell
+      x: (nudge ? 10 : 0) ~ lock_shake
+      enter { width: lock_island_w; height: lock_island_h; y: 0 }
+      // its shadow, a blurred box: a `shadow:` inside a lock shrinks the lock (strand-issues.md)
+      box { width: 100%; height: 100%; y: 16; radius: lock_corner; bg: $shadow.alpha(0.5); filter: blur(22) }
+      stack { width: 100%; height: 100%; clip: true
+        radius: lock_corner; corners: squircle
+        bg: lock_ink; border: 1, lock_edge
+        when wrong { border: 1, $red.alpha(0.7) }
 
-    row { width: field_w; height: field_h; margin: 28, 0, 0, 0; pad: 0, 10; gap: 8; align: center; radius: 8
-      bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
-      when wrong { border: 1, $red.alpha(0.7) }
-      text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
-        color: wrong ? $red : $fg.alpha(0.7) }
-      input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg; font: lock_sans 13px 600
-        placeholder: "Password"
-        opacity: (auth.busy ? 0.4 : 1) ~ 120ms
-        // an empty Return (waking the screen) is not sent: it would count as a failed try
-        on activate { if auth.busy { queued = true } else if secret != "" { auth.submit(secret); secret = "" } }
-        on key "escape" { secret = ""; queued = false }
+        col { width: card_w; height: card_h; pad: 30, 28, 22, 28; align: center
+          opacity: 1 ~ lock_mist; enter { opacity: 0 }
+          text clock.format(lock_clock) { color: $fg; font: lock_mono 64px 600 }
+          text clock.format(lock_date) { color: $fg.alpha(0.55); font: lock_sans 15px 500 }
+          box { grow: 1 }
+
+          // the field, as the polkit prompt's
+          row { width: 100%; height: lock_island_h; pad: 0, 10; gap: 8; align: center; radius: 8
+            bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
+            when wrong { border: 1, $red.alpha(0.5) }
+            text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
+              color: wrong ? $red : $fg.alpha(0.7) }
+            input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg; font: lock_sans 13px 600
+              placeholder: "Password"
+              opacity: (auth.busy ? 0.4 : 1) ~ 120ms
+              // an empty Return (waking the screen) is not sent: it would count as a failed try
+              on activate { if auth.busy { queued = true } else if secret != "" { auth.submit(secret); secret = "" } }
+              on key "escape" { secret = ""; queued = false }
+            }
+            if auth.busy { text "checking" { color: $fg.alpha(0.45); shrink: 0; font: lock_sans 12px 500 } }
+          }
+
+          // what is going on: refused, what PAM says (a fingerprint reader), Caps Lock
+          row { height: 26; gap: 12; align: end; font: lock_sans 12px 500
+            if wrong { text "Wrong password" { color: $red } }
+            else if auth.message != "" { text auth.message { color: $fg.alpha(0.7); max_lines: 1; ellipsis: end } }
+            if keyboard.caps_lock { text "Caps Lock is on" { color: $orange } }
+          }
+        }
       }
-    }
-
-    // what is going on: checking, refused, what PAM says (a fingerprint reader), Caps Lock
-    col { height: 40; gap: 4; align: center; font: lock_sans 12px 500
-      if auth.busy { text "Checking" { color: $fg.alpha(0.55) } }
-      else if wrong { text "Wrong password" { color: $red } }
-      else if auth.message != "" { text auth.message { color: $fg.alpha(0.7) } }
-      if keyboard.caps_lock { text "Caps Lock is on" { color: $orange } }
     }
   }
 }

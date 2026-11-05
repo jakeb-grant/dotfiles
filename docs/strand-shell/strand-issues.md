@@ -30,6 +30,34 @@ where they can show the check is working.
 
 ## Open
 
+### A `shadow:` inside a lock shrinks the lock and delays it
+
+Found 2026-11-05 on Strand `3714cc62`. No check folder: it needs the lock VM
+(`scripts/container/lockvm.sh`), which `verify.sh` doesn't run; seen there with the owner_lock
+scratch test on this shell's `lock.strand`.
+
+**What happens:** any node inside `lock { }` with a `shadow:` (here the card, 420×268 in the middle of
+a 1280×720 output) draws the whole lock smaller than the output: inset by about 73 px left and right
+and 91 px top and bottom, with black around it. Sizing the lock's contents to `screen.width` ×
+`screen.height` brings back the width but leaves the top 49 px black, and `clip: true` on the
+outer stack changes nothing. The first frame also comes about 530 ms later than without the shadow
+(600 ms against 70 ms).
+
+**What it should do:** a shadow inside a lock is paint, like anywhere else: the lock fills its output
+and the shadow is cut at its edge.
+
+**Worked around:** the card's shadow is a blurred box behind it (`filter: blur(22)`), not `shadow:`.
+
+### A lock can't play its way out
+
+Found 2026-11-05 on Strand `3714cc62`.
+
+**What happens:** the lock goes the moment the password is accepted, so there is no closing
+animation (the island shrinking back up into the bar) the way the launcher has one.
+
+**What it should do:** a lock could keep its surface for an `exit { }` pose after it unlocks, as
+other surfaces do when they close.
+
 ## Fixed
 
 ### A list reports its starting selection a tick late
