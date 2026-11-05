@@ -32,7 +32,7 @@ Mark each line: **keep**, **later** or **drop**.
 | Bar: workspaces, clock, status icons, tray (B1, B5, B8 to B18) | Always there | Built in |
 | Notifications: cards, DND, history, dismiss keys (N1 to N12) | Daemon in the shell | Built in; history kept across restarts |
 | OSD: volume, brightness, mic, media (O1 to O6) | Keys | Built in |
-| Lock screen (K1 to K11) | Super+L, idle, sleep | Built in (`strand/lock.strand`), passing in the lock VM (a wrong password refused, a password typed during a check sent after it, Caps Lock, Esc, a second lock). Being tried: only `strand set lock.locked true` puts it up, hyprlock keeps Super+L, idle and sleep until it has held on this hardware. Its look comes later |
+| Lock screen (K1 to K11) | Super+L, idle, sleep | Built in (`strand/lock.strand`), passing in the lock VM (a wrong password refused, a password typed during a check sent after it, Caps Lock, Esc, a second lock). Tried on this laptop 2026-11-05 and held. Super+L, the launcher's Lock, idle and sleep put it up through logind; hyprlock only while Strand isn't running (`hypr/README.md` has the hand-off). Its look comes later |
 | Theme follows `theme-switch` (T1 to T3) | Watches `active.json` | Done. `theme-switch` stays in charge and needs no change. Anything drawn with `$` tokens follows it, the launcher included |
 | Wallpaper picker and per-theme wallpaper (W1 to W9) | Launcher, `awww` | To try: `wallpapers.json` as a file service, `awww` as an action. The slanted strips need their own arrow handling (gap 3) |
 
