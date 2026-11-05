@@ -6,7 +6,7 @@
 //
 // Bind in the compositor:  strand toggle launcher.open
 // and for a part directly: strand toggle launcher.spaces_key (or clipboard_key,
-// notes_key, drives_key, themes_key, walls_key, tray_key). A Bluetooth device asking for a PIN or a code to confirm
+// notes_key, drives_key, themes_key, walls_key, tray_key, media_key, keys_key). A Bluetooth device asking for a PIN or a code to confirm
 // opens it on the Bluetooth page, the question in place of the search.
 
 permit exec "qalc", "sh", "theme-switch"
@@ -38,6 +38,19 @@ action wall(name: text, files: text) -> text? ["sh", "-c",
   "sh", name, files]
 // what each monitor shows now, asked again after each change (`tick`)
 action on_screen(tick: int) -> text ["sh", "-c", "awww query", "sh", tick]
+
+// the compositor's keys: Hyprland's binds, each described "Group: what it does" in
+// hyprland.lua, grouped, binds sharing a description as one line and each line's
+// keys by modifier (1 to 0 as one range, the arrows in order); one without a
+// description goes under Other, by what it does. Read while the Keys page shows.
+type KeyCombo { mods: [text]; keys: [text] }
+type KeyLine { group: text; label: text; combos: [KeyCombo] }
+type KeyGroup { name: text; binds: [KeyLine] }
+service keybinds from poll ["sh", "-c", "hyprctl binds -j | jq -c \"$1\"", "sh",
+  "def bit(n): ((. / n) | floor) % 2 == 1; def mods: [if bit(64) then \"Super\" else empty end, if bit(4) then \"Ctrl\" else empty end, if bit(8) then \"Alt\" else empty end, if bit(1) then \"Shift\" else empty end]; def pretty: {\"comma\": \",\", \"period\": \".\", \"equal\": \"=\", \"minus\": \"−\", \"Return\": \"Enter\", \"Print\": \"PrtSc\", \"left\": \"←\", \"right\": \"→\", \"up\": \"↑\", \"down\": \"↓\", \"mouse_down\": \"Scroll ↓\", \"mouse_up\": \"Scroll ↑\", \"mouse:272\": \"Drag\", \"mouse:273\": \"Right drag\", \"XF86AudioRaiseVolume\": \"Vol +\", \"XF86AudioLowerVolume\": \"Vol −\", \"XF86AudioMute\": \"Mute\", \"XF86AudioMicMute\": \"Mic\", \"XF86AudioPlay\": \"Play\", \"XF86AudioPause\": \"Pause\", \"XF86AudioNext\": \"Next\", \"XF86AudioPrev\": \"Prev\", \"XF86MonBrightnessUp\": \"Bright +\", \"XF86MonBrightnessDown\": \"Bright −\"}[.] // .; def order: [\"Tab\", \"←\", \"→\", \"↑\", \"↓\", \"=\", \"−\", \"Vol +\", \"Vol −\", \"Bright +\", \"Bright −\", \"Play\", \"Pause\"] as $o | sort_by(. as $k | ($o | index($k)) // 99); def squash: if length == 10 and all(test(\"^[0-9]$\")) then [\"1–0\"] elif (unique | length) == 4 and (unique - [\"←\", \"→\", \"↑\", \"↓\"] | length) == 0 then [\"←→↑↓\"] else unique | order end; def known: [\"Shell\", \"Apps\", \"Windows\", \"Arrange\", \"Workspaces\", \"Sound\", \"Screen\"]; [ to_entries[] | .key as $at | .value | select((.key | startswith(\"switch:\")) | not) | select(.submap == \"\") | (if .description != \"\" and (.description | contains(\": \")) then .description else \"Other: \" + ((.dispatcher | capture(\"\\\\((?<d>[^)]*)\\\\)\").d // \"bind\") | gsub(\"_\"; \" \")) end) as $d | {at: $at, group: ($d | split(\": \")[0]), label: ($d | split(\": \")[1:] | join(\": \")), mods: (.modmask | mods), key: (.key | pretty)} ] | group_by([.group, .label]) | map({at: (map(.at) | min), group: .[0].group, label: .[0].label, combos: (group_by(.mods | join(\"+\")) | sort_by([(.[0].key | test(\"Scroll|Drag|drag\")), (.[0].mods | length)]) | map({mods: .[0].mods, keys: (map(.key) | squash)}))}) | sort_by(.at) | map(del(.at)) | . as $lines | (map(.group) | unique) as $gs | ((known | map(select(. as $g | $gs | index($g)))) + ($gs - known - [\"Other\"]) + (if $gs | index(\"Other\") then [\"Other\"] else [] end)) as $names | {groups: ($names | map(. as $g | {name: $g, binds: ($lines | map(select(.group == $g)))})), all: ($names | map(. as $g | $lines | map(select(.group == $g))) | add // [])}"] every 30s {
+  groups: [KeyGroup]
+  all: [KeyLine]
+}
 // the wallpaper wallpapers.json's `defaults` names for a theme: its own, else a
 // `prefix*` one it matches, else `*`
 action wall_default(slug: text) -> text? ["sh", "-c",
@@ -58,9 +71,10 @@ export state themes_key = false
 export state walls_key = false
 export state tray_key = false
 export state media_key = false
+export state keys_key = false
 export state by_pointer = false    // opened with a click: leaving it closes it
 
-enum View { home, app_list, spaces, wifi, bt, sound, clips, notes, power, drives_list, theme_list, wall_list, tray_list, media_list }
+enum View { home, app_list, spaces, wifi, bt, sound, clips, notes, power, drives_list, theme_list, wall_list, tray_list, media_list, keys_list }
 type Command { id: text; name: text; glyph: text }
 
 state view: View = home
@@ -131,6 +145,7 @@ let parts: [Command] = [
   Command(id: "walls", name: "Wallpapers", glyph: "wallpaper"),
   Command(id: "tray", name: "Tray", glyph: "widgets"),
   Command(id: "media", name: "Media", glyph: "music_note"),
+  Command(id: "keys", name: "Keys", glyph: "keyboard"),
   Command(id: "power", name: "Power", glyph: "power_settings_new"),
 ]
 
@@ -206,13 +221,21 @@ let media_at = found_players.index_of(m => m.item.active) ?? 0
 let show_pvol = media.can_volume && found_players.len > 0 && query == ""
 let on_pvol = view == media_list && !is_sum && show_pvol && sel == found_players.len
 let seek_step = 15s              // Shift and an arrow, or the card's buttons
-let has_pane = !is_sum && (view == spaces || view == media_list || view == wall_list || view == theme_list || view == clips || view == notes)
+let has_pane = !is_sum && (view == spaces || view == media_list || view == wall_list || view == theme_list || view == clips || view == notes || view == keys_list)
 let sel = results_at
 let picked_wall: Wall? = view != wall_list ? null
   : sel < found_walls.len ? found_walls.skip(sel).first?.item
   : found_sets.skip(sel - found_walls.len).first?.item
 let picked_clip: ClipboardEntry? = view == clips ? found_clips.skip(sel).first?.item : null
 let picked_space: Workspace? = view == spaces ? found_spaces.skip(sel).first?.item : null
+// the Keys page: with no search its groups; with one, the lines that match, the
+// pane showing the group of the one selected
+let keys_on = view == keys_list && !is_sum
+let found_keys = keybinds.all.fuzzy(query, b => join(" ", b.label, b.group, b.combos.map(c => c.mods.join(" ") + " " + c.keys.join(" ")).join(" ")))
+let picked_line: KeyLine? = keys_on && query != "" ? found_keys.skip(sel).first?.item : null
+let picked_group: KeyGroup? = !keys_on ? null
+  : query == "" ? keybinds.groups.skip(sel).first
+  : keybinds.groups.find(g => g.name == (picked_line?.group ?? ""))
 let picked_note: Notification? = view == notes && sel >= note_rows ? found_notes.skip(sel - note_rows).first?.item : null
 // the theme moved over on the Themes page, and the one being put on: the whole
 // shell takes its colours (island.strand reads it), Esc or leaving puts them back
@@ -241,6 +264,7 @@ on change clipboard_key { if open && view == clips { open = false } else { view 
 on change notes_key { if open && view == notes { open = false } else { view = notes; query = ""; armed = ""; problem = ""; open = true } }
 on change drives_key { if open && view == drives_list { open = false } else { view = drives_list; query = ""; armed = ""; problem = ""; open = true } }
 on change themes_key { if open && view == theme_list { open = false } else { view = theme_list; query = ""; armed = ""; problem = ""; open = true } }
+on change keys_key { if open && view == keys_list { open = false } else { view = keys_list; query = ""; armed = ""; problem = ""; open = true } }
 on change media_key { if open && view == media_list { open = false } else { view = media_list; query = ""; armed = ""; problem = ""; open = true } }
 on change tray_key { if open && view == tray_list { open = false } else { view = tray_list; query = ""; armed = ""; problem = ""; open = true } }
 on change walls_key { if open && view == wall_list { open = false } else { view = wall_list; query = ""; armed = ""; problem = ""; open = true } }
@@ -438,6 +462,7 @@ panel Launcher {
   on key "alt+l" { view = wall_list; query = ""; armed = ""; problem = "" }
   on key "alt+r" { view = tray_list; query = ""; armed = ""; problem = "" }
   on key "alt+m" { view = media_list; query = ""; armed = ""; problem = "" }
+  on key "alt+k" { view = keys_list; query = ""; armed = ""; problem = "" }
   // on the Tray page: Right opens the selected app's menu here, Left goes back out
   when picked_tray != null && (picked_tray?.menu?.items?.len ?? 0) > 0 {
     on key "right" { tray_open = picked_tray?.id ?? ""; tray_sub = null; query = ""; picked_tray?.menu?.open() }
@@ -630,6 +655,11 @@ panel Launcher {
             for m in found_walls key m.item.file { WallRow m }
             for m in found_sets key m.item.name { WallRow m }
           }
+          if view == keys_list {
+            if query == "" { for g in keybinds.groups key g.name { KeyGroupRow g } }
+            else { for m in found_keys key m.item.group + m.item.label { KeyRow m } }
+            if keybinds.groups.len == 0 && query == "" { Row { Glyph "keyboard"; text "No keys from Hyprland" { color: $fg.alpha(0.5); grow: 1 } } }
+          }
           if view == media_list {
             for m in found_players key m.item.id { PlayerRow m }
             if show_pvol { PlayerVolRow {} }
@@ -663,6 +693,7 @@ panel Launcher {
         if view == spaces { SpacePane picked_space }
         if view == notes { NotePane picked_note }
         if view == media_list { MediaPane picked_player ?? lead_player }
+        if view == keys_list { KeyPane picked_group }
       }
       }
 
@@ -683,6 +714,7 @@ panel Launcher {
             Jump "L" { name: "walls"; to: wall_list }
             Jump "R" { name: "tray"; to: tray_list }
             Jump "M" { name: "media"; to: media_list }
+            Jump "K" { name: "keys"; to: keys_list }
             Jump "P" { name: "power"; to: power }
           }
         } else {
@@ -716,14 +748,14 @@ panel Launcher {
 fn view_of(id: text) -> View {
   id == "apps" ? app_list : id == "spaces" ? spaces : id == "wifi" ? wifi
     : id == "bt" ? bt : id == "sound" ? sound : id == "clips" ? clips : id == "notes" ? notes
-    : id == "drives" ? drives_list : id == "themes" ? theme_list : id == "walls" ? wall_list : id == "tray" ? tray_list : id == "media" ? media_list : power
+    : id == "drives" ? drives_list : id == "themes" ? theme_list : id == "walls" ? wall_list : id == "tray" ? tray_list : id == "media" ? media_list : id == "keys" ? keys_list : power
 }
 
 fn view_name() -> text {
   view == app_list ? "Apps" : view == spaces ? "Workspaces" : view == wifi ? "Wi-Fi"
     : view == bt ? "Bluetooth" : view == sound ? "Sound" : view == clips ? "Clipboard"
     : view == notes ? "Notifications" : view == power ? "Power" : view == drives_list ? "Drives"
-    : view == theme_list ? "Themes" : view == wall_list ? "Wallpapers" : view == tray_list ? "Tray" : view == media_list ? "Media" : ""
+    : view == theme_list ? "Themes" : view == wall_list ? "Wallpapers" : view == tray_list ? "Tray" : view == media_list ? "Media" : view == keys_list ? "Keys" : ""
 }
 
 // what Enter does on the selected row (`at`, its place in the list)
@@ -735,6 +767,7 @@ fn enter_does(picked: Notification?, ap: AccessPoint?, at: int) -> text {
     : view == drives_list ? (drives.all.len == 0 ? "" : "use")
     : view == theme_list || view == wall_list ? "use"
     : view == clips ? "copy" : view == spaces ? "go"
+    : view == keys_list ? ""
     : view == media_list ? (picked_player == null ? "" : (picked_player?.playing ?? false) ? "pause" : "play")
     : view == tray_list ? (tray_item == null ? "open" : at == 0 ? "back" : entry_does(picked_entry))
     : view == notes && picked != null && !(picked?.can_activate ?? false) ? "clear" : "open"
@@ -1637,6 +1670,74 @@ component WinTile(w: Window, x: float, y: float, wd: float, ht: float) {
 }
 
 // the frame of every preview beside the list
+// the Keys page: a group, and a line of one
+component KeyGroupRow(g: KeyGroup) {
+  Row {
+    Glyph key_glyph(g.name)
+    text g.name { color: $fg; grow: 1 }
+    Num num(g.binds.len, 0)
+  }
+}
+
+component KeyRow(m: Match<KeyLine>) {
+  Row {
+    Glyph key_glyph(m.item.group)
+    text m.item.label { color: $fg; marks: m.ranges; mark_color: $accent; shrink: 1; ellipsis: end }
+    spacer {}
+    Aside m.item.group
+  }
+}
+
+fn key_glyph(group: text) -> text {
+  group == "Shell" ? "widgets" : group == "Apps" ? "apps" : group == "Windows" ? "web_asset"
+    : group == "Arrange" ? "drag_pan" : group == "Workspaces" ? "space_dashboard"
+    : group == "Sound" ? "volume_up" : group == "Screen" ? "desktop_windows" : "keyboard"
+}
+
+// a group's keys, a line each: what it does, then its keys as keycaps (a line
+// with more than one way to it, the ways apart by "or"); the line searched
+// for in the accent
+component KeyPane(g: KeyGroup?) {
+  Pane {
+    if g != null {
+      row { gap: 8; align: center
+        text key_glyph(g?.name ?? "") { font: "Material Symbols Rounded" 16; color: $accent; shrink: 0 }
+        Caption g?.name ?? ""
+        spacer {}
+        Num num(g?.binds?.len ?? 0, 0) + ((g?.binds?.len ?? 0) == 1 ? " key" : " keys")
+      }
+      col { gap: 2
+        for b in g?.binds ?? [] key b.label {
+          let lit = picked_line?.label == b.label
+          row { height: 27; pad: 0, 8; margin: 0, -8; gap: 10; align: center; radius: 7
+            bg: (lit ? $accent.alpha(0.12) : $fg.alpha(0))
+            text b.label { color: lit ? $accent : $fg.alpha(0.85); font: sans 13px 500; shrink: 1; ellipsis: end }
+            spacer {}
+            for c in b.combos key c.mods.join("+") + c.keys.join("/") {
+              if b.combos.index_of(x => x.mods.join("+") + x.keys.join("/") == c.mods.join("+") + c.keys.join("/")) != 0 {
+                text "or" { color: $fg.alpha(0.4); font: sans 11px 500; shrink: 0 }
+              }
+              row { gap: 4; shrink: 0; align: center
+                for m in c.mods key m { KeyCap m }
+                for k in c.keys key k {
+                  if c.keys.index_of(x => x == k) != 0 { text "/" { color: $fg.alpha(0.35); font: mono 11px 500 } }
+                  KeyCap k
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// a key as a keycap: a little raised
+component KeyCap(k: text) {
+  text k { color: $fg.alpha(0.85); font: mono 11px 600; height: 22; min_width: 22; pad: 0, 7; radius: 6; shrink: 0
+    align: center; bg: $fg.alpha(0.07); border: 1, $fg.alpha(0.13); shadow: 0 1px 0 $fg.alpha(0.12) }
+}
+
 component Pane {
   col { grow: 1; height: rows * row_h - 16; margin: 8; pad: 18, 20; gap: 12; justify: start; clip: true
     radius: 10; bg: $surface_low; border: 1, $fg.alpha(0.05)
