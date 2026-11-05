@@ -1,0 +1,133 @@
+// notify.strand: a notification is the island swelling into a card on the focused
+// monitor: the sender's icon, what it says, a line of what it adds. A new one takes
+// the place of the one showing. Each goes after a few seconds, urgent ones after a
+// few more, held while the pointer is on it. A click opens it, a right click clears
+// it. Until it is opened or cleared it waits on the launcher's Notifications page,
+// and the island shows a bell.
+//
+// Bind in the compositor:  strand toggle notify.open_key   (the one showing opens)
+//                          strand toggle notify.clear_key  (the one showing goes)
+//                          strand toggle notify.clear_all_key  (every one waiting goes)
+
+export state open_key = false
+export state clear_key = false
+export state clear_all_key = false
+
+// shape: the closed sizes match the island, so it swells out of it
+let closed_w = 640
+let closed_h = 34
+let note_w   = 640            // the island's width: it only grows down
+let note_h   = 64
+let corner   = 12             // the island's corners
+let gap_top  = 6
+let island_zone = 42           // what the island keeps from windows: this sits over it
+let face     = 36
+let sans     = "IBM Plex Sans"
+let mono     = "JetBrainsMono Nerd Font"
+
+// time
+let swell  = spring(900, 0.82) // growing, with a little give
+let settle = spring(1400, 1)   // back into the island
+let fill   = 140ms             // the box this far grown before what it says shows
+let fold   = 360ms             // going, from emptying to back in the island
+let wait   = 5s                // how long one shows, at most
+let urgent_wait = 10s          // an urgent one
+
+// the newest; the launcher open takes its place, so it waits for it to close
+let current = launcher.open ? null : notifications.popups.last
+
+on change open_key { current?.activate() }
+on change clear_key { current?.dismiss() }
+on change clear_all_key { notifications.clear() }
+
+// One at a time: a new one sends the others to the list.
+on notifications.received(n) {
+  if !notifications.dnd || n.urgency == critical {
+    for p in notifications.popups { if p.id != n.id { p.expire() } }
+  }
+}
+
+// `has` is what is asked for; the surface stays up while the box empties and
+// settles back into the island, and goes once it is there (the island reads `shown`)
+let has = current != null
+export state shown = false
+state grown = false
+state filled = false
+on change has {
+  if has { shown = true; grown = true } else { filled = false }
+}
+on change has after fill { if has { filled = true } else { grown = false } }
+on change has after fold { if !has { shown = false } }
+// the launcher opening takes the island at once
+on change launcher.open { if launcher.open { shown = false; grown = false; filled = false } }
+
+panel Notify {
+  screens: focused; layer: overlay; anchor: top; margin: gap_top - island_zone, 0, 0
+  keyboard: none; size: auto; hit: none
+  open: shown
+
+  // the surface keeps its size, with room for the swell's give, so only the box moves
+  row { width: note_w + 24; height: note_h + 12; justify: center; align: start; hit: none
+    stack { clip: true
+      width: (grown ? note_w : closed_w) ~ (grown ? swell : settle)
+      height: (grown ? note_h : closed_h) ~ (grown ? swell : settle)
+      radius: corner
+      corners: squircle
+      bg: $surface_lowest; border: 1, $fg.alpha(0.09)
+      shadow: 0 3px 10px $shadow.alpha(0.3)
+      when grown { shadow: 0 8px 24px $shadow.alpha(0.32) }
+      font: sans 13px 600
+      enter { width: closed_w; height: closed_h }
+      when current?.urgency == critical { border: 1, $red.alpha(0.7) }
+
+      stack { opacity: (filled ? 1 : 0) ~ (filled ? 220ms : 90ms)
+        // keyed, so a new one slides in over the one it replaces
+        for n in notifications.popups.reverse().take(launcher.open ? 0 : 1) { Note n }
+      }
+    }
+  }
+}
+
+// how long it shows: the sender's time when that is shorter
+fn life_of(n: Notification) -> duration {
+  n.urgency == critical ? urgent_wait
+    : n.timeout != null && (n.timeout ?? wait) > 0ms && (n.timeout ?? wait) < wait ? (n.timeout ?? wait)
+    : wait
+}
+
+component Note(n: Notification) {
+  row { id: c; width: note_w; height: note_h; pad: 0, 18, 0, 14; gap: 12; align: center
+    cursor: pointer
+    enter { opacity: 0; y: 8 }
+    exit { opacity: 0; y: -8 }
+    after life_of(n) while !c.hover { n.expire() }
+    on click { n.activate() }
+    on secondary { n.dismiss() }
+
+    Face n
+    col { grow: 1; shrink: 1; gap: 2
+      text n.summary { color: $fg; ellipsis: end }
+      if n.body != "" {
+        text n.body.replace("\n", " ") { markup: basic; max_lines: 1; ellipsis: end; color: $fg.alpha(0.6)
+          font: sans 12px 400 }
+      }
+    }
+    if n.progress != null {
+      text num((n.progress ?? 0) * 100, 0) + "%" { color: $fg.alpha(0.55); shrink: 0
+        font: mono 11px 600 }
+    }
+  }
+}
+
+// the sender's image, else its app's icon, else a bell
+component Face(n: Notification) {
+  if (n.image ?? n.app.icon) != "" {
+    image n.image ?? n.app.icon { size: face; radius: 9; corners: squircle; shrink: 0 }
+  } else {
+    row { width: face; height: face; radius: 9; corners: squircle; justify: center; align: center; shrink: 0
+      bg: (n.urgency == critical ? $red : $accent).alpha(0.16)
+      text "notifications" { font: "Material Symbols Rounded" 18
+        color: n.urgency == critical ? $red : $accent }
+    }
+  }
+}

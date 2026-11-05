@@ -1,0 +1,1757 @@
+// launcher.strand: grows out of the island, on the focused monitor. One box, one
+// list. Type to search everything; `=` starts a sum; Alt and a letter jumps to a
+// part of it (Alt+T themes and Alt+L wallpapers too, which have no room in the
+// hint row); Esc goes back a step, then closes. Everything is a row, so everything
+// has the same keys.
+//
+// Bind in the compositor:  strand toggle launcher.open
+// and for a part directly: strand toggle launcher.spaces_key (or clipboard_key,
+// notes_key, drives_key, themes_key, walls_key, tray_key). A Bluetooth device asking for a PIN or a code to confirm
+// opens it on the Bluetooth page, the question in place of the search.
+
+permit exec "qalc", "sh", "theme-switch"
+action calc(q: text) -> text ["qalc", "-t", q]
+
+// themes: theme-switch's own list (file|name|six colours) with each one's whole
+// palette from ~/.config/palette, read every minute while shown, and the one in
+// use, as theme-switch writes it
+type Theme {
+  slug: text; name: text; colors: [color]; dark: bool?
+  base: color?; crust: color?; mantle: color?; surface0: color?; surface1: color?; surface2: color?
+  overlay0: color?; subtext0: color?; text: color?; accent: color?; lavender: color?; mauve: color?
+  red: color?; peach: color?; yellow: color?; green: color?; teal: color?; blue: color?; pink: color?
+}
+service palettes from poll ["sh", "-c", "theme-switch --list | while IFS='|' read -r f n r; do p=\"$HOME/.config/palette/$f\"; [ -f \"$p\" ] || p=/dev/null; jq -nc --arg f \"$f\" --arg n \"$n\" --arg r \"$r\" '(try input catch {}) as $p | ($p | {base, crust, mantle, surface0, surface1, surface2, overlay0, subtext0, text, lavender, mauve, red, peach, yellow, green, teal, blue, pink, accent: (._accent // ._quickshell.accent // .blue), dark: (._variant != \"light\")}) + {slug: ($f | rtrimstr(\".json\")), name: $n, colors: ($r | split(\"|\"))}' \"$p\"; done | jq -sc '{all: .}'"] every 60s {
+  all: [Theme]
+}
+service in_use from file "~/.config/palette/active.json" { _name: text? }
+let theme_slug = palettes.all.find(t => t.name == (in_use._name ?? ""))?.slug ?? ""
+action put_theme(slug: text) ["theme-switch", slug]
+
+// wallpapers: those wallpapers.json gives the theme in use (every one, for a theme
+// it doesn't know), drawn by awww. A set puts its images on the monitors left to
+// right, round again when there are more monitors, as Quickshell did.
+type Wall { file: text?; name: text?; images: [text]; palettes: [text] }
+service walls from file "~/.config/wallpapers/wallpapers.json" { wallpapers: [Wall]; sets: [Wall] }
+action wall(name: text, files: text) -> text? ["sh", "-c",
+  "d=\"$HOME/.config/wallpapers\"; name=$1; set -- $2; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t; else for m in $(hyprctl -j monitors | jq -r 'sort_by(.x, .y) | .[].name'); do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; wait; fi; printf %s \"$name\" > \"$d/.current\"",
+  "sh", name, files]
+// what each monitor shows now, asked again after each change (`tick`)
+action on_screen(tick: int) -> text ["sh", "-c", "awww query", "sh", tick]
+// the wallpaper wallpapers.json's `defaults` names for a theme: its own, else a
+// `prefix*` one it matches, else `*`
+action wall_default(slug: text) -> text? ["sh", "-c",
+  "jq -r --arg s \"$1\" '(.defaults // {}) as $d | $d[$s] // ([$d | to_entries[] | select(.key != \"*\" and (.key | endswith(\"*\"))) | select(.key[:-1] as $p | $s | startswith($p)) | .value] | first) // $d[\"*\"] // empty' \"$HOME/.config/wallpapers/wallpapers.json\"",
+  "sh", slug]
+
+export state open = false
+export state apps_key = false
+export state spaces_key = false
+export state power_key = false
+export state clipboard_key = false
+export state wifi_key = false
+export state bt_key = false
+export state sound_key = false
+export state notes_key = false
+export state drives_key = false
+export state themes_key = false
+export state walls_key = false
+export state tray_key = false
+export state media_key = false
+export state by_pointer = false    // opened with a click: leaving it closes it
+
+enum View { home, app_list, spaces, wifi, bt, sound, clips, notes, power, drives_list, theme_list, wall_list, tray_list, media_list }
+type Command { id: text; name: text; glyph: text }
+
+state view: View = home
+state query = ""
+state armed = ""                // the power command that needs one more Enter
+state problem = ""              // the last thing that failed, shown in the hint row
+state keep_at: int? = null      // where the selection goes back to once a notification is cleared
+state asking = ""               // the Wi-Fi network whose password is being typed
+state secret = ""               // that password, only ever sent to the network
+state tried = ""                // the network last joined with a password: a failure asks again
+state naming = false            // a hidden network's name is being typed
+state hidden_name = ""          // that name
+state hidden = false            // `asking` is a hidden network: joined by name, a password optional
+state typed_pin = ""            // a Bluetooth device's PIN or passkey, only ever sent to its request
+state switching = ""            // the theme theme-switch is putting on
+state results_at = 0            // the selected row, for the preview beside the list
+state theme_held = false        // the Themes page opening: no preview until it is on the theme in use
+state wall_tick = 0             // counts wallpaper changes, so what is shown is asked again
+state applying = ""             // the wallpaper awww is putting up
+state ejecting = ""             // the drive being made safe to remove
+state notice = ""              // the last thing that went well, shown in the hint row
+state tray_open = ""            // the tray item whose menu the Tray page shows
+state tray_sub: int? = null      // and the entry of it whose submenu is open
+state tray_leave = ""           // a tray item just activated: the launcher goes unless its menu opens
+state want_profile: PowerProfile? = null  // the profile just asked for, for a second ask
+
+// shape: the closed sizes match the island, so it opens out of it
+let closed_w = 640
+let closed_h = 34
+let corner   = 12             // the island's corners, kept as it grows: only its size changes
+let sans = "IBM Plex Sans"         // names and prose
+let mono = "JetBrainsMono Nerd Font"  // numbers, times, sizes, code, keys
+let box_w    = 640
+let pane_box_w = 960           // the box on a page with a preview beside its list
+let list_w   = 380             // and that list
+let row_h    = 36
+let rows     = 8
+let hint_h   = 28
+let box_h    = closed_h + rows * row_h + hint_h
+let gap_top  = 6
+let island_zone = 42           // what the island keeps from windows: this sits over it
+let away_close = 1s            // the pointer gone from the box this long closes it
+
+// time: it opens as the island widening, then dropping down; it closes the other
+// way round, rolling up and then narrowing back into the island
+let widen   = spring(1600, 1)  // and narrowing
+let drop    = spring(700, 1)
+let roll_up = spring(1600, 1)
+let turn    = 110ms             // one half this far along before the other starts
+let fold    = 300ms             // closing, from rolling up to back in the island
+
+let powers: [Command] = [
+  Command(id: "lock", name: "Lock", glyph: "lock"),
+  Command(id: "suspend", name: "Suspend", glyph: "bedtime"),
+  Command(id: "reboot", name: "Restart", glyph: "restart_alt"),
+  Command(id: "off", name: "Shut down", glyph: "power_settings_new"),
+]
+let parts: [Command] = [
+  Command(id: "apps", name: "Apps", glyph: "apps"),
+  Command(id: "spaces", name: "Workspaces", glyph: "space_dashboard"),
+  Command(id: "wifi", name: "Wi-Fi", glyph: "wifi"),
+  Command(id: "bt", name: "Bluetooth", glyph: "bluetooth"),
+  Command(id: "sound", name: "Sound", glyph: "volume_up"),
+  Command(id: "clips", name: "Clipboard", glyph: "content_paste"),
+  Command(id: "notes", name: "Notifications", glyph: "notifications"),
+  Command(id: "drives", name: "Drives", glyph: "usb"),
+  Command(id: "themes", name: "Themes", glyph: "palette"),
+  Command(id: "walls", name: "Wallpapers", glyph: "wallpaper"),
+  Command(id: "tray", name: "Tray", glyph: "widgets"),
+  Command(id: "media", name: "Media", glyph: "music_note"),
+  Command(id: "power", name: "Power", glyph: "power_settings_new"),
+]
+
+// a query starting with `=` is a sum for qalc, whatever the view
+let is_sum = query.starts_with("=")
+let sum = query.slice(1).trim()
+let answer = calc(sum)
+
+let hits = apps.search(query)
+// the workspaces in use, by number (a scratch one's is below zero), each found by
+// what is on it
+let found_spaces = workspaces.all.filter(ws => ws.id > 0 && (ws.occupied || ws.active)).sort_by(ws => ws.id)
+  .fuzzy(query, ws => join(" ", ws.name, join(" ", ws.windows.map(w => join(" ", w.app?.name ?? w.app_id, w.title)))))
+// the monitors left to right (Strand gives a screen no place yet: strand-issues.md)
+action monitors_lr(tick: int) -> text ["sh", "-c", "hyprctl -j monitors | jq -r 'sort_by(.x, .y) | .[].name'", "sh", tick]
+let screen_order = (monitors_lr(wall_tick) ?? "").split("\n").filter(l => l != "")
+let found_powers = powers.fuzzy(query, c => c.name)
+// Drives only while one is plugged in
+let found_parts = parts.filter(c => (c.id != "drives" || drives.all.len > 0) && (c.id != "tray" || tray.items.len > 0) && (c.id != "media" || media.players.len > 0)).fuzzy(query, c => c.name)
+// the network joined first, then by strength; devices connected first
+let found_aps = network.access_points.sort_by(a => (a.active ? 0 : 1) + 1 - a.strength).fuzzy(query, a => a.ssid)
+let found_paired = bluetooth.devices.sort_by(d => d.connected ? 0 : 1).fuzzy(query, d => d.name)
+let found_nearby = bluetooth.nearby.fuzzy(query, d => d.name)
+let found_sinks = audio.sinks.sort_by(d => d.default ? 0 : 1).fuzzy(query, d => d.description)
+let found_playing = audio.streams.filter(s => s.direction == output).fuzzy(query, s => s.app)
+let found_sources = audio.sources.sort_by(d => d.default ? 0 : 1).fuzzy(query, d => d.description)
+let found_recording = audio.streams.filter(s => s.direction == input).fuzzy(query, s => s.app)
+// the Sound page's rows, in order: output, outputs, programs playing, the
+// microphone, microphones, programs recording
+let n_playing = audio.sinks.len > 1 ? found_playing.len : 0
+let mic_at = 1 + found_sinks.len + n_playing
+let n_recording = audio.sources.len > 1 ? found_recording.len : 0
+let level_step = 0.05           // a scroll's notch, or an arrow, on a level
+// a Bluetooth headset's microphone works only in its headset (call) mode: in its
+// music mode the microphone in use is asleep, and a meter doesn't wake it
+// (WirePlumber switches modes only for a program that records)
+let bt_mic = audio.source.name.starts_with("bluez_input.") ? audio.source.name.slice(12).replace(":", "_") : ""
+let bt_modes = bt_mic != "" ? audio.sinks.find(d => d.name.contains(bt_mic))?.profiles ?? [] : []
+let mic_asleep = (bt_modes.find(p => p.active)?.name ?? "").starts_with("a2dp")
+  && bt_modes.any(p => p.available && p.name.starts_with("headset"))
+// the Power page's rows above the commands: the profile, the battery
+let show_profile = power.available && power.profiles.len > 0 && query == ""
+let show_battery = battery.present && query == ""
+let power_top = (show_profile ? 1 : 0) + (show_battery ? 1 : 0)
+let found_drives = drives.all.fuzzy(query, d => join(" ", d.name, join(" ", d.volumes.map(v => v.label ?? ""))))
+// the tray: its apps, or the menu of the one opened (a submenu one deep), without
+// its separators
+let found_tray = tray.items.fuzzy(query, i => join(" ", i.title, i.tooltip))
+let tray_item: TrayItem? = view == tray_list && tray_open != "" ? tray.items.find(i => i.id == tray_open) : null
+let tray_entries = (tray_sub != null ? (tray_item?.menu?.items ?? []).find(e => e.id == (tray_sub ?? -1))?.children ?? []
+  : tray_item?.menu?.items ?? []).filter(e => e.kind != "separator")
+let found_entries = tray_entries.fuzzy(query, e => e.label)
+let picked_tray: TrayItem? = view == tray_list && tray_item == null && !is_sum ? found_tray.skip(sel).first?.item : null
+let picked_entry: TrayMenuItem? = tray_item != null && sel >= 1 && !is_sum ? found_entries.skip(sel - 1).first?.item : null
+let found_clips = clipboard.history.fuzzy(query, e => e.text)
+let found_notes = notifications.all.reverse().fuzzy(query, n => join(" ", n.app.name, n.summary, n.body))
+let note_rows = 2               // the Notifications page's switches, above its notifications
+let found_themes = palettes.all.fuzzy(query, t => t.name)
+let suit_walls = walls.wallpapers.filter(w => suits(w.palettes))
+let suit_sets = walls.sets.filter(w => suits(w.palettes))
+let found_walls = suit_walls.fuzzy(query, w => wall_name(w))
+let found_sets = suit_sets.fuzzy(query, w => wall_name(w))
+let showing = on_screen(wall_tick) ?? ""
+// a page with a preview of the selected row beside its list
+// (a pane only where the selected row holds more than the row can show, and it's
+// judged before acting on it; elsewhere the rows carry it)
+// Media: every player, the playing first; the card beside the list shows the
+// one selected, and a row after them sets the leading player's own volume
+let found_players = media.players.sort_by(p => p.playing ? 0 : 1).fuzzy(query, p => join(" ", p.name, p.title ?? "", p.artist ?? ""))
+let picked_player: Player? = view == media_list && !is_sum ? found_players.skip(sel).first?.item : null
+let lead_player: Player? = media.players.find(p => p.active)
+let media_at = found_players.index_of(m => m.item.active) ?? 0
+let show_pvol = media.can_volume && found_players.len > 0 && query == ""
+let on_pvol = view == media_list && !is_sum && show_pvol && sel == found_players.len
+let seek_step = 15s              // Shift and an arrow, or the card's buttons
+let has_pane = !is_sum && (view == spaces || view == media_list || view == wall_list || view == theme_list || view == clips || view == notes)
+let sel = results_at
+let picked_wall: Wall? = view != wall_list ? null
+  : sel < found_walls.len ? found_walls.skip(sel).first?.item
+  : found_sets.skip(sel - found_walls.len).first?.item
+let picked_clip: ClipboardEntry? = view == clips ? found_clips.skip(sel).first?.item : null
+let picked_space: Workspace? = view == spaces ? found_spaces.skip(sel).first?.item : null
+let picked_note: Notification? = view == notes && sel >= note_rows ? found_notes.skip(sel - note_rows).first?.item : null
+// the theme moved over on the Themes page, and the one being put on: the whole
+// shell takes its colours (island.strand reads it), Esc or leaving puts them back
+let theme_at = found_themes.index_of(m => m.item.slug == theme_slug) ?? 0
+on change view { theme_held = view == theme_list }
+let peek_theme: Theme? = open && view == theme_list && !theme_held && !is_sum ? found_themes.skip(sel).first?.item : null
+export let peek: Theme? = switching != "" ? palettes.all.find(t => t.slug == switching) : peek_theme
+// the wallpaper that theme would bring: the one up now if it suits it, else its own
+let peek_slug = peek_theme?.slug ?? ""
+let peek_default = wall_default(peek_slug) ?? ""
+let peek_walls = walls.wallpapers.filter(w => suits_for(w.palettes, peek_slug))
+let peek_sets = walls.sets.filter(w => suits_for(w.palettes, peek_slug))
+let up_now = showing.split("\n").filter(l => l.contains("image: ")).map(l => l.slice((l.index_of("image: ") ?? 0) + 7))
+let peek_up = peek_walls.find(w => shows(w, showing)) ?? peek_sets.find(w => shows(w, showing))
+let peek_wall = peek_up ?? peek_walls.find(w => w.file == peek_default) ?? peek_sets.find(w => w.name == peek_default)
+  ?? peek_walls.first ?? peek_sets.first
+let found_rec = [Command(id: "rec", name: "Record screen", glyph: "screen_record")].fuzzy(query, c => c.name)
+
+on change apps_key { if open && view == app_list { open = false } else { view = app_list; query = ""; armed = ""; problem = ""; open = true } }
+on change spaces_key { if open && view == spaces { open = false } else { view = spaces; query = ""; armed = ""; problem = ""; open = true } }
+on change power_key { if open && view == power { open = false } else { view = power; query = ""; armed = ""; problem = ""; open = true } }
+on change wifi_key { if open && view == wifi { open = false } else { view = wifi; query = ""; armed = ""; problem = ""; open = true } }
+on change bt_key { if open && view == bt { open = false } else { view = bt; query = ""; armed = ""; problem = ""; open = true } }
+on change sound_key { if open && view == sound { open = false } else { view = sound; query = ""; armed = ""; problem = ""; open = true } }
+on change clipboard_key { if open && view == clips { open = false } else { view = clips; query = ""; armed = ""; problem = ""; open = true } }
+on change notes_key { if open && view == notes { open = false } else { view = notes; query = ""; armed = ""; problem = ""; open = true } }
+on change drives_key { if open && view == drives_list { open = false } else { view = drives_list; query = ""; armed = ""; problem = ""; open = true } }
+on change themes_key { if open && view == theme_list { open = false } else { view = theme_list; query = ""; armed = ""; problem = ""; open = true } }
+on change media_key { if open && view == media_list { open = false } else { view = media_list; query = ""; armed = ""; problem = ""; open = true } }
+on change tray_key { if open && view == tray_list { open = false } else { view = tray_list; query = ""; armed = ""; problem = ""; open = true } }
+on change walls_key { if open && view == wall_list { open = false } else { view = wall_list; query = ""; armed = ""; problem = ""; open = true } }
+
+// a theme switched, here or by theme-switch anywhere: a wallpaper that doesn't
+// suit it gives way to the one wallpapers.json names for it, else the first that
+// suits it
+on change switching after 15s { switching = "" }
+on change armed after 3s { armed = "" }
+on change notice after 4s { notice = "" }
+// power-profiles-daemon going from performance to power saver on a laptop whose
+// firmware has no low-power profile lands on balanced (it reads its own firmware
+// write back as a switch); asked again from there, it takes. So a profile asked
+// for that settles on another within two seconds is asked for once more.
+on change power.profile {
+  if want_profile != null && power.profile != (want_profile ?? power.profile) {
+    let w = want_profile ?? power.profile
+    want_profile = null
+    power.profile = w
+  }
+}
+on change want_profile after 2s { want_profile = null }
+
+// a tray menu opened anywhere (an app that is only a menu, activated) shows here,
+// on the Tray page; leaving the page closes it
+let menu_up = tray.items.find(i => i.menu.opened)
+on change menu_up?.id {
+  if menu_up != null && tray_open != (menu_up?.id ?? "") {
+    view = tray_list; query = ""; tray_open = menu_up?.id ?? ""; tray_sub = null; tray_leave = ""; open = true
+  }
+}
+on change tray_leave after 300ms { if tray_leave != "" { tray_leave = ""; open = false } }
+on change view {
+  if view != tray_list && tray_open != "" {
+    tray.items.find(i => i.id == tray_open)?.menu?.close(); tray_open = ""; tray_sub = null
+  }
+}
+on change theme_slug {
+  if theme_slug == switching { switching = "" }
+  let now = theme_slug != "" ? await on_screen(wall_tick) : ""
+  let fits = suit_walls.any(w => shows(w, now)) || suit_sets.any(w => shows(w, now))
+  if theme_slug != "" && !fits {
+    let named = await wall_default(theme_slug)
+    let w = suit_walls.find(x => x.file == named) ?? suit_sets.find(x => x.name == named)
+      ?? suit_walls.first ?? suit_sets.first ?? Wall()
+    if w.file != null || w.name != null {
+      applying = wall_name(w)
+      await wall(w.file ?? w.name ?? "", w.file ?? w.images.join(" "))
+      applying = ""
+      wall_tick += 1
+    }
+  }
+}
+
+// a device pairing asks something: the launcher opens on the Bluetooth page to ask it
+let pairing = bluetooth.request != null
+on change pairing {
+  typed_pin = ""
+  if pairing && !(open && view == bt) { view = bt; query = ""; armed = ""; problem = ""; open = true }
+}
+
+on change query { by_pointer = false }
+
+// `open` is what is asked for; the surface stays up while the box folds back into
+// the island, and goes once it is there
+state shown = false
+state wide = false
+state dropped = false
+on change open {
+  if open { shown = true; wide = true } else { dropped = false }
+}
+on change open after turn { if open { dropped = true } else { wide = false } }
+on change open after fold { if !open { shown = false } }
+// a click away or losing focus takes the surface at once
+on change shown { if !shown { open = false } }
+
+on network.failed(ssid, error) {
+  problem = (ssid != "" ? ssid + ": " : "") + error
+  if ssid != "" && ssid == tried && view == wifi {
+    asking = ssid; secret = ""; hidden = !network.access_points.any(a => a.ssid == ssid)
+  }
+}
+on change view { asking = ""; secret = ""; naming = false; hidden_name = ""; notice = "" }
+on bluetooth.failed(address, error) { problem = error }
+on drives.failed(device, error) { problem = device + ": " + error; if device == ejecting { ejecting = "" } }
+// the drive being ejected gone: say it may be pulled out
+on change drives.all.len {
+  if ejecting != "" && !drives.all.any(d => d.device == ejecting) { notice = "Safe to remove"; ejecting = "" }
+}
+on clipboard.failed(action, error) { problem = error }
+
+panel Launcher {
+  screens: focused; layer: overlay; anchor: top; margin: gap_top - island_zone, 0, 0
+  keyboard: exclusive; open: <-> shown; size: auto; hit: none
+  exit { opacity: 0 }
+  // reset once gone, unless something opened it again meanwhile
+  on hide { if !open { if tray_open != "" { tray.items.find(i => i.id == tray_open)?.menu?.close() }; tray_open = ""; tray_sub = null; view = home; query = ""; armed = ""; problem = ""; asking = ""; secret = ""; naming = false; hidden_name = ""; by_pointer = false; wide = false; dropped = false } }
+
+  // Opened with a click and nothing typed since: the pointer leaving the box and
+  // staying away closes it. Opened from the keyboard, or typed in, it stays.
+  // the notification selected on its page
+  let picked = view == notes && (results.selected_index ?? -1) >= note_rows
+    ? found_notes.skip((results.selected_index ?? 0) - note_rows).first?.item : null
+
+  // after Delete the selection stays where it was, on the one that comes up into
+  // its place (Strand moves it to the first row: strand-issues.md)
+  on change found_notes.len { if keep_at != null { results.select(keep_at ?? 0); keep_at = null } }
+
+  // the Themes page opens on the theme in use: the list mounts once the box has
+  // dropped, its first row selected, and the themes and the one in use are read
+  // only once the page shows, so until the selection is on it, it is moved
+  // there whenever any of those comes; the preview (which recolours
+  // everything) waits for it, not showing the first theme on the way
+  on change view { if view == theme_list && dropped { results.select(theme_at) } }
+  // the Media page opens on the player the island follows
+  on change view { if view == media_list && dropped { results.select(media_at) } }
+  on change dropped { if dropped && view == media_list { results.select(media_at) } }
+  on change dropped { if dropped && theme_held { results.select(theme_at) } }
+  on change theme_at { if theme_held && dropped { results.select(theme_at) } }
+  on change found_themes.len { if theme_held && dropped { results.select(theme_at) } }
+  on change results_at {
+    if theme_held {
+      if results_at == theme_at && theme_slug != "" { theme_held = false }
+      else if dropped { results.select(theme_at) }
+    }
+  }
+  on change theme_held after 1s { theme_held = false }
+
+  // the network selected on the Wi-Fi page (its first row is the switch)
+  let picked_ap = view == wifi && network.wifi && asking == "" && !naming && (results.selected_index ?? -1) >= 1
+    ? found_aps.skip((results.selected_index ?? 0) - 1).first?.item : null
+  // the "Hidden network" row, after the networks
+  let on_hidden = view == wifi && network.wifi && asking == "" && !naming && query == ""
+    && (results.selected_index ?? -1) == found_aps.len + 1
+  // on the Wi-Fi page: Delete forgets the selected network, if it is saved
+  when picked_ap?.known ?? false {
+    on key "delete" { problem = ""; picked_ap?.forget() }
+  }
+
+  // on the Sound page's output or microphone row, the arrows set its level
+  let at_level = view == sound && !is_sum ? results.selected_index ?? -1 : -1
+  // the preview beside the list follows the selection
+  on change results.selected_index { results_at = results.selected_index ?? 0 }
+  when at_level == 0 {
+    on key "left" { audio.sink.volume = clamp(audio.sink.volume - level_step, 0, 1) }
+    on key "right" { audio.sink.volume = clamp(audio.sink.volume + level_step, 0, 1) }
+  }
+  when at_level == mic_at {
+    on key "left" { audio.source.volume = clamp(audio.source.volume - level_step, 0, 1) }
+    on key "right" { audio.source.volume = clamp(audio.source.volume + level_step, 0, 1) }
+  }
+  // and on every other row, the level of its device or program
+  let lvl_dev: AudioDevice? = at_level >= 1 && at_level <= found_sinks.len ? found_sinks.skip(at_level - 1).first?.item
+    : at_level > mic_at && at_level <= mic_at + found_sources.len ? found_sources.skip(at_level - mic_at - 1).first?.item : null
+  let lvl_st: AudioStream? = at_level > found_sinks.len && at_level < mic_at ? found_playing.skip(at_level - 1 - found_sinks.len).first?.item
+    : at_level > mic_at + found_sources.len ? found_recording.skip(at_level - mic_at - 1 - found_sources.len).first?.item : null
+  when lvl_dev != null {
+    on key "left" { let d = lvl_dev ?? audio.sink; d.volume = clamp(d.volume - level_step, 0, 1) }
+    on key "right" { let d = lvl_dev ?? audio.sink; d.volume = clamp(d.volume + level_step, 0, 1) }
+  }
+  // on the Media page: the arrows change track, with Shift they skip 15 s; on the
+  // volume row they set it
+  when picked_player != null {
+    on key "left" { picked_player?.previous() }
+    on key "right" { picked_player?.next() }
+    on key "shift+left" { if picked_player?.can_seek ?? false { picked_player?.position = clamp((picked_player?.position ?? 0) - seek_step / (picked_player?.length ?? 1s), 0, 1) } }
+    on key "shift+right" { if picked_player?.can_seek ?? false { picked_player?.position = clamp((picked_player?.position ?? 0) + seek_step / (picked_player?.length ?? 1s), 0, 1) } }
+  }
+  when on_pvol {
+    on key "left" { media.volume = clamp(media.volume - level_step, 0, 1) }
+    on key "right" { media.volume = clamp(media.volume + level_step, 0, 1) }
+  }
+  when lvl_st != null {
+    on key "left" { lvl_st?.volume = clamp((lvl_st?.volume ?? 0) - level_step, 0, 1) }
+    on key "right" { lvl_st?.volume = clamp((lvl_st?.volume ?? 0) + level_step, 0, 1) }
+  }
+  // on the Power page's profile row, the arrows move along the profiles
+  when view == power && show_profile && (results.selected_index ?? -1) == 0 && !is_sum {
+    on key "left" { problem = ""; want_profile = profile_at(-1); power.profile = profile_at(-1) }
+    on key "right" { problem = ""; want_profile = profile_at(1); power.profile = profile_at(1) }
+  }
+
+  on change card.hover after away_close { if by_pointer && !card.hover { open = false } }
+
+  on key "ctrl+n" { results.next() }
+  on key "ctrl+p" { results.prev() }
+  on key "alt+a" { view = app_list; query = ""; armed = ""; problem = "" }
+  on key "alt+w" { view = spaces; query = ""; armed = ""; problem = "" }
+  on key "alt+n" { view = wifi; query = ""; armed = ""; problem = "" }
+  on key "alt+b" { view = bt; query = ""; armed = ""; problem = "" }
+  on key "alt+s" { view = sound; query = ""; armed = ""; problem = "" }
+  on key "alt+c" { view = clips; query = ""; armed = ""; problem = "" }
+  on key "alt+i" { view = notes; query = ""; armed = ""; problem = "" }
+  on key "alt+t" { view = theme_list; query = ""; armed = ""; problem = "" }
+  on key "alt+l" { view = wall_list; query = ""; armed = ""; problem = "" }
+  on key "alt+r" { view = tray_list; query = ""; armed = ""; problem = "" }
+  on key "alt+m" { view = media_list; query = ""; armed = ""; problem = "" }
+  // on the Tray page: Right opens the selected app's menu here, Left goes back out
+  when picked_tray != null && (picked_tray?.menu?.items?.len ?? 0) > 0 {
+    on key "right" { tray_open = picked_tray?.id ?? ""; tray_sub = null; query = ""; picked_tray?.menu?.open() }
+  }
+  when tray_item != null && !is_sum {
+    on key "left" { if tray_sub != null { tray_sub = null; query = "" } else { tray_item?.menu?.close(); tray_open = ""; query = "" } }
+  }
+  // on the Notifications page: Delete clears the selected one, Alt and a number
+  // presses one of its buttons
+  when picked != null {
+    on key "delete" { keep_at = results.selected_index; picked?.dismiss() }
+    on key "alt+1" { picked?.actions?.first?.invoke() }
+    on key "alt+2" { picked?.actions?.skip(1)?.first?.invoke() }
+    on key "alt+3" { picked?.actions?.skip(2)?.first?.invoke() }
+  }
+  // on the Clipboard page: Delete removes the selected entry from the history
+  when picked_clip != null && !is_sum {
+    on key "delete" { picked_clip?.remove() }
+  }
+  on key "alt+p" { view = power; query = ""; armed = ""; problem = "" }
+  // a pairing device's question in place of the search: Return allows a code it
+  // shows or a service it wants (a PIN is its field's Return), Escape refuses it
+  let asked = view == bt && pairing
+  let kind = bluetooth.request?.kind
+  when asked && (kind == confirm || kind == service) {
+    on key "return" { bluetooth.request?.accept() }
+  }
+  // Escape refuses a pairing question, clears the query, then leaves the page,
+  // then folds it away
+  on key "escape" {
+    armed = ""
+    problem = ""
+    if asked { bluetooth.request?.reject(); typed_pin = "" }
+    else if naming { naming = false; hidden_name = "" }
+    else if asking != "" { asking = ""; secret = "" }
+    else if query != "" { query = "" } else if tray_item != null { if tray_sub != null { tray_sub = null; query = "" } else { tray_item?.menu?.close(); tray_open = ""; query = "" } }
+    else if view != home { view = home } else { open = false }
+  }
+
+  // the surface keeps its size (Strand holds it and the shadow's room), so only the box moves
+  row { width: pane_box_w; height: box_h; justify: center; align: start; hit: none
+    col { id: card; clip: true
+      width: (wide ? (has_pane ? pane_box_w : box_w) : closed_w) ~ widen
+      height: (dropped ? box_h : closed_h) ~ (dropped ? drop : roll_up)
+      bg: $surface_lowest; border: 1, $fg.alpha(0.09)
+      radius: corner; corners: squircle
+      // the island's shadow, deepening as it drops
+      shadow: 0 3px 10px $shadow.alpha(0.3)
+      when dropped { shadow: 0 12px 40px $shadow.alpha(0.35) }
+      font: sans 14px 500
+      enter { width: closed_w }
+
+      if asked {
+        // what the pairing device asks, in place of the search
+        row { height: closed_h; shrink: 0; pad: 0, 14; gap: 8; align: center
+          text "bluetooth" { font: "Material Symbols Rounded" 16; color: $fg.alpha(0.7); width: 16; shrink: 0 }
+          text bluetooth.request?.device?.name ?? "" { color: $accent; shrink: 0; max_width: 220; ellipsis: end }
+          if kind == pin || kind == passkey {
+            input { type: password; text: <-> typed_pin; focus: true; grow: 1; color: $fg
+              placeholder: kind == pin ? "PIN" : "Passkey"
+              on activate { if typed_pin != "" { problem = ""; bluetooth.request?.respond(typed_pin); typed_pin = "" } }
+            }
+          } else {
+            text match kind ?? confirm {
+              confirm => "shows"
+              display => "type"
+              service => "wants"
+              _ => ""
+            } { color: $fg.alpha(0.55); shrink: 0 }
+            text kind == service ? bluetooth.request?.service ?? "" : bluetooth.request?.code ?? "" {
+              color: $fg; shrink: 1; ellipsis: end }
+            if kind == display && (bluetooth.request?.entered ?? 0) > 0 {
+              text num(bluetooth.request?.entered ?? 0, 0) + " typed" { color: $fg.alpha(0.45); shrink: 0 }
+            }
+            spacer {}
+          }
+        }
+      } else if naming {
+        // a hidden network's name, in place of the search; Return asks its password
+        row { height: closed_h; shrink: 0; pad: 0, 14; gap: 8; align: center
+          text "wifi_find" { font: "Material Symbols Rounded" 16; color: $fg.alpha(0.7); width: 16; shrink: 0 }
+          input { text: <-> hidden_name; focus: true; grow: 1; color: $fg
+            placeholder: "Hidden network's name"
+            on activate {
+              if hidden_name != "" { asking = hidden_name; hidden = true; secret = ""; naming = false; hidden_name = "" }
+            }
+          }
+        }
+      } else if asking != "" {
+        // a Wi-Fi network's password, in place of the search; Return joins
+        row { height: closed_h; shrink: 0; pad: 0, 14; gap: 8; align: center
+          text "lock" { font: "Material Symbols Rounded" 16; color: $fg.alpha(0.7); width: 16; shrink: 0 }
+          text asking { color: $accent; shrink: 0; max_width: 220; ellipsis: end }
+          input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg
+            placeholder: hidden ? "Password, or none" : "Password"
+            on activate {
+              if secret != "" || hidden {
+                problem = ""
+                tried = asking
+                if hidden { network.join(asking, secret) }
+                else { network.access_points.find(a => a.ssid == asking)?.connect_with(secret) }
+                secret = ""
+                asking = ""
+                hidden = false
+              }
+            }
+          }
+        }
+      } else {
+        row { height: closed_h; shrink: 0; pad: 0, 14; gap: 8; align: center
+          text is_sum ? "calculate" : "search" { font: "Material Symbols Rounded" 16; color: $fg.alpha(0.7); width: 16; shrink: 0 }
+          if view != home && !is_sum {
+            text view_name() { color: $accent; shrink: 0; pad: 2, 8; radius: 6; bg: $accent.alpha(0.15); font: sans 13px 600 }
+          }
+          input { text: <-> query; focus: true; nav: results; grow: 1; color: $fg
+            placeholder: view == home ? "Search everything, or = for a sum" : "Search" }
+        }
+      }
+
+      row { height: rows * row_h; shrink: 0
+      stack { width: has_pane ? list_w : box_w; height: rows * row_h; shrink: 0; clip: true
+      // the selection: a wash of the accent from the left edge, a glowing rail the
+      // row's height on it, and a faint sheen drifting slowly across the wash;
+      // one piece under the rows, gliding from one to the next, so the sheen
+      // carries on through every move
+      stack { width: has_pane ? list_w : box_w; height: row_h; clip: true
+        y: (results.selected_index ?? 0) * row_h - results.scroll_y
+        opacity: results.selected_index == null ? 0 : 1
+        // eased out over the whole width, so it has no edge where it ends
+        bg: linear(90deg, $accent.alpha(0.22), $accent.alpha(0.175), $accent.alpha(0.135), $accent.alpha(0.1),
+          $accent.alpha(0.07), $accent.alpha(0.045), $accent.alpha(0.025), $accent.alpha(0.01), $accent.alpha(0))
+        box { width: 200; height: row_h; x: (has_pane ? list_w : box_w) * (0.2 + 0.2 * wave(7s)) - 100
+          bg: linear(90deg, $accent.alpha(0), $accent.alpha(0.03), $accent.alpha(0.08), $accent.alpha(0.03), $accent.alpha(0)) }
+        box { width: 3; height: row_h; bg: $accent; shadow: 0 0 12px $accent.alpha(0.55) }
+      }
+      list { id: results; height: rows * row_h; shrink: 0; wrap: true
+        width: has_pane ? list_w : box_w
+        if is_sum { SumRow {} }
+        else {
+          if view == home && query == "" {
+            for m in found_parts key m.item.id { Part m.item }
+            RecordRow {}
+          }
+          if view == home && query != "" {
+            for m in found_parts key m.item.id { Part m.item }
+            for m in found_rec key m.item.id { RecordRow {} }
+            for h in hits { AppRow h }
+            for m in found_spaces key m.item.id { SpaceRow m }
+            for m in found_powers key m.item.id { PowerRow m }
+          }
+          if view == app_list { for h in hits { AppRow h } }
+          if view == spaces { for m in found_spaces key m.item.id { SpaceRow m } }
+          if view == wifi {
+            WifiSwitch {}
+            if network.wifi {
+              for m in found_aps key m.item.ssid { WifiRow m }
+              if query == "" { HiddenRow {} }
+            }
+          }
+          if view == bt {
+            BtSwitch {}
+            if bluetooth.powered {
+              for m in found_paired key m.item.address { BtRow m }
+              for m in found_nearby key m.item.address { NearbyRow m }
+            }
+          }
+          if view == sound {
+            MuteRow {}
+            for m in found_sinks key m.item.id { SinkRow m }
+            // where each program plays, while there is more than one place to play
+            if audio.sinks.len > 1 { for m in found_playing key m.item.id { StreamRow m } }
+            // the microphone: the same again, for what records
+            MicRow {}
+            for m in found_sources key m.item.id { SourceRow m }
+            if audio.sources.len > 1 { for m in found_recording key m.item.id { RecordingRow m } }
+          }
+          if view == clips { for m in found_clips key m.item.id { ClipRow m } }
+          if view == notes {
+            DndSwitch {}
+            ClearRow {}
+            for m in found_notes key m.item.id { NoteRow m }
+          }
+          if view == power {
+            if show_profile { ProfileSwitch {} }
+            if show_battery { BatteryRow {} }
+            for m in found_powers key m.item.id { PowerRow m }
+          }
+          if view == theme_list { for m in found_themes key m.item.slug { ThemeRow m } }
+          if view == wall_list {
+            for m in found_walls key m.item.file { WallRow m }
+            for m in found_sets key m.item.name { WallRow m }
+          }
+          if view == media_list {
+            for m in found_players key m.item.id { PlayerRow m }
+            if show_pvol { PlayerVolRow {} }
+            if media.players.len == 0 && query == "" { Row { Glyph "music_note"; text "Nothing playing" { color: $fg.alpha(0.5); grow: 1 } } }
+          }
+          if view == tray_list {
+            if tray_item == null {
+              for m in found_tray key m.item.id { TrayRow m }
+              if tray.items.len == 0 && query == "" { Row { Glyph "widgets"; text "Nothing in the tray" { color: $fg.alpha(0.5); grow: 1 } } }
+            } else {
+              TrayBack {}
+              for m in found_entries key m.item.id { EntryRow m }
+            }
+          }
+          if view == drives_list {
+            if drives.all.len == 0 && query == "" { NoDrives {} }
+            // each drive's filesystems, then the drive itself to eject
+            for m in found_drives key m.item.device {
+              for v in m.item.volumes key v.device { VolumeRow v }
+              if m.item.can_eject { EjectRow m.item }
+            }
+          }
+        }
+      }
+      }
+      if has_pane {
+        box { width: 1; height: rows * row_h; shrink: 0; bg: $fg.alpha(0.06) }
+        if view == wall_list && picked_wall != null { WallPane picked_wall ?? Wall() }
+        if view == theme_list && peek_theme != null { ThemePane peek_theme ?? palettes.all.first ?? Theme(slug: "", name: "") }
+        if view == clips { ClipPane picked_clip }
+        if view == spaces { SpacePane picked_space }
+        if view == notes { NotePane picked_note }
+        if view == media_list { MediaPane picked_player ?? lead_player }
+      }
+      }
+
+      row { height: hint_h; shrink: 0; pad: 0, 14; gap: 14; align: center
+        if keyboard.alt {
+          // Alt held: every page's letter (a click goes there too)
+          row { gap: 11; shrink: 0; align: center
+            enter { opacity: 0 }
+            Cap "Alt"
+            Jump "A" { name: "apps"; to: app_list }
+            Jump "W" { name: "spaces"; to: spaces }
+            Jump "N" { name: "wi-fi"; to: wifi }
+            Jump "B" { name: "bluetooth"; to: bt }
+            Jump "S" { name: "sound"; to: sound }
+            Jump "C" { name: "clips"; to: clips }
+            Jump "I" { name: "inbox"; to: notes }
+            Jump "T" { name: "themes"; to: theme_list }
+            Jump "L" { name: "walls"; to: wall_list }
+            Jump "R" { name: "tray"; to: tray_list }
+            Jump "M" { name: "media"; to: media_list }
+            Jump "P" { name: "power"; to: power }
+          }
+        } else {
+          let enter_what = asked ? asked_does(kind) : on_hidden ? "name it" : enter_does(picked, picked_ap, results.selected_index ?? 0)
+          if enter_what != "" { Hint "Enter" { what: enter_what } }
+          Hint "Esc" { what: (asked ? "refuse" : asking != "" || naming ? "cancel" : query != "" ? "clear" : view != home ? "back" : "close") }
+          // the page's own keys
+          if picked_ap?.known ?? false { Hint "Del" { what: "forget" } }
+          if view == clips && picked_clip != null { Hint "Del" { what: "remove" } }
+          if view == sound && !is_sum { Hint "← →" { what: "level" } }
+          if picked_player != null { Hint "← →" { what: "track" }; if picked_player?.can_seek ?? false { Hint "⇧ ← →" { what: "15 s" } } }
+          if on_pvol { Hint "← →" { what: "level" } }
+          if (picked_tray?.menu?.items?.len ?? 0) > 0 { Hint "→" { what: "menu" } }
+          if tray_item != null && !is_sum { Hint "←" { what: "back" } }
+          if view == power && show_profile && (results.selected_index ?? -1) == 0 && !is_sum { Hint "← →" { what: "profile" } }
+          spacer {}
+          if problem != "" {
+            text problem { color: $red; ellipsis: end; shrink: 1; font: sans 11px 600 }
+          } else if notice != "" {
+            text notice { color: $green; ellipsis: end; shrink: 1; font: sans 11px 600 }
+          } else {
+            row { gap: 5; shrink: 0; align: center; Cap "Alt"; text "pages" { color: $fg.alpha(0.4); font: sans 11px 500 } }
+          }
+        }
+      }
+    }
+  }
+}
+
+// a part chosen from inside the launcher: the search starts over
+fn view_of(id: text) -> View {
+  id == "apps" ? app_list : id == "spaces" ? spaces : id == "wifi" ? wifi
+    : id == "bt" ? bt : id == "sound" ? sound : id == "clips" ? clips : id == "notes" ? notes
+    : id == "drives" ? drives_list : id == "themes" ? theme_list : id == "walls" ? wall_list : id == "tray" ? tray_list : id == "media" ? media_list : power
+}
+
+fn view_name() -> text {
+  view == app_list ? "Apps" : view == spaces ? "Workspaces" : view == wifi ? "Wi-Fi"
+    : view == bt ? "Bluetooth" : view == sound ? "Sound" : view == clips ? "Clipboard"
+    : view == notes ? "Notifications" : view == power ? "Power" : view == drives_list ? "Drives"
+    : view == theme_list ? "Themes" : view == wall_list ? "Wallpapers" : view == tray_list ? "Tray" : view == media_list ? "Media" : ""
+}
+
+// what Enter does on the selected row (`at`, its place in the list)
+fn enter_does(picked: Notification?, ap: AccessPoint?, at: int) -> text {
+  is_sum ? "copy" : view == wifi ? wifi_does(ap) : view == bt ? "connect"
+    : view == power ? (show_profile && at == 0 ? "next" : at < power_top ? ""
+        : armed == (found_powers.skip((at - power_top).round()).first?.item?.id ?? "") ? "confirm" : "run")
+    : view == sound ? sound_does(at)
+    : view == drives_list ? (drives.all.len == 0 ? "" : "use")
+    : view == theme_list || view == wall_list ? "use"
+    : view == clips ? "copy" : view == spaces ? "go"
+    : view == media_list ? (picked_player == null ? "" : (picked_player?.playing ?? false) ? "pause" : "play")
+    : view == tray_list ? (tray_item == null ? "open" : at == 0 ? "back" : entry_does(picked_entry))
+    : view == notes && picked != null && !(picked?.can_activate ?? false) ? "clear" : "open"
+}
+
+fn sound_does(at: int) -> text {
+  at == 0 ? (audio.sink.muted ? "unmute" : "mute")
+    : at <= found_sinks.len ? "use"
+    : at <= found_sinks.len + n_playing ? "move"
+    : at < mic_at ? "use"
+    : at == mic_at ? (audio.source.muted ? "unmute" : "mute")
+    : at <= mic_at + found_sources.len ? "use"
+    : "move"
+}
+
+fn asked_does(k: BluetoothRequestKind?) -> text {
+  k == service ? "allow" : k == display ? "" : "pair"
+}
+
+component Hint(key: text, what: text) {
+  row { gap: 5; shrink: 0; align: center
+    Cap key
+    text what { color: $fg.alpha(0.5); font: sans 11px 500 }
+  }
+}
+
+// a key as a small keycap
+component Cap(key: text) {
+  text key { color: $fg.alpha(0.75); font: mono 10px 700; height: 16; pad: 0, 4; radius: 4; shrink: 0
+    border: 1, $fg.alpha(0.18); align: center }
+}
+
+// one part's letter in the hint row: Alt and it, or a click, goes there
+component Jump(letter: text, name: text, to: View) {
+  row { id: j; gap: 3; shrink: 0; align: center; cursor: pointer
+    on click { view = to; query = ""; armed = ""; problem = "" }
+    text letter { color: (view == to ? $accent : $fg.alpha(0.8)); font: mono 10px 700 }
+    text name { color: (j.hover ? $fg.alpha(0.85) : $fg.alpha(0.5)); font: sans 11px 500 }
+  }
+}
+
+// a row; the selection is drawn under the list, gliding. The selected row's
+// content steps right off the rail, and a Glyph in it takes the accent
+component Row {
+  row { height: row_h; pad: 0, 14; gap: 10; align: center; cursor: pointer
+    color: $fg.alpha(0.65)
+    when hover { bg: $fg.alpha(0.04) }
+    when selected { color: $accent; x: 4 }
+    slot
+  }
+}
+
+// `on`: something in use, connected or switched on, in the accent
+component Glyph(name: text, on: bool = false) {
+  text name { width: 20; shrink: 0; font: "Material Symbols Rounded" 18
+    when on { color: $accent }
+  }
+}
+
+// a number, a time or a size: the mono face, quiet
+component Num(t: text, w: length = 0) {
+  text t { color: $fg.alpha(0.5); shrink: 0; font: mono 12px 500; align: end
+    when w > 0 { width: w }
+  }
+}
+
+// a level as a short bar: signal, battery
+component Bar(v: float, tint: color = $fg.alpha(0.55)) {
+  meter { value: clamp(v, 0, 1); width: 44; height: 4; radius: full; shrink: 0; track: $fg.alpha(0.1); color: tint }
+}
+
+// what a row says at its right end
+component Aside(what: text) {
+  text what { color: $fg.alpha(0.45); shrink: 0 }
+}
+
+component Part(c: Command) {
+  Row {
+    on activate { query = ""; armed = ""; problem = ""; view = view_of(c.id) }
+    Glyph c.glyph
+    text c.name { color: $fg; grow: 1 }
+    text "›" { color: $fg.alpha(0.5); shrink: 0 }
+  }
+}
+
+// starts or stops a recording of the focused monitor (record.strand); it folds
+// away first, so the recording opens on what is under it
+component RecordRow {
+  Row {
+    on activate { record.key = !record.key; open = false }
+    Glyph record.recording ? "stop_circle" : "screen_record"
+    text record.recording ? "Stop recording" : "Record screen" { color: $fg; grow: 1 }
+    if record.failed != null && !record.recording {
+      text record.failed ?? "" { color: $red; shrink: 1; ellipsis: end }
+    } else {
+      Aside record.recording ? "recording" : "to ~/Videos"
+    }
+  }
+}
+
+component SumRow {
+  Row {
+    on activate {
+      let r = await calc(sum)
+      clipboard.copy(r)
+      open = false
+    }
+    Glyph "calculate"
+    text sum == "" ? "Type a sum, a conversion or a date" : sum {
+      color: $fg.alpha(sum == "" ? 0.45 : 0.7); shrink: 1; ellipsis: end }
+    spacer {}
+    if sum != "" && answer.error != null {
+      text "no answer" { color: $fg.alpha(0.45); shrink: 0 }
+    } else if sum != "" {
+      text "= " + (answer ?? "…") { color: $fg; shrink: 0
+        opacity: answer.pending ? 0.5 : 1 }
+    }
+  }
+}
+
+component AppRow(h: Hit) {
+  Row {
+    on activate { h.app.launch(); open = false }
+    image h.app.icon { size: 20; shrink: 0 }
+    text h.app.name { color: $fg; marks: h.ranges; mark_color: $accent; shrink: 0 }
+    text h.app.comment ?? "" { color: $fg.alpha(0.45); grow: 1; ellipsis: end; font: "JetBrainsMono Nerd Font" 11px 500 }
+  }
+}
+
+// a workspace: its number, the apps on it, what its main window shows, and its
+// monitor among yours; the one you're on in the accent
+component SpaceRow(m: Match<Workspace>) {
+  let ws = m.item
+  let main = ws.windows.find(w => w.focused) ?? ws.windows.first
+  Row {
+    on activate { ws.focus(); open = false }
+    text ws.name { width: 22; height: 20; radius: 5; shrink: 0; align: center; font: mono 12px 700
+      color: ws.focused ? $accent : $fg.alpha(0.7)
+      bg: ws.focused ? $accent.alpha(0.18) : $fg.alpha(0.06) }
+    // room for three icons, so the titles line up
+    row { gap: 4; width: 62; shrink: 0; align: center
+      for w in ws.windows.take(3) key w.id { image w.icon { size: 18; shrink: 0 } }
+    }
+    text main?.title ?? "Empty" { color: main == null ? $fg.alpha(0.4) : $fg; grow: 1; ellipsis: end }
+    if ws.windows.len > 3 { Num "+" + num(ws.windows.len - 3, 0) }
+    Monitors ws.screen { lit: ws.active }
+  }
+}
+
+// your monitors left to right as small tiles, `screen` lit: brighter while the
+// workspace is the one it shows
+component Monitors(screen: text, lit: bool = false) {
+  row { gap: 2; shrink: 0; align: center
+    for n in (screen_order.len > 0 ? screen_order : screens.all.map(x => x.name)) key n {
+      box { width: 9; height: 6; radius: 1.5; shrink: 0
+        bg: n != screen ? $fg.alpha(0.14) : lit ? $accent : $fg.alpha(0.5) }
+    }
+  }
+}
+
+component WifiSwitch {
+  Row {
+    on activate { network.wifi = !network.wifi }
+    Glyph network.wifi ? "wifi" : "wifi_off" { on: network.wifi }
+    text "Wi-Fi" { color: $fg; grow: 1 }
+    Aside !network.wifi ? "off"
+      : join(" · ", network.scanning ? "scanning" : "on", network.ssid, network.connected && network.ssid != null ? pct(network.strength) : null)
+  }
+}
+
+// Enter leaves the network joined, asks for the password of a secured one not
+// saved, and joins any other; Delete forgets a saved one
+component WifiRow(m: Match<AccessPoint>) {
+  Row { id: r
+    on activate {
+      problem = ""
+      if m.item.active { network.disconnect() }
+      else if m.item.secure && !m.item.known { asking = m.item.ssid; secret = "" }
+      else { m.item.connect() }
+    }
+    Glyph bars(m.item.strength) { on: m.item.active }
+    text m.item.ssid { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    Aside network.connecting == m.item.ssid ? "joining"
+      : network.disconnecting == m.item.ssid ? "leaving"
+      : m.item.active ? "connected" : m.item.known ? "saved" : ""
+    text m.item.secure ? "lock" : "" { width: 14; font: "Material Symbols Rounded" 14; color: $fg.alpha(0.4); shrink: 0 }
+    Num pct(m.item.strength) { w: 38 }
+    Bar m.item.strength { tint: m.item.active ? $accent : $fg.alpha(0.55) }
+  }
+}
+
+// a network that hides its name: typed in, then its password
+component HiddenRow {
+  Row {
+    on activate { problem = ""; naming = true; hidden_name = "" }
+    Glyph "wifi_find"
+    text "Hidden network" { color: $fg; grow: 1 }
+    Aside "by name"
+  }
+}
+
+fn wifi_does(ap: AccessPoint?) -> text {
+  naming ? "next" : asking != "" ? "join" : ap == null ? "switch"
+    : (ap?.active ?? false) ? "leave"
+    : (ap?.secure ?? false) && !(ap?.known ?? false) ? "password" : "join"
+}
+
+fn bars(strength: float) -> text {
+  strength > 0.75 ? "signal_wifi_4_bar" : strength > 0.5 ? "network_wifi_3_bar"
+    : strength > 0.25 ? "network_wifi_2_bar" : "network_wifi_1_bar"
+}
+
+component BtSwitch {
+  Row {
+    on activate { bluetooth.powered = !bluetooth.powered }
+    Glyph bluetooth.powered ? "bluetooth" : "bluetooth_disabled" { on: bluetooth.powered }
+    text "Bluetooth" { color: $fg; grow: 1 }
+    Aside !bluetooth.available ? "unavailable" : !bluetooth.powered ? "off"
+      : join(" · ", bluetooth.scanning ? "looking" : "on",
+          num(bluetooth.devices.count(d => d.connected), 0) + " connected")
+  }
+}
+
+component BtRow(m: Match<BluetoothDevice>) {
+  Row {
+    on activate {
+      problem = ""
+      if m.item.connected { m.item.disconnect() } else { m.item.connect() }
+    }
+    Glyph kind_glyph(m.item.icon) { on: m.item.connected }
+    text m.item.name { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    Aside m.item.connecting ? "connecting" : m.item.disconnecting ? "disconnecting"
+      : m.item.connected ? "connected" : "paired"
+    if m.item.battery != null {
+      Num pct(m.item.battery ?? 0) { w: 38 }
+      Bar m.item.battery ?? 0 { tint: (m.item.battery ?? 1) < 0.2 ? $red : m.item.connected ? $accent : $fg.alpha(0.55) }
+    }
+  }
+}
+
+component NearbyRow(m: Match<BluetoothDevice>) {
+  Row {
+    on activate { problem = ""; m.item.pair() }
+    Glyph kind_glyph(m.item.icon)
+    text m.item.name { color: $fg.alpha(0.7); marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    Aside m.item.connecting ? "pairing" : "nearby · pair"
+  }
+}
+
+// the output: Enter mutes it, a scroll or the arrows set it, and its wave is what
+// it plays now
+component MuteRow {
+  Row { id: r
+    on activate { audio.sink.muted = !audio.sink.muted }
+    on scroll(dy) { audio.sink.volume = clamp(audio.sink.volume - dy * level_step, 0, 1) }
+    Glyph audio.sink.muted ? "volume_off" : "volume_up" { on: !audio.sink.muted }
+    text "Output" { color: $fg; grow: 1 }
+    Wave audio.sink { muted: audio.sink.muted }
+    LevelBar audio.sink.volume { arrows: r.selected; muted: audio.sink.muted }
+  }
+}
+
+// the microphone in use, as the output above
+// (asleep, a headset in its music mode: WirePlumber puts it in call mode, which
+// wakes the microphone and lowers what it plays to call quality, while an app
+// records from it, and back two seconds after; the wave here doesn't count)
+component MicRow {
+  Row { id: r
+    on activate { audio.source.muted = !audio.source.muted }
+    on scroll(dy) { audio.source.volume = clamp(audio.source.volume - dy * level_step, 0, 1) }
+    Glyph mic_asleep || audio.source.muted ? "mic_off" : "mic" { on: !mic_asleep && !audio.source.muted }
+    text "Microphone" { color: $fg; grow: 1; ellipsis: end }
+    if mic_asleep { Aside "wakes when an app records" } else { Wave audio.source { muted: audio.source.muted } }
+    LevelBar audio.source.volume { arrows: r.selected; muted: audio.source.muted }
+  }
+}
+
+// a device's sound now, drawn as a wave; still while it is quiet
+component Wave(dev: AudioDevice, muted: bool) {
+  spectrum dev { bars: 40; smooth: 0.6; style: mirror; width: 140; height: 22; shrink: 0
+    color: (muted ? $fg.alpha(0.2) : $accent) ~ instant }
+}
+
+// a level as its figure and a bar; selected, the arrows that set it either side
+component LevelBar(v: float, arrows: bool, muted: bool = false) {
+  row { gap: 8; shrink: 0; align: center
+    Percent v { arrows: arrows; muted: muted }
+    Bar v { tint: muted ? $fg.alpha(0.25) : $accent }
+  }
+}
+
+// a level as a percentage; selected, the arrows that set it either side
+component Percent(v: float, arrows: bool, muted: bool = false) {
+  text (arrows ? "‹ " : "") + (muted ? "muted" : num(v * 100, 0) + "%") + (arrows ? " ›" : "") {
+    color: $fg.alpha(0.5); shrink: 0; width: 64; align: end; font: mono 12px 500 }
+}
+
+component SourceRow(m: Match<AudioDevice>) {
+  Row { id: r
+    on activate { m.item.make_default() }
+    Glyph dev_glyph(m.item, "mic") { on: m.item.default }
+    text m.item.description { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    if m.item.default { Aside "in use" }
+    LevelBar m.item.volume { arrows: r.selected; muted: m.item.muted }
+  }
+}
+
+// a program recording: Enter moves it to the next microphone, as a program playing
+component RecordingRow(m: Match<AudioStream>) {
+  let sources = audio.sources.sort_by(d => d.id)
+  let next = sources.filter(d => d.id > (m.item.device ?? -1)).first ?? sources.first
+  Row { id: r
+    on activate { if next != null { m.item.move_to(next ?? audio.source) } }
+    AppIcon m.item.icon { glyph: "settings_voice" }
+    text m.item.app { color: $fg; marks: m.ranges; mark_color: $accent; shrink: 0 }
+    Where (audio.sources.find(d => d.id == m.item.device)?.description ?? "")
+      + (r.selected ? " → " + (next?.description ?? "") : "")
+    LevelBar m.item.volume { arrows: r.selected; muted: m.item.muted }
+  }
+}
+
+component SinkRow(m: Match<AudioDevice>) {
+  Row { id: r
+    on activate { m.item.make_default() }
+    Glyph dev_glyph(m.item, "speaker") { on: m.item.default }
+    text m.item.description { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    if m.item.default { Aside "in use" }
+    LevelBar m.item.volume { arrows: r.selected; muted: m.item.muted }
+  }
+}
+
+// a program playing: Enter moves it to the next output, where it stays when the
+// default changes (moved onto the default, it follows the default again)
+component StreamRow(m: Match<AudioStream>) {
+  let sinks = audio.sinks.sort_by(d => d.id)
+  let next = sinks.filter(d => d.id > (m.item.device ?? -1)).first ?? sinks.first
+  Row { id: r
+    on activate { if next != null { m.item.move_to(next ?? audio.sink) } }
+    AppIcon m.item.icon { glyph: "graphic_eq" }
+    text m.item.app { color: $fg; marks: m.ranges; mark_color: $accent; shrink: 0 }
+    Where (audio.sinks.find(d => d.id == m.item.device)?.description ?? "")
+      + (r.selected ? " → " + (next?.description ?? "") : "")
+    LevelBar m.item.volume { arrows: r.selected; muted: m.item.muted }
+  }
+}
+
+// a program's icon, or a glyph when it names none
+component AppIcon(icon: text, glyph: text) {
+  if icon != "" { image icon { size: 18; shrink: 0; margin: 0, 1 } } else { Glyph glyph }
+}
+
+// where a program's sound goes, quiet, giving way first
+component Where(t: text) {
+  text t { color: $fg.alpha(0.45); grow: 1; shrink: 1; ellipsis: end; font: sans 13px 400 }
+}
+
+// the symbol for an audio device's kind: headphones, a monitor's speakers, else `or`
+fn dev_glyph(d: AudioDevice, or: text) -> text {
+  d.name.starts_with("bluez_") || d.description.lower().contains("headphone") || d.description.lower().contains("headset") ? "headphones"
+    : d.description.contains("HDMI") || d.description.contains("DisplayPort") ? "tv" : or
+}
+
+component ClipRow(m: Match<ClipboardEntry>) {
+  Row {
+    on activate { m.item.copy(); open = false }
+    if m.item.image != null {
+      Glyph "image"
+      image m.item.image ?? "" { width: 48; height: 28; fit: cover; shrink: 0; radius: 4 }
+      spacer {}
+    } else {
+      Glyph "content_paste"
+      text m.item.text.replace("\n", " ") { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    }
+  }
+}
+
+// Lock goes at once; the others ask for Enter again within three seconds, the
+// time left draining under the ask
+component PowerRow(m: Match<Command>) {
+  let asks = armed == m.item.id
+  Row {
+    on activate {
+      if m.item.id == "lock" { session.lock(); open = false }
+      else if !asks { armed = m.item.id }
+      else {
+        if m.item.id == "suspend" { session.suspend() }
+        if m.item.id == "reboot" { session.reboot() }
+        if m.item.id == "off" { session.power_off() }
+        open = false
+      }
+    }
+    text m.item.glyph { width: 20; shrink: 0; font: "Material Symbols Rounded" 18
+      when asks { color: $red } }
+    text m.item.name { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1 }
+    if asks {
+      col { gap: 3; shrink: 0; align: end
+        text "Enter again to " + m.item.name.lower() { color: $red; font: sans 12px 600 }
+        box { height: 2; radius: full; bg: $red; width: 0 ~ ease(linear, 3s); enter { width: 120 } }
+      }
+    }
+  }
+}
+
+// the power profile: one row, its choices side by side; Enter goes to the next,
+// the arrows along them
+component ProfileSwitch {
+  let at = power.profiles.index_of(p => p == power.profile) ?? 0
+  Row {
+    on activate {
+      problem = ""
+      let next = power.profiles.skip(power.profiles.len > 0 ? (at + 1) % power.profiles.len : 0).first ?? power.profile
+      want_profile = next
+      power.profile = next
+    }
+    Glyph profile_glyph(power.profile) { on: true }
+    text profile_name(power.profile) { color: $fg; grow: 1 }
+    if power.degraded != null { Aside "performance held back: " + (power.degraded ?? "") }
+    // a segmented control, the lit segment sliding to the one in use
+    stack { shrink: 0; radius: 7; bg: $fg.alpha(0.06); border: 1, $fg.alpha(0.08)
+      box { width: 32; height: 24; radius: 6; bg: $accent.alpha(0.2); border: 1, $accent.alpha(0.35); x: at * 32 }
+      row {
+        for p in power.profiles key p {
+          text profile_glyph(p) { width: 32; height: 24; align: center; font: "Material Symbols Rounded" 16
+            color: p == power.profile ? $accent : $fg.alpha(0.45) }
+        }
+      }
+    }
+  }
+}
+
+// the profile `step` along from the one in use, held at either end
+fn profile_at(step: int) -> PowerProfile {
+  power.profiles.skip(clamp((power.profiles.index_of(p => p == power.profile) ?? 0) + step, 0, max(power.profiles.len - 1, 0)).round()).first ?? power.profile
+}
+
+// the battery: its charge over the last three hours, what's left of it
+component BatteryRow {
+  let low = battery.percent < 0.2 && !battery.charging
+  Row {
+    Glyph battery_glyph() { on: battery.charging }
+    text battery.charging ? "Charging" : "Battery" { color: $fg; shrink: 0 }
+    graph battery.percent { history: 10800s; range: 0, 1; width: 120; height: 18; shrink: 0; line_width: 1.5
+      color: low ? $red : $accent; fill: linear(180deg, (low ? $red : $accent).alpha(0.25), (low ? $red : $accent).alpha(0)) }
+    spacer {}
+    if battery.time_left != null { Aside dur(battery.time_left ?? 0s) + (battery.charging ? " to full" : " left") }
+    Num pct(battery.percent) { w: 38 }
+    Bar battery.percent { tint: low ? $red : $accent }
+  }
+}
+
+fn profile_name(p: PowerProfile) -> text {
+  p == power_saver ? "Power saver" : p == performance ? "Performance" : "Balanced"
+}
+
+fn profile_glyph(p: PowerProfile) -> text {
+  p == power_saver ? "eco" : p == performance ? "bolt" : "balance"
+}
+
+// a filesystem on a drive plugged in: Enter mounts it, or unmounts it; mounted,
+// how full it is
+component VolumeRow(v: Volume) {
+  let fs = disk.all.find(f => f.path == (v.path ?? ""))
+  Row {
+    on activate { problem = ""; if v.mounted { v.unmount() } else { v.mount() } }
+    Glyph v.mounted ? "folder_open" : "folder" { on: v.mounted }
+    text v.label ?? v.device { color: $fg; shrink: 0 }
+    text v.mounted ? (v.path ?? "mounted") : "not mounted" { color: $fg.alpha(0.4); grow: 1; ellipsis: end; font: mono 11px 500 }
+    if fs != null {
+      Num bytes(fs?.used ?? 0) + " of " + bytes(fs?.total ?? 0)
+      Bar fs?.usage ?? 0 { tint: (fs?.usage ?? 0) > 0.9 ? $red : $accent }
+    } else {
+      Num bytes(v.size)
+    }
+  }
+}
+
+// a drive: Enter unmounts everything on it and makes it safe to pull out
+component EjectRow(d: Drive) {
+  Row {
+    on activate { problem = ""; ejecting = d.device; d.eject() }
+    Glyph ejecting == d.device ? "hourglass_top" : "eject"
+    text "Eject " + d.name { color: $fg; grow: 1; ellipsis: end }
+    Aside ejecting == d.device ? "ejecting" : d.volumes.any(v => v.mounted) ? "unmounts, then ejects" : ""
+    Num bytes(d.size)
+  }
+}
+
+component NoDrives {
+  Row {
+    Glyph "usb_off"
+    text "No drives plugged in" { color: $fg.alpha(0.5); grow: 1 }
+  }
+}
+
+// a tray app: Enter is its own click (an app that is only a menu opens it here);
+// one that wants you has an orange dot
+component TrayRow(m: Match<TrayItem>) {
+  Row {
+    on activate { m.item.activate(); tray_leave = m.item.id }
+    AppIcon m.item.icon { glyph: "widgets" }
+    text m.item.title { color: $fg; marks: m.ranges; mark_color: $accent; shrink: 0 }
+    // its tooltip past the title it repeats
+    Where (m.item.tooltip ?? "").split("\n").filter(l => l.trim() != m.item.title).join(" · ")
+    if m.item.status == "NeedsAttention" { box { width: 7; height: 7; radius: full; shrink: 0; bg: $orange } }
+    if m.item.menu.items.len > 0 { text "›" { color: $fg.alpha(0.5); shrink: 0 } }
+  }
+}
+
+// the app whose menu this is: Enter goes back out
+component TrayBack {
+  Row {
+    on activate { if tray_sub != null { tray_sub = null; query = "" } else { tray_item?.menu?.close(); tray_open = ""; query = "" } }
+    AppIcon tray_item?.icon ?? "" { glyph: "widgets" }
+    text "‹ " + (tray_item?.title ?? "") + (tray_sub != null ? " › " + ((tray_item?.menu?.items ?? []).find(e => e.id == (tray_sub ?? -1))?.label ?? "") : "") {
+      color: $fg.alpha(0.6); grow: 1; ellipsis: end }
+  }
+}
+
+// an entry of a tray app's menu: Enter chooses it (and the menu goes), or opens
+// its submenu
+component EntryRow(m: Match<TrayMenuItem>) {
+  let e = m.item
+  Row {
+    on activate {
+      if e.children.len > 0 { tray_sub = e.id; query = ""; e.open() }
+      else if e.enabled { e.activate(); tray_item?.menu?.close(); tray_open = ""; tray_sub = null; open = false }
+    }
+    if e.toggle == "checkmark" { Glyph e.checked ? "check_box" : "check_box_outline_blank" { on: e.checked } }
+    else if e.toggle == "radio" { Glyph e.checked ? "radio_button_checked" : "radio_button_unchecked" { on: e.checked } }
+    else if e.icon != null { image e.icon ?? "" { size: 18; shrink: 0; margin: 0, 1 } }
+    else { box { width: 20; shrink: 0 } }
+    text e.label { color: e.enabled ? $fg : $fg.alpha(0.35); marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    if e.shortcut != null { Num (e.shortcut ?? "").replace("Control", "Ctrl") }
+    if e.children.len > 0 { text "›" { color: $fg.alpha(0.5); shrink: 0 } }
+  }
+}
+
+fn entry_does(e: TrayMenuItem?) -> text {
+  e == null || !(e?.enabled ?? false) ? "" : (e?.children?.len ?? 0) > 0 ? "open" : e?.toggle != "none" ? "toggle" : "choose"
+}
+
+// a player: its art, what it plays and its name, playing or paused. Enter plays
+// or pauses it and the island follows it; starting one pauses the others
+component PlayerRow(m: Match<Player>) {
+  let p = m.item
+  Row {
+    on activate {
+      if !p.playing { for q in media.players { if q.playing && q.id != p.id { q.play_pause() } } }
+      p.play_pause()
+      p.select()
+    }
+    Art p.art { w: 24; h: 24; r: 5; film: (p.artist ?? "") == "" }
+    text p.title ?? p.name { color: $fg; shrink: 1; ellipsis: end }
+    text "· " + p.name { color: $fg.alpha(0.45); shrink: 0; font: sans 13px 400 }
+    spacer {}
+    text p.playing ? "graphic_eq" : "pause" { width: 20; shrink: 0; font: "Material Symbols Rounded" 18
+      color: p.playing ? $accent : $fg.alpha(0.4) }
+  }
+}
+
+// the leading player's own volume, apart from the system's
+component PlayerVolRow {
+  Row {
+    Glyph "volume_up"
+    text "Volume" { color: $fg; shrink: 0 }
+    Where lead_player?.name ?? ""
+    LevelBar media.volume { arrows: on_pvol }
+  }
+}
+
+// album art, or a note (a film for a video) where there is none
+component Art(src: text?, w: float, h: float, r: float, film: bool = false) {
+  if src != null {
+    image src ?? "" { width: w; height: h; fit: cover; radius: r; corners: squircle; shrink: 0 }
+  } else {
+    row { width: w; height: h; radius: r; corners: squircle; bg: $surface_high; justify: center; align: center; shrink: 0
+      text film ? "smart_display" : "music_note" { font: "Material Symbols Rounded" min(w, h) * 0.5; color: $fg.alpha(0.4) }
+    }
+  }
+}
+
+// the card for a player: its art (wide for a video) with what it plays beside
+// it and the controls under that, the time along the bottom, the art blurred
+// faintly behind it all
+component MediaPane(p: Player?) {
+  let pw = pane_box_w - list_w - 1 - 16
+  let ph = rows * row_h - 16
+  stack { width: pw; height: ph; margin: 8; radius: 10; clip: true; shrink: 0
+    bg: $surface_low; border: 1, $fg.alpha(0.05)
+    if p?.art != null {
+      image p?.art ?? "" { width: pw; height: ph; fit: cover; opacity: 0.4 }
+      box { backdrop: blur(40); bg: $surface_low.alpha(0.55) }
+    }
+    if p == null {
+      col { gap: 10; justify: center; align: center
+        text "music_note" { font: "Material Symbols Rounded" 48; color: $fg.alpha(0.12) }
+        Detail "Nothing playing"
+      }
+    } else {
+      for q in media.players.filter(x => x.id == (p?.id ?? "")) key q.id { PlayerCard q }
+    }
+  }
+}
+
+component PlayerCard(p: Player) {
+  let film = (p.artist ?? "") == ""
+  let aw = film ? 213 : 152
+  let ah = film ? 120 : 152
+  col { pad: 18, 20; gap: 14
+    row { gap: 18; align: start
+      Art p.art { w: aw; h: ah; r: 10; film: film }
+      col { grow: 1; shrink: 1; height: ah; gap: 4
+        text (p.album ?? "") != "" ? p.name + " · " + (p.album ?? "") : p.name {
+          color: $fg.alpha(0.45); font: mono 10px 600; ellipsis: end }
+        text p.title ?? p.name { color: $fg; font: sans 17px 600; max_lines: 2; ellipsis: end }
+        if !film { text p.artist ?? "" { color: $fg.alpha(0.6); font: sans 13px 400; max_lines: 1; ellipsis: end } }
+        spacer {}
+        Controls p
+      }
+    }
+    row { gap: 10; align: center
+      text dur(p.elapsed, clock: true) ?? "0:00" { color: $fg.alpha(0.55); font: mono 11px 600; roll: true; width: 44; shrink: 0 }
+      if p.can_seek {
+        slider { value: <-> p.position; grow: 1; height: 14; track: $fg.alpha(0.16); color: $fg }
+      } else {
+        meter { value: p.position; grow: 1; height: 4; radius: full; track: $fg.alpha(0.16); color: $fg.alpha(0.5) }
+      }
+      text p.length != null ? dur(p.length, clock: true) ?? "" : "live" { color: $fg.alpha(0.55); font: mono 11px 600; width: 44; align: end; shrink: 0 }
+    }
+  }
+}
+
+// shuffle, 15 s back, previous, play or pause, next, 15 s on, loop: shuffle and
+// loop only where the player has them, the skips only where it can seek
+component Controls(p: Player) {
+  row { gap: 12; align: center
+    if p.can_shuffle { Ctl "shuffle" { on: p.shuffle; size: 18; on click { p.shuffle = !p.shuffle } } }
+    if p.can_seek { Ctl "fast_rewind" { size: 20; on click { p.position = clamp(p.position - seek_step / (p.length ?? 1s), 0, 1) } } }
+    Ctl "skip_previous" { size: 22; dim: !p.can_previous; on click { p.previous() } }
+    row { width: 40; height: 40; radius: 12; corners: squircle; justify: center; align: center; shrink: 0; cursor: pointer
+      bg: $accent.alpha(0.18); border: 1, $accent.alpha(0.32)
+      on click { p.play_pause(); p.select() }
+      text p.playing ? "pause" : "play_arrow" { font: "Material Symbols Rounded" 28; color: $accent }
+    }
+    Ctl "skip_next" { size: 22; dim: !p.can_next; on click { p.next() } }
+    if p.can_seek { Ctl "fast_forward" { size: 20; on click { p.position = clamp(p.position + seek_step / (p.length ?? 1s), 0, 1) } } }
+    if p.can_loop { Ctl (p.loop == track ? "repeat_one" : "repeat") { on: p.loop != none; size: 18
+      on click { p.loop = p.loop == none ? playlist : p.loop == playlist ? track : none } } }
+  }
+}
+
+component Ctl(glyph: text, size: float, on: bool = false, dim: bool = false) {
+  text glyph { id: k; font: "Material Symbols Rounded" size; shrink: 0; cursor: pointer
+    color: on ? $accent : dim ? $fg.alpha(0.25) : k.hover ? $fg : $fg.alpha(0.7) }
+}
+
+component DndSwitch {
+  Row {
+    on activate { notifications.dnd = !notifications.dnd }
+    Glyph notifications.dnd ? "notifications_off" : "notifications"
+    text "Do not disturb" { color: $fg; grow: 1 }
+    Aside notifications.dnd ? "on: only urgent ones show" : "off"
+  }
+}
+
+component ClearRow {
+  Row {
+    on activate { notifications.clear() }
+    Glyph "clear_all"
+    text "Clear all" { color: $fg; grow: 1 }
+    Aside notifications.count == 1 ? "1 kept" : num(notifications.count) + " kept"
+  }
+}
+
+// Enter opens it with its sender's default action, or clears it when there is none
+component NoteRow(m: Match<Notification>) {
+  Row { id: r
+    on activate {
+      let opens = m.item.can_activate
+      m.item.activate()
+      if opens { open = false }
+    }
+    // a critical one carries a red stripe at its start
+    box { width: 3; height: 18; radius: full; shrink: 0; bg: m.item.urgency == critical ? $red : $fg.alpha(0) }
+    if m.item.app.icon != "" { image m.item.app.icon { size: 18; shrink: 0 } } else { Glyph "notifications" }
+    text m.item.summary { color: $fg; marks: m.ranges; mark_color: $accent; shrink: 0; max_width: 150; ellipsis: end }
+    text m.item.body.replace("\n", " ") { color: $fg.alpha(0.45); grow: 1; ellipsis: end; markup: basic; font: sans 13px 400 }
+    Num when_of(m.item)
+  }
+}
+
+component Key(key: text, what: text) {
+  row { gap: 4; shrink: 0; align: center
+    text key { color: $fg.alpha(0.7); font: "JetBrainsMono Nerd Font" 10px 700 }
+    text what { color: $fg.alpha(0.45); font: "JetBrainsMono Nerd Font" 10px 500 }
+  }
+}
+
+fn when_of(n: Notification) -> text {
+  n.time.format("%F") == clock.format("%F") ? n.time.format("%H:%M") : n.time.format("%d %b")
+}
+
+// a wallpaper suits the theme in use when wallpapers.json lists it, or `*`, or
+// a `prefix*` it starts with
+fn suits(palettes: [text]) -> bool { suits_for(palettes, theme_slug) }
+fn suits_for(palettes: [text], slug: text) -> bool {
+  slug == "" || palettes.any(p => p == "*" || p == slug
+    || (p.ends_with("*") && slug.starts_with(p.slice(0, -1))))
+}
+
+// a wallpaper's images: the one, or a set's
+fn wall_images(w: Wall) -> [text] { w.file != null ? [w.file ?? ""] : w.images }
+fn wall_paths(w: Wall) -> [text] { wall_images(w).map(i => "~/.config/wallpapers/" + i) }
+
+// in use, by what awww says each monitor shows (`now`): a wallpaper on every
+// monitor, or each of a set's images on one
+fn shows(w: Wall, now: text) -> bool {
+  let lines = now.split("\n").filter(l => l.trim() != "")
+  w.file != null
+    ? lines.len > 0 && lines.all(l => l.contains("/" + (w.file ?? "")))
+    : w.images.len > 0 && w.images.all(i => now.contains("/" + i))
+}
+
+// a wallpaper's name: a set's own, or the file's without its extension
+fn wall_name(w: Wall) -> text {
+  w.name ?? (w.file ?? "").replace(".png", "").replace(".jpg", "")
+}
+
+// a theme, and six of its colours
+component ThemeRow(m: Match<Theme>) {
+  let on = m.item.slug == theme_slug
+  Row {
+    on activate { if !on { problem = ""; switching = m.item.slug; put_theme(m.item.slug) } }
+    if on { Glyph "check" { on: true } } else {
+      row { width: 20; shrink: 0; justify: center
+        row { width: 14; height: 14; radius: full; clip: true; border: 1, $fg.alpha(0.2)
+          box { width: 7; height: 14; bg: m.item.base ?? $surface }
+          box { width: 7; height: 14; bg: m.item.accent ?? $accent }
+        }
+      }
+    }
+    text m.item.name { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    if switching == m.item.slug { Aside "switching" } else if on { Aside "in use" }
+    row { gap: 4; shrink: 0; align: center
+      for c in m.item.colors.distinct() key c { box { width: 12; height: 12; radius: full; bg: c; border: 1, $fg.alpha(0.25) } }
+    }
+  }
+}
+
+// a wallpaper, or a set of them, each image small
+component WallRow(m: Match<Wall>) {
+  let w = m.item
+  let images = w.file != null ? [w.file ?? ""] : w.images
+  let on = shows(w, showing)
+  Row {
+    on activate {
+      if !on {
+        problem = ""
+        applying = wall_name(w)
+        await wall(w.file ?? w.name ?? "", images.join(" "))
+        applying = ""
+        wall_tick += 1
+      }
+    }
+    image "~/.config/wallpapers/" + (images.first ?? "") { width: 40; height: 24; radius: 4; fit: cover; clip: true }
+    text wall_name(w) { color: $fg; marks: m.ranges; mark_color: $accent; grow: 1; ellipsis: end }
+    if applying == wall_name(w) { Aside "applying" } else if on { Aside "in use" }
+    else if images.len > 1 { Aside "set of " + num(images.len, 0) }
+  }
+}
+
+// the preview beside the list: the selected wallpaper on your monitors
+component WallPane(w: Wall) {
+  let images = wall_images(w)
+  Pane {
+    Desk wall_paths(w)
+    Title wall_name(w)
+    Detail join(" · ", images.len > 1 ? "A set: one image on each monitor" : "One image on every monitor",
+      shows(w, showing) ? "in use" : null)
+  }
+}
+
+// the preview beside the list: the theme moved over (the whole shell is in its
+// colours while you're on it), the wallpaper it would bring, and its palette
+component ThemePane(t: Theme) {
+  let brings = peek_wall
+  let keeps = peek_up != null || brings == null
+  Pane {
+    Desk brings != null && !keeps ? wall_paths(brings ?? Wall()) : up_now
+    Title t.name
+    Detail join(" · ", (t.dark ?? true) ? "Dark" : "Light",
+      t.slug == theme_slug ? "in use"
+        : keeps ? "keeps your wallpaper" : "brings " + wall_name(brings ?? Wall()))
+    spacer {}
+    // its neutrals as one ramp, dark to light, then its accents
+    row { gap: 14; align: center
+      row { radius: 6; clip: true; shrink: 0; border: 1, $fg.alpha(0.12)
+        for c in [t.base, t.surface0, t.surface1, t.overlay0, t.subtext0, t.text].filter(c => c != null).distinct() key c {
+          box { width: 20; height: 20; bg: c ?? $fg }
+        }
+      }
+      row { gap: 6
+        for c in [t.red, t.peach, t.yellow, t.green, t.teal, t.blue, t.lavender, t.mauve, t.pink].filter(c => c != null).distinct() key c {
+          box { width: 18; height: 18; radius: full; bg: c ?? $fg }
+        }
+      }
+    }
+  }
+}
+
+// your monitors side by side, as wide as they are, each with the image it would
+// get (`images`, paths): a set's in turn, round again past its last
+component Desk(images: [text]) {
+  let total = max(screens.all.sum(s => s.width), 1)
+  let room = pane_box_w - list_w - 1 - 16 - 40 - (screens.all.len - 1) * 8
+  row { gap: 8; align: end; justify: center
+    for s in screens.all key s.name {
+      let i = screens.all.index_of(x => x.name == s.name) ?? 0
+      let w = room * s.width / total
+      col { gap: 5; shrink: 0; align: center
+        box { width: w; height: w * s.height / s.width; radius: 6; clip: true; shrink: 0
+          bg: $fg.alpha(0.06); border: 1, $fg.alpha(0.14)
+          shadow: 0 4px 12px $shadow.alpha(0.3)
+          if images.len > 0 {
+            image images.skip(i % images.len).first ?? "" { width: w; height: w * s.height / s.width; fit: cover }
+          }
+        }
+        text s.name { color: $fg.alpha(0.4); font: mono 10px 500 }
+      }
+    }
+  }
+}
+
+// the workspace moved over, as it is now: its monitor in proportion with the
+// wallpaper there, and each window live where it sits (the app's icon where the
+// compositor gives no picture)
+component SpacePane(ws: Workspace?) {
+  let s = screens.all.find(x => x.name == (ws?.screen ?? ""))
+  let sw = s?.width ?? 1920
+  let sh = s?.height ?? 1080
+  let fw = min(200 * sw / sh, pane_box_w - list_w - 1 - 16 - 40 - 150)
+  let k = fw / sw
+  let wins = ws?.windows ?? []
+  let line = showing.split("\n").find(l => l.contains(": " + (ws?.screen ?? "") + ":")) ?? ""
+  let wall_there = line.contains("image: ") ? line.slice((line.index_of("image: ") ?? 0) + 7) : ""
+  Pane {
+    if ws != null {
+      row { gap: 8; align: center
+        Caption join(" · ", "Workspace " + (ws?.name ?? ""),
+          (ws?.focused ?? false) ? "you're here" : (ws?.active ?? false) ? "on screen" : null)
+        spacer {}
+        Monitors ws?.screen ?? "" { lit: ws?.active ?? false }
+        Num ws?.screen ?? ""
+      }
+      row { gap: 16; align: start
+        stack { width: fw; height: fw * sh / sw; radius: 8; clip: true; shrink: 0
+          bg: $fg.alpha(0.06); border: 1, $fg.alpha(0.14); shadow: 0 4px 12px $shadow.alpha(0.3)
+          if wall_there != "" { image wall_there { width: fw; height: fw * sh / sw; fit: cover; opacity: 0.8 } }
+          for w in wins key w.id {
+            let i = wins.index_of(x => x.id == w.id) ?? 0
+            // no place from the compositor: side by side
+            let r = w.rect ?? Rect(x: sw * i / max(wins.len, 1) + 8, y: 8, width: sw / max(wins.len, 1) - 16, height: sh - 16)
+            WinTile w { x: r.x * k; y: r.y * k; wd: r.width * k; ht: r.height * k }
+          }
+          if wins.len == 0 {
+            col { width: fw; height: fw * sh / sw; justify: center; align: center
+              text "Empty" { color: $fg.alpha(0.6); font: sans 13px 600 }
+            }
+          }
+        }
+        // what is on it, by app
+        col { gap: 10; grow: 1; pad: 2, 0
+          if wins.len == 0 { Detail "Nothing open here" }
+          for w in wins.take(5) key w.id {
+            row { gap: 8; align: center
+              image w.icon { size: 16; shrink: 0 }
+              col { gap: 1; grow: 1
+                text w.app?.name ?? w.app_id { color: w.focused ? $accent : $fg; font: sans 12px 600; ellipsis: end }
+                text w.title { color: $fg.alpha(0.5); font: sans 11px 400; ellipsis: end }
+              }
+            }
+          }
+          if wins.len > 5 { Detail "and " + num(wins.len - 5, 0) + " more" }
+        }
+      }
+    }
+  }
+}
+
+// a window in a workspace's miniature: its picture over its app's icon
+component WinTile(w: Window, x: float, y: float, wd: float, ht: float) {
+  stack { x: x; y: y; width: wd; height: ht; radius: 5; clip: true; shrink: 0
+    bg: $surface_low; border: 1, w.focused ? $accent : $fg.alpha(0.2)
+    col { width: wd; height: ht; justify: center; align: center; gap: 4
+      image w.icon { size: clamp(ht * 0.3, 14, 40) }
+      text w.app?.name ?? w.app_id { color: $fg.alpha(0.6); font: sans 11px 500; max_width: wd - 8; ellipsis: end }
+    }
+    thumbnail w { width: wd; height: ht; fit: cover }
+  }
+}
+
+// the frame of every preview beside the list
+component Pane {
+  col { grow: 1; height: rows * row_h - 16; margin: 8; pad: 18, 20; gap: 12; justify: start; clip: true
+    radius: 10; bg: $surface_low; border: 1, $fg.alpha(0.05)
+    slot
+  }
+}
+
+component Title(t: text) {
+  text t { color: $fg; font: sans 20px 600; max_lines: 2; ellipsis: end }
+}
+
+// a pane's small top line: who, what kind
+component Caption(t: text) {
+  text t.upper() { color: $fg.alpha(0.5); font: sans 11px 600; ellipsis: end }
+}
+
+component Detail(t: text) {
+  text t { color: $fg.alpha(0.5); max_lines: 1; ellipsis: end }
+}
+
+component Big(glyph: text, tint: color = $accent) {
+  text glyph { font: "Material Symbols Rounded" 44; color: tint; shrink: 0 }
+}
+
+// a key and what it does, as a pill; a click does it too
+component Do(key: text, what: text) {
+  row { id: d; gap: 6; pad: 5, 10; radius: full; shrink: 0; align: center; cursor: pointer
+    bg: (d.hover ? $fg.alpha(0.12) : $fg.alpha(0.06)) ~ instant
+    text key { color: $fg.alpha(0.75); font: mono 10px 700 }
+    text what { color: $fg.alpha(0.65); font: sans 12px 500 }
+  }
+}
+
+// the entry whole: an image as it is, a text as far as it fits
+component ClipPane(e: ClipboardEntry?) {
+  Pane {
+    if e == null {
+      Big "content_paste" { tint: $fg.alpha(0.3) }
+      Detail "Nothing copied yet"
+    } else if e?.image != null {
+      box { height: 200; radius: 8; clip: true; bg: $fg.alpha(0.04); justify: center; align: center
+        image e?.image ?? "" { width: 100%; height: 200; fit: contain }
+      }
+      Detail join(" · ", "Image", bytes(e?.size ?? 0), "copied " + copied_at(e?.time))
+    } else {
+      box { radius: 8; pad: 12, 14; bg: $fg.alpha(0.04); max_height: 200; clip: true
+        text e?.text ?? "" { color: $fg; max_lines: 10; ellipsis: end; font: mono 12px 500 }
+      }
+      Detail join(" · ", num((e?.text ?? "").len, 0) + " characters",
+        num((e?.text ?? "").split("\n").len, 0) + " lines", "copied " + copied_at(e?.time))
+      row { gap: 8; Do "Enter" { what: "copy" } }
+    }
+  }
+}
+
+fn copied_at(t: Date?) -> text {
+  (t?.format("%F") ?? "") == clock.format("%F") ? "at " + short_time(t) : "on " + short_time(t)
+}
+
+// a time today as 14:05, an earlier one as its day
+fn short_time(t: Date?) -> text {
+  t == null ? "" : (t?.format("%F") ?? "") == clock.format("%F") ? t?.format("%H:%M") ?? "" : t?.format("%d %b") ?? ""
+}
+
+// a notification whole, read from the top: who sent it and when, all it says,
+// its buttons at the foot. With none selected, a line for each app.
+component NotePane(n: Notification?) {
+  let senders = notifications.all.reverse().map(x => x.app.name).distinct().take(5)
+  Pane {
+    if n == null {
+      Caption notifications.dnd ? "Do not disturb · only urgent ones pop up" : "Notifications"
+      if notifications.all.len == 0 {
+        Title "All clear"
+      } else {
+        for a in senders key a {
+          let newest = notifications.all.reverse().find(x => x.app.name == a)
+          row { gap: 10; align: center; height: 26
+            if (newest?.app?.icon ?? "") != "" { image newest?.app?.icon ?? "" { size: 16; shrink: 0 } }
+            text a { color: $fg; shrink: 0; font: sans 13px 600 }
+            Num num(notifications.all.count(x => x.app.name == a), 0)
+            text newest?.summary ?? "" { color: $fg.alpha(0.55); grow: 1; ellipsis: end; font: sans 13px 400 }
+          }
+        }
+      }
+    } else {
+      row { gap: 8; align: center
+        if (n?.app?.icon ?? "") != "" { image n?.app?.icon ?? "" { size: 16; shrink: 0 } }
+        Caption n?.app?.name ?? ""
+        spacer {}
+        Num short_time(n?.time)
+      }
+      row { gap: 14; align: start
+        col { gap: 8; grow: 1
+          Title n?.summary ?? ""
+          text n?.body ?? "" { color: $fg.alpha(0.8); markup: basic; max_lines: 6; ellipsis: end; font: sans 14px 400 }
+        }
+        if n?.image != null { image n?.image ?? "" { size: 72; radius: 8; fit: cover; shrink: 0 } }
+      }
+      if n?.progress != null { meter { value: n?.progress ?? 0; height: 4; radius: full; track: $fg.alpha(0.1) } }
+      spacer {}
+      row { gap: 8; wrap: true
+        for a in (n?.actions ?? []).take(3) key a.id {
+          Do "Alt+" + num(((n?.actions ?? []).index_of(b => b.id == a.id) ?? 0) + 1) { what: a.label; on click { a.invoke() } }
+        }
+        Do "Del" { what: "clear"; on click { n?.dismiss() } }
+      }
+    }
+  }
+}
+
+// the symbol for a device's kind, from its icon name
+fn kind_glyph(icon: text) -> text {
+  icon.contains("headset") || icon.contains("headphone") ? "headphones"
+    : icon.contains("keyboard") ? "keyboard" : icon.contains("mouse") ? "mouse"
+    : icon.contains("phone") ? "smartphone" : icon.contains("speaker") || icon.contains("audio") ? "speaker"
+    : icon.contains("gaming") || icon.contains("joystick") ? "sports_esports"
+    : icon.contains("computer") ? "computer" : "bluetooth"
+}

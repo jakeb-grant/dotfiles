@@ -60,7 +60,9 @@ chezmoi diff
 
 ## Desktop Shell
 
-Quickshell provides the bar, launcher, and notification center. Configs in `dot_config/quickshell/`.
+Strand (https://strand.jacobgrant.dev) provides the island bar, launcher and notifications: `dot_config/strand/*.strand`, started by `strand run` in Hyprland's autostart and bound with `strand toggle <file>.<key>`. A saved `.strand` file hot-reloads the running shell, so test a change on a copy (`strand check <dir>`) before `chezmoi apply`. Its feature list and parked Strand problems are in `docs/strand-shell/`. Locking is hyprlock until Strand's own lock is tried on this hardware.
+
+Quickshell (`dot_config/quickshell/`) is no longer started; its config, the `_quickshell` palette keys and `toggle-bar-mode` stay for a week as a rollback, then go.
 
 ## Machine-Specific Config
 

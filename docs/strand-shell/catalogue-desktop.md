@@ -1,0 +1,380 @@
+# Desktop setup outside the Quickshell shell
+
+A catalogue of what the desktop does around `dot_config/quickshell`, read from the chezmoi source on 2026-10-31. Paths are relative to `~/.local/share/chezmoi/` unless they start with `~` or `/`. The shell's own features are covered elsewhere; shell files are cited here only to show what connects to them.
+
+Everything comes from reading files. Nothing was run. A few facts are not in the chezmoi source, so I read them from the deployed machine: `~/.config/hypr/monitors.lua`, `~/.config/hyprpier/*.json` and `/etc/pam.d/hyprlock`. Those are marked "live". The deployed `hyprland.lua` matches the template apart from the GPU blocks, and the deployed `hypridle.conf` and `theme-switch` are identical to source.
+
+Places I could not tell from reading alone are collected in [Could not tell from reading](#could-not-tell-from-reading).
+
+## Keybindings
+
+Source: `dot_config/hypr/hyprland.lua.tmpl`, with `SUPER` as the modifier (line 13). "Line" refers to that file unless stated.
+
+"Calls the shell" means:
+
+- **Yes**: the bind dispatches a `quickshell:*` global shortcut.
+- **Indirect**: the bind runs something else, and the shell reacts to a file, a notification or a system state.
+- **No**: compositor or application only. The bar still follows workspace and window changes through Hyprland's events (`dot_config/quickshell/services/Hypr.qml`), which is true of every workspace bind below.
+
+| Key | What it does | Calls the shell | Line |
+|---|---|---|---|
+| SUPER+Space | Toggle launcher | **Yes**, `quickshell:launcher` | 84 |
+| SUPER+Return | `ghostty +new-window` | No | 85 |
+| SUPER+SHIFT+B | `xdg-open https://` (default browser) | No | 86 |
+| SUPER+SHIFT+F | `pane-fm` | No | 87 |
+| SUPER+SHIFT+Z | `zeditor --wait` | No | 88 |
+| SUPER+W | Close window | No | 91 |
+| SUPER+T | Toggle floating | No | 92 |
+| SUPER+O | Pin window | No | 93 |
+| SUPER+P | Pseudotile window | No | 94 |
+| SUPER+J | Toggle dwindle split direction | No | 95 |
+| SUPER+F | Fullscreen | No | 96 |
+| SUPER+L | Lock session | **Yes**, `quickshell:lock` | 97 |
+| SUPER+SHIFT+T | Run `toggle-bar-mode` (top/side bar) | Indirect: rewrites `active.json`, which the shell watches | 100 |
+| SUPER+comma | Dismiss latest notification | **Yes**, `quickshell:notif-dismiss` | 103 |
+| SUPER+SHIFT+comma | Dismiss all notifications | **Yes**, `quickshell:notif-dismiss-all` | 104 |
+| SUPER+Left/Right/Up/Down | Move focus | No | 109 |
+| SUPER+SHIFT+Left/Right/Up/Down | Swap window | No | 110 |
+| SUPER+equal | Widen active window by 50 px (repeats) | No | 115 |
+| SUPER+minus | Narrow by 50 px (repeats) | No | 116 |
+| SUPER+SHIFT+equal | Heighten by 50 px (repeats) | No | 117 |
+| SUPER+SHIFT+minus | Shorten by 50 px (repeats) | No | 118 |
+| SUPER+1 to 9, SUPER+0 | Go to workspace 1 to 9; 0 means workspace 10 | No | 124 |
+| SUPER+SHIFT+1 to 9, SUPER+SHIFT+0 | Move window to workspace 1 to 10 | No | 125 |
+| SUPER+Tab | Next existing workspace (`e+1`) | No | 127 |
+| SUPER+SHIFT+Tab | Previous existing workspace (`e-1`) | No | 128 |
+| SUPER+CTRL+Tab | Last-visited workspace | No | 129 |
+| SUPER+S | Toggle special workspace `magic` (scratchpad) | No | 132 |
+| SUPER+SHIFT+S | Move window to `special:magic` | No | 133 |
+| SUPER+wheel down / up | Next / previous existing workspace | No | 136, 137 |
+| SUPER+left mouse drag | Move window | No | 140 |
+| SUPER+right mouse drag | Resize window | No | 141 |
+| Print | `screenshot region` | Indirect: result arrives as a notification with Open action | 144 |
+| SHIFT+Print | `screenshot full` | Indirect: same | 145 |
+| SUPER+Print | `hyprpicker -a` (colour picker to clipboard) | No | 146 |
+| XF86MonBrightnessUp / Down | `brightnessctl set +5%` / `5%-` (repeats, works while locked) | Indirect: shell shows an OSD by watching sysfs (`services/Brightness.qml:66`, `services/Osd.qml`) | 149, 150 |
+| XF86AudioRaiseVolume / LowerVolume | `wpctl set-volume` ±5%, raise capped at 100% (repeats, works while locked) | Indirect: shell shows an OSD by watching PipeWire | 151, 152 |
+| XF86AudioMute | `wpctl set-mute` on default sink (works while locked) | Indirect: OSD | 153 |
+| XF86AudioMicMute | `wpctl set-mute` on default source (works while locked) | Indirect: OSD and bar indicator | 154 |
+| XF86AudioPlay, XF86AudioPause | Play/pause media (works while locked) | **Yes**, `quickshell:media-playpause` | 155, 156 |
+| XF86AudioNext | Next track (works while locked) | **Yes**, `quickshell:media-next` | 157 |
+| XF86AudioPrev | Previous track (works while locked) | **Yes**, `quickshell:media-prev` | 158 |
+| Three-finger horizontal swipe | Switch workspace (gesture) | No | 256 |
+| Lid closed | Disable `eDP-1` (works while locked) | No | live `~/.config/hypr/monitors.lua:20` |
+| Lid opened | `hyprctl reload`, then DPMS on for `eDP-1` after 500 ms (works while locked) | No | live `~/.config/hypr/monitors.lua:21-26` |
+
+Notes:
+
+- The lid binds are generated by hyprpier, not in the chezmoi source. All three hyprpier profiles carry a `lid_switch` key.
+- Media keys have no fallback: there is no `playerctl` bind, and the shell's MPRIS service is the only thing handling them.
+- Nothing has a keybinding for theme switching, the wallpaper picker, clipboard history, Do Not Disturb, power actions, Wi-Fi, Bluetooth or `win-vm`. These are reached through the launcher or the bar, or from a terminal for the scripts.
+- The launcher has a Keybinds submenu that is a hand-kept copy of part of this table (`dot_config/quickshell/services/LauncherProviders.qml:13-49`), noted as a drift hazard in `docs/ux-backlog.md:22`. It differs in places: its Terminal entry runs `ghostty` and its Editor entry runs `zeditor`, without the bind's arguments.
+- App-level binds: Ghostty maps Shift+Enter to `\x1b\r` (`dot_config/ghostty/config:10`). The pane-fm config sets no custom keys.
+
+## What starts at login
+
+1. **greetd** on VT 1 runs `tuigreet --remember --remember-session --time --asterisks --cmd 'start-hyprland &>/dev/null'` as user `greeter` (written by `run_once_setup-greetd.sh:11-18`). The PAM file it writes also opens gnome-keyring (`:22-37`). `start-hyprland` is a system binary from arch-quickstart (`README.md:72`).
+2. **Hyprland** sets environment (`hyprland.lua.tmpl:18-41`): `EDITOR`, `VISUAL`, `GIT_EDITOR`, `GDK_BACKEND`, cursor theme and size, `PATH` with `~/.local/bin` first, `ELECTRON_OZONE_PLATFORM_HINT`, and GPU variables by machine.
+3. On `hyprland.start` (`hyprland.lua.tmpl:64-77`), Hyprland launches these in order without waiting for any of them:
+
+| Command | Purpose | Tie to the shell |
+|---|---|---|
+| `dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_ID XDG_SESSION_TYPE` | Gives D-Bus and systemd user services the session | Portal restart in `theme-switch` relies on this session |
+| `nm-applet --indicator` | Network tray applet | Appears in the shell's tray |
+| `phylax` | Pinned by a window rule, styled by `phylax/style.css`; the CSS classes are `auth-window`, `auth-header` | None direct |
+| `hyprctl setcursor Bibata-Modern-Classic 24` | Cursor | None |
+| `awww-daemon` | Wallpaper daemon | **Only the shell sends it images** |
+| `wl-paste --watch cliphist store` | Clipboard history collector | **Only the shell's launcher reads it** |
+| `quickshell` | The shell | Is the shell |
+| `hypridle` | Idle timers and logind lock handling | Locks through the shell |
+| `hyprpier daemon` | Monitor profile daemon; generates `monitors.lua` | Shell re-reads workspace rules after dock changes (`services/Hypr.qml:80`) |
+
+Before that list runs, `require("monitors")` loads the monitor file, and a load failure raises a critical `notify-send` (`hyprland.lua.tmpl:54-59`). The source has no systemd user units. `theme-switch` does assume `xdg-desktop-portal-gtk` exists as one (`executable_theme-switch:405`). Chezmoi's run scripts are setup only and do not run at login; see [Run scripts](#run-scripts).
+
+## Theme switching
+
+### How to trigger it
+
+- From a terminal: `theme-switch <slug>`, for example `theme-switch everforest`. With no argument it switches to `catppuccin-mocha`, the default at `executable_theme-switch:51`, rather than doing nothing.
+- From the launcher's Themes submenu, which fills itself from `theme-switch --list` and runs `theme-switch <slug>` (`dot_config/quickshell/services/Launcher.qml:128,138`).
+- No keybinding exists.
+
+There are 10 palettes in `dot_config/palette/`: `catppuccin-mocha`, `-frappe`, `-macchiato`, `-latte`; `rose-pine`, `-moon`, `-dawn`; `everforest`, `everforest-light`; `nord`. `active.json` is the eleventh file and is always a copy of the current one.
+
+`theme-switch --list` prints `file|name|base|accent|red|green|yellow|mauve`, one palette per line (`:106-126`).
+
+### Palette file contents
+
+- 26 colour roles in Catppuccin naming (`:130-135`).
+- Meta keys: `_name`, `_variant`, `_blur_opacity`, `_zed_theme_dark`, `_zed_theme_light`, `_ghostty_theme`, `_gtk_color_scheme`, `_chromium_seed_color`.
+- A `_quickshell` block: `accent`, `disabledText`, `subtleText`, `separator`, `pillBg`, `hoverBg`, `barMode`, plus `islandShadowColor` in the three light palettes.
+
+### Step by step
+
+All line numbers are in `dot_local/bin/executable_theme-switch` (deployed as `~/.local/bin/theme-switch`).
+
+1. Sends a "Switching to..." notification (`:440`).
+2. Loads `palette/<slug>.json` from the **chezmoi source**, not `~/.config` (`:49-50`, `:94-103`). A missing file gives a critical notification and exit 1.
+3. Validates: all 26 roles are valid hex, `_quickshell.accent` is valid if present, and the Zed theme names exist in `zed/themes/*.json` (`:151-178`). Failure gives a critical notification and exit 1, before anything is written.
+4. Reads the current `_quickshell.barMode` from the live `active.json` and carries it over, so the bar layout survives the switch (`:447-458`).
+5. Derives `_accent`, `_accent_h`, `_accent_s`, `_accent_l` from `_quickshell.accent`, falling back to `blue` (`:462-468`).
+6. Writes `active.json` atomically (temp and rename) to both the chezmoi source and `~/.config/palette/` (`:427-433`, `:471-472`). **The shell reacts here**: it animates to the new colours and picks a wallpaper for the theme (below). This is before any other app changes.
+7. Regenerates `dot_config/hypr/palette.lua` in the source (`:188-218`).
+8. Rewrites `theme` and `background-opacity` in the source `dot_config/ghostty/config` (`:257-268`).
+9. Writes `/etc/chromium/policies/managed/theme.json` and `/etc/opt/chrome/policies/managed/theme.json` with `BrowserThemeColor` and `ThemeColorScheme` (`:309-340`). These directories have a user ACL from `run_once_setup-chromium-policies.sh`.
+10. Renders Zed's `settings.json` and pane-fm's `themes/palette.css` with `chezmoi cat` and writes them in place, keeping the inode so those apps' file watches survive (`:278-300`, `:482-483`).
+11. Kills `btop` and waits for it to exit, so its exit-time config save cannot overwrite the new theme (`:371-381`, `:488`).
+12. Runs `chezmoi apply --force` on: `~/.config/hypr`, `gtk-3.0`, `gtk-4.0`, `yazi`, `phylax`, `zed/settings.json`, `ghostty`, `btop`, `pane-fm`, and `~/knowledge/.obsidian` (`:490-504`). A failure here gives a critical notification and exit 1, by which point `active.json` and the shell have already changed.
+13. In parallel (`:411-419`): `hyprctl reload`; `pkill -USR2 ghostty`; `gsettings set org.gnome.desktop.interface color-scheme <value>`; `chromium` or `google-chrome-stable --refresh-platform-policy` if running; `systemctl --user restart xdg-desktop-portal-gtk`.
+14. Sends a "Switched to..." notification (`:517`).
+
+Because the script writes into the chezmoi source, each switch leaves `active.json`, `palette.lua` and `ghostty/config` modified in the git working tree. A plain `chezmoi apply` therefore does not revert the theme (`:221-222`).
+
+### The wallpaper follows the theme, and the shell does that part
+
+`theme-switch` never touches wallpapers. The shell does it all (`dot_config/quickshell/services/Wallpaper.qml`):
+
+1. It sees `_name` change in `active.json` and turns it into a slug: strips accents, lowercases, spaces to hyphens (`:53-57`). "Rosé Pine Dawn" becomes `rose-pine-dawn`.
+2. It filters `~/.config/wallpapers/wallpapers.json` by each entry's `palettes` list, which takes exact slugs, globs or `*` (`:99-110`).
+3. It picks the `defaults` entry for the slug, else a matching wildcard key, else `*`, else the first match (`:163-184`). The current file has 15 single wallpapers, 7 sets, and one default, `"*": "lavender3.png"`.
+4. It calls `awww img <path> --transition-type center --transition-duration 1 --transition-fps 60`. Sets go per output, left to right, cycling if there are fewer images than monitors (`:208`, `:213-238`).
+5. It records the choice by writing `~/.config/wallpapers/.current` (`:78`), which is restored at next start. `.chezmoiignore:9` excludes that file.
+
+### What follows the theme
+
+| App | Mechanism | How the running app picks it up | Source |
+|---|---|---|---|
+| Quickshell | Reads live `active.json` directly | File watch, animated | `quickshell/utils/Theme.qml:11-20` |
+| Wallpaper | Shell-side filter on `wallpapers.json` | `awww` transition | see above |
+| Hyprland borders, shadow | Generated `palette.lua`, `require`d by `hyprland.lua` | `hyprctl reload` | `hypr/palette.lua`, `hyprland.lua.tmpl:46,169,170,196` |
+| hyprlock (unused fallback) | Template | Next launch | `hypr/hyprlock.conf.tmpl` |
+| Ghostty | Direct write to config | `SIGUSR2` | `ghostty/config:3-4` |
+| Zed | Template picks a hand-made theme from `zed/themes/` by `_zed_theme_*` and `_variant` | Zed's settings watch, written in place | `zed/private_settings.json.tmpl:18-22` |
+| pane-fm | Template CSS, and `light_icons` from `_variant` | pane-fm's watch, written in place | `pane-fm/themes/palette.css.tmpl`, `pane-fm/config.toml.tmpl:11` |
+| GTK 3 and 4 apps | Template `gtk.css` | `gsettings` color-scheme and portal restart; see [Could not tell](#could-not-tell-from-reading) for already-open apps | `gtk-3.0/gtk.css.tmpl`, `gtk-4.0/gtk.css.tmpl` |
+| Phylax | Template CSS | Could not tell | `phylax/style.css.tmpl` |
+| Yazi | Template | Could not tell | `yazi/theme.toml.tmpl` |
+| btop | Template theme, static `color_theme = "palette"` | **Killed, not restarted**; new theme on next launch | `btop/themes/palette.theme.tmpl`, `btop/btop.conf:5` |
+| Obsidian | Template CSS, `cssTheme: "Palette"` | Could not tell | `knowledge/dot_obsidian/` |
+| Chromium, Chrome | Managed policy JSON in `/etc` | `--refresh-platform-policy` if running | `executable_theme-switch:309-340,396-400` |
+| Portal-using apps | `gsettings` color-scheme | Portal restart | `executable_theme-switch:384-408` |
+
+`dot_config/grub/` holds only `background.png` and does not follow the theme, and neither do the cursor or the fonts.
+
+### Colour helpers
+
+`.chezmoitemplates/` holds four, all used through Go templates after `{{- $p := include "dot_config/palette/active.json" | fromJson -}}`: `rgba` (CSS), `rgb_values` (CSS `r, g, b`), `hypr_rgb` and `hypr_rgba` (hyprlang). The IPU7 camera files live there too and are unrelated to theming.
+
+## Scripts in `dot_local/bin`
+
+| Script | What it does |
+|---|---|
+| `theme-switch` | Applies a palette across all apps, as above; `--list` prints palettes for the launcher. Runs through `uv`. |
+| `toggle-bar-mode` | Flips `_quickshell.barMode` between `side` and `top` in live and source `active.json`, atomically. |
+| `screenshot` | `region` (slurp and grim) or `full` (grim) to `~/Pictures/Screenshots`, copies to clipboard, notifies with a thumbnail and an Open button. |
+| `wallpaper-split` | Cuts wide images into per-monitor slices (default 3 monitors, jpg) and registers them as sets in live and source `wallpapers.json`. |
+| `wallpaper-upscale` | EDSR 4x AI upscale on CPU in tiles; standalone, with no tie to the shell. Runs through `uv`. |
+| `win-vm` | Starts, stops or checks a Windows VM in Docker (`windows-vm/docker-compose.yaml`, `dockurr/windows`) and connects over RDP with `sdl-freerdp3`. Launcher entry "Windows VM". |
+| `ipu7-camera-check` | Verifies the IPU7 camera relay from hardware through to a live capture. No tie to the shell. |
+
+`dot_local/bin/__pycache__/` is stray bytecode, excluded by `.chezmoiignore:13`.
+
+### Run scripts
+
+| Script | When | What it does |
+|---|---|---|
+| `run_once_before_create-default-monitors-lua.sh` | Once, before apply | Creates `~/.config/hypr/monitors.lua` with auto-detection, only if missing |
+| `run_once_setup-chromium-policies.sh` | Once (sudo) | Creates the browser policy directories and grants the user a write ACL |
+| `run_once_setup-greetd.sh` | Once (sudo) | Writes greetd config and PAM, enables greetd, disables SDDM |
+| `run_onchange_setup-gpu-symlinks.sh.tmpl` | On GPU ID change (sudo, `prime` machines only) | udev rules for `/dev/dri/igpu` and `dgpu` |
+| `run_onchange_after_setup-ipu7-camera.sh.tmpl` | On camera file change | Sets up the IPU7 camera relay and v4l2loopback device; `wireplumber/wireplumber.conf.d/50-ipu7-camera.conf` hides the raw nodes from PipeWire |
+
+### Other files
+
+- `.chezmoiignore`: keeps repo docs out of `$HOME`, plus `.config/wallpapers/.current` and `__pycache__`.
+- `.chezmoi.toml.tmpl`: `graphics` (amd, intel, prime, nvidia), PCI IDs for `prime`, and git `autoCommit = true`, `autoPush = false`.
+- `dot_bashrc`: PATH, editor variables, prompt, aliases, `fnm`, Railway. No shell ties.
+- `docs/`: `design-review-backlog.md` and `ux-backlog.md` are finished review logs with useful reasoning about the shell; `scripts-review.md` is the same for the scripts; `HYPRLAND_0.55_*.md` cover the Lua config migration; `iwd_impala.md` is Wi-Fi setup notes.
+
+## Idle, lock and power
+
+| Trigger | What happens | Source |
+|---|---|---|
+| 10 min idle | `loginctl lock-session`, which fires hypridle's `lock_cmd`, which dispatches `quickshell:lock` | `dot_config/hypr/hypridle.conf:9,15-18` |
+| 30 min idle | `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'`; DPMS on at resume | `hypridle.conf:23-27` |
+| Before sleep | `loginctl lock-session` | `hypridle.conf:10` |
+| After sleep | DPMS on, then `loginctl lock-session` again | `hypridle.conf:11` |
+| SUPER+L | `quickshell:lock` directly, not through logind | `hyprland.lua.tmpl:97` |
+| Bar power popout, Lock Screen | `loginctl lock-session`, so shell to logind to hypridle and back to the shell | `quickshell/modules/bar/popouts/PowerPopout.qml:41` |
+| Launcher, Lock Screen | Dispatches `quickshell:lock` directly | `quickshell/services/LauncherProviders.qml:34` |
+
+- **The lock screen is the shell.** It uses `WlSessionLock` and authenticates with PAM service name `hyprlock` (`quickshell/shell.qml:18`, `quickshell/services/LockScreen.qml:65`). `/etc/pam.d/hyprlock` is owned by the hyprlock package, not this repo, and includes `login` (live).
+- **`hyprlock` itself is never started.** `hypr/hyprlock.conf.tmpl` is themed and described as a fallback (`README.md:16`), but no bind, script or idle rule runs the binary. Only a manual launch would use it.
+- **No auto-suspend, on purpose.** It was removed after an `xe` GPU driver NULL dereference on 2026-05-14 wedged the machine during unattended suspend while docked (`dot_config/hypr/README.md:9-24`). That file gives a re-test procedure and the listener to restore. Its stated practice: power off for long absences, walk away for short ones, undock before a manual suspend, and lid-close suspend while undocked is safe.
+- **Lid**: `monitors.lua` (live) disables `eDP-1` on close and reloads on open. README says logind handles lid suspend when undocked; logind configuration is not in this repo.
+- **Power menu** (all in the shell): shut down, restart, sleep, lock and log out in `PowerPopout.qml:38-42`; suspend, reboot, shutdown and logout again in `LauncherProviders.qml:36-39`.
+- **Battery and profiles** are also shell-side: warnings at 15% and critical at 5% through `notify-send`, and `powerprofilesctl` (`quickshell/services/Battery.qml:77-102`).
+- **Volume and brightness keys** use the compositor binds, and the shell only displays them. The shell also sets brightness itself with `brightnessctl` (`services/Brightness.qml:96`).
+- No power button bind exists in the source.
+
+## Monitors
+
+`hyprland.lua.tmpl:54` loads `~/.config/hypr/monitors.lua`. That file is **not** in the chezmoi source. It is per-machine and survives theme switches. `run_once_before_create-default-monitors-lua.sh` writes an auto-detect default only if the file is missing. The live one is generated by hyprpier from a profile (`monitors.lua:1`), and hyprpier also rewrites the workspace-to-monitor rules there.
+
+Profiles (live, `~/.config/hyprpier/`):
+
+| Profile | Outputs, left to right | Workspaces |
+|---|---|---|
+| `default` (no dock) | eDP-1 1920x1200@120 | 1-10 on eDP-1 |
+| `home` (currently generated) | eDP-1 1920x1200@120, DP-2 1920x1080@60, DP-6 1920x1080@60 | 1-5 on DP-2, 6-10 on DP-6, none assigned to eDP-1 |
+| `work` | DP-10 3840x2160@60 at 1.5, DP-8 3840x2160@60 at 1.5, DP-6 1920x1080@60, eDP-1 1920x1200@120 | 1-4 on DP-10, 5-8 on DP-8, 9-10 on DP-6 |
+
+- `hyprpier daemon` runs at login, and the launcher's Display entry runs `ghostty -e hyprpier mgr` (`LauncherProviders.qml:62`).
+- The shell reads workspace layout from `hyprctl workspacerules -j` (`services/Hypr.qml:49`) and re-queries after dock changes because of hyprpier's rewrite (`:80`).
+- Hyprland itself: `dwindle` layout, gaps 5 and 10, border 2, rounding 5, blur on, `follow_mouse = 1`, natural scroll on touchpad, `us` keyboard (`hyprland.lua.tmpl:163-254`).
+- Wallpaper sets assume several monitors: `wallpaper-split` defaults to 3 (`executable_wallpaper-split`, `NUM_MONITORS=3`), and the shell re-applies a set when screens change (`Wallpaper.qml:244-264`).
+- Monitor naming in the source is otherwise absent; nothing outside `monitors.lua` and the hyprpier profiles names an output.
+
+## What a replacement shell must connect to
+
+Every place outside `dot_config/quickshell` that calls, starts or assumes the shell. There are no `qs ipc` calls anywhere, the shell defines no `IpcHandler`, and no script kills, restarts or checks for a Quickshell process. All direct control goes through Hyprland global shortcuts, and everything else goes through files, D-Bus or external tools.
+
+### 1. Process start
+
+| Assumption | File and line |
+|---|---|
+| Autostart runs the command `quickshell` | `dot_config/hypr/hyprland.lua.tmpl:71` |
+
+### 2. Global shortcuts (namespace `quickshell:`)
+
+Hyprland dispatches these names. A replacement needs to register them, or these lines must change. The shell registers them in `dot_config/quickshell/shell.qml:12-74`.
+
+| Name | File and line | Trigger |
+|---|---|---|
+| `quickshell:launcher` | `dot_config/hypr/hyprland.lua.tmpl:84` | SUPER+Space |
+| `quickshell:lock` | `dot_config/hypr/hyprland.lua.tmpl:97` | SUPER+L |
+| `quickshell:lock` | `dot_config/hypr/hypridle.conf:9` | `lock_cmd`: idle, before and after sleep, any `loginctl lock-session` |
+| `quickshell:notif-dismiss` | `dot_config/hypr/hyprland.lua.tmpl:103` | SUPER+comma |
+| `quickshell:notif-dismiss-all` | `dot_config/hypr/hyprland.lua.tmpl:104` | SUPER+SHIFT+comma |
+| `quickshell:media-playpause` | `dot_config/hypr/hyprland.lua.tmpl:155,156` | Play, Pause keys, while locked too |
+| `quickshell:media-next` | `dot_config/hypr/hyprland.lua.tmpl:157` | Next key, while locked too |
+| `quickshell:media-prev` | `dot_config/hypr/hyprland.lua.tmpl:158` | Prev key, while locked too |
+
+### 3. Layer rule
+
+| Assumption | File and line |
+|---|---|
+| Blur for layer namespaces matching `^quickshell-`, with `ignore_alpha = 0.5` | `dot_config/hypr/hyprland.lua.tmpl:305-310` |
+
+- The shell's namespaces are `quickshell-drawers`, `quickshell-exclusion` and `quickshell-osd` (`modules/drawers/Drawers.qml:35,237`, `modules/drawers/Exclusions.qml:16`).
+- The comment at `:302-304` ties `0.5` to the shell's pixels: island bodies at alpha about 0.9, shadow halo about 0.35, gaps at 0.
+- Layer animations at `hyprland.lua.tmpl:223-227` apply to all layer surfaces, so also to a replacement.
+
+### 4. Theme files the shell reads and scripts write
+
+| Assumption | File and line |
+|---|---|
+| `~/.config/palette/active.json` is written atomically so its watcher never sees a partial file | `dot_local/bin/executable_theme-switch:428-433,471-472`; `dot_local/bin/executable_toggle-bar-mode:48-53` |
+| `theme-switch` writes active.json **first**, for instant shell feedback | `executable_theme-switch:471-472`; reasoning in `docs/design-review-backlog.md:81` |
+| `_quickshell.barMode` is preserved across switches | `executable_theme-switch:453,458` |
+| `_quickshell.accent` feeds `_accent*`, which **other apps' templates read**: GTK 3, pane-fm, Obsidian | `executable_theme-switch:117,163-165,462`; `dot_config/gtk-3.0/gtk.css.tmpl:191,197,315,316`; `dot_config/pane-fm/themes/palette.css.tmpl:13`; `knowledge/dot_obsidian/themes/Palette/theme.css.tmpl:17-19,55-57` |
+| `--list` output is built for the launcher's themes menu (accent included) | `executable_theme-switch:106-126`; caller `quickshell/services/Launcher.qml:128` |
+| A `_quickshell` block in every palette | line 39 of each `dot_config/palette/<name>.json`; line 36 of `active.json` |
+| Keys in that block: `accent`, `disabledText`, `subtleText`, `separator`, `pillBg`, `hoverBg`, `barMode`, `islandShadowColor` (light only) | same block; read at `quickshell/utils/Theme.qml:88-153` |
+| `toggle-bar-mode` writes `_quickshell.barMode`, and takes effect only through the shell's watch | `dot_local/bin/executable_toggle-bar-mode:44-46`; bound at `hyprland.lua.tmpl:100` |
+| `_name` also determines the wallpaper slug | `quickshell/services/Wallpaper.qml:53-57` |
+| Quickshell is **not** in the `chezmoi apply` target list; it gets the theme only through the file | `executable_theme-switch:490-501` |
+
+The `_quickshell` name is also a convention: renaming the block would touch `theme-switch`, `toggle-bar-mode`, 10 palettes and `active.json`.
+
+### 5. Wallpaper
+
+| Assumption | File and line |
+|---|---|
+| `awww-daemon` is autostarted and nothing outside the shell sends it images | `dot_config/hypr/hyprland.lua.tmpl:69`; the only sender is `quickshell/services/Wallpaper.qml:208,230` (a commented example also sits at `dot_config/pane-fm/config.toml.tmpl:76`) |
+| `wallpapers.json` schema (`defaults`, `wallpapers[].file/palettes`, `sets[].name/images/palettes`) | `dot_config/wallpapers/wallpapers.json`; `README.md:215-237` |
+| `wallpaper-split` writes sets, expecting images resolved relative to `~/.config/wallpapers` by the shell | `dot_local/bin/executable_wallpaper-split:85-94` and its registration |
+| `.current` is runtime state the shell owns | `.chezmoiignore:9`; `quickshell/services/Wallpaper.qml:18,78` |
+| Choosing the wallpaper on theme change and at login is done only by the shell | `quickshell/services/Wallpaper.qml:59-67,85-90,139-155`; `theme-switch` has no wallpaper code |
+
+### 6. Notifications
+
+The shell is the session's notification daemon (`quickshell/services/Notifications.qml:70`). The source starts no other one. These callers need a daemon:
+
+| Caller | File and line | What it needs |
+|---|---|---|
+| `screenshot` result | `dot_local/bin/executable_screenshot:46-47` | **Action button** (`-A open=Open`, blocks until answered), `image-path` hint for a thumbnail |
+| `screenshot` failures | `executable_screenshot:12,40` | Critical urgency |
+| `theme-switch` | `executable_theme-switch:26-30` | App name, urgency, multi-line body |
+| `toggle-bar-mode` failure | `executable_toggle-bar-mode:13-17` | Critical urgency; this is the only feedback when run from a keybind |
+| `win-vm` | `dot_local/bin/executable_win-vm:13` | App name, urgency |
+| `monitors.lua` load failure | `dot_config/hypr/hyprland.lua.tmpl:58` | Critical urgency |
+
+`docs/ux-backlog.md:24` records that `notify-send -A` processes do not pile up because the shell's service dismisses on expiry, which releases the wait. A daemon that does not close expired notifications would leave those `screenshot` processes waiting.
+
+### 7. Lock and session
+
+| Assumption | File and line |
+|---|---|
+| Lock request goes through `quickshell:lock` | `dot_config/hypr/hypridle.conf:9`; `hyprland.lua.tmpl:97` |
+| PAM service `hyprlock` from the hyprlock package | `quickshell/services/LockScreen.qml:65`; `/etc/pam.d/hyprlock` (live); documented at `README.md:16,90` |
+| Displays stay on 20 min after lock so the lock screen shows | `dot_config/hypr/hypridle.conf:20-22`; `dot_config/hypr/README.md:6` |
+| Lock surface described as the shell's | `dot_config/hypr/README.md:5` |
+
+### 8. Services started outside that only the shell consumes or displays
+
+| Item | File and line | Shell side |
+|---|---|---|
+| `wl-paste --watch cliphist store` | `dot_config/hypr/hyprland.lua.tmpl:70` | `cliphist list`, `cliphist decode` at `quickshell/services/Launcher.qml:79,300` |
+| `nm-applet --indicator` (tray item) | `dot_config/hypr/hyprland.lua.tmpl:66` | System tray in `quickshell/modules/bar/` |
+| `hyprpier daemon` | `dot_config/hypr/hyprland.lua.tmpl:73` | `quickshell/services/Hypr.qml:49,80` |
+
+The shell is the only tray host in the source. Any other tray app also relies on it.
+
+### 9. Things reachable only through the shell
+
+Nothing outside the shell starts these, so they would have no entry point without a replacement or new binds. They all exist outside `dot_config/quickshell`.
+
+| Item | Called from |
+|---|---|
+| `theme-switch` (from the UI) | `quickshell/services/Launcher.qml:128,138` |
+| `win-vm` (from the UI) | `quickshell/services/LauncherProviders.qml:65,88` |
+| `upkeep` (`/usr/bin`, not this repo) | `LauncherProviders.qml:61,85` |
+| `hyprpier mgr` | `LauncherProviders.qml:62,86` |
+| `btop` | `LauncherProviders.qml:64` |
+| `fastfetch` | `LauncherProviders.qml:63,87` |
+| `impala` (Wi-Fi TUI) | `quickshell/modules/bar/popouts/WifiPopout.qml:118`; `Launcher.qml:321` |
+| `bluetui` | `quickshell/modules/bar/popouts/BluetoothPopout.qml:157` |
+| App launching in general (`SUPER+Space` is the only launcher) | `hyprland.lua.tmpl:84` |
+
+The shell also runs these external commands, so it assumes they are present: `iwctl` (`services/Network.qml`), `powerprofilesctl`, `brightnessctl`, `hyprctl`, `systemctl`, `loginctl`, `wl-copy`, `grep` on `/sys/class/leds`, and `find` on icon directories. The other catalogue covers these from the shell's side.
+
+### 10. Comments and docs that name the shell (no behaviour, but they would go stale)
+
+| File and line | What it says |
+|---|---|
+| `README.md:5,16,85-92,150,157,237` | Shell description, tree, theme and wallpaper notes |
+| `CLAUDE.md:12,38,63` | Theme flow and Desktop Shell section |
+| `dot_config/hypr/README.md:5` | Lock surface |
+| `dot_config/hypr/hyprland.lua.tmpl:102,302` | Comments on the notification binds and blur rule |
+| `dot_local/bin/executable_theme-switch:107,428` | Comments on `--list` and atomic write |
+| `dot_local/bin/executable_toggle-bar-mode:2,48` | Script description |
+| `dot_local/bin/executable_wallpaper-split:86` | Comment on how images are resolved |
+| `docs/HYPRLAND_0.55_MIGRATION.md`, `docs/design-review-backlog.md`, `docs/ux-backlog.md`, `docs/scripts-review.md` | Historical logs |
+
+### Not connected to the shell
+
+Ghostty, Zed, Yazi, btop, GTK, pane-fm, Obsidian, Chromium, wireplumber, the Windows VM and the camera relay have no reference to Quickshell. The themed ones read `active.json` through chezmoi templates, so they depend on the palette format, not on the shell. The one indirect link is `_accent`, which GTK 3, pane-fm and Obsidian read and which comes from `_quickshell.accent` (section 4).
+
+## Could not tell from reading
+
+- **What `hyprpier` does exactly.** It is a binary at `/usr/bin/hyprpier`, outside this repo. The `monitors.lua` header and a shell comment show it generates that file and acts on dock changes. How it detects a dock, or whether it triggers a reload itself, is not visible.
+- **What `phylax` is.** The README calls it a "desktop widget", while its CSS classes (`auth-window`, `auth-header`) and the pin rule suggest an authentication prompt, perhaps a polkit agent. Nothing in the source says so, and no other polkit agent appears in the autostart list.
+- **Whether `nm-applet` does anything useful.** The shell's network code uses `iwctl`, and `docs/iwd_impala.md:30-34` describes disabling NetworkManager, yet `nm-applet --indicator` still autostarts. Which network stack runs on this machine cannot be read from the source.
+- **Whether a theme switch reloads the shell.** `quickshell/services/Notifications.qml:21` says "theme-switch reloads the shell", but `theme-switch` has no such step and does not apply `~/.config/quickshell`. From reading, only the `active.json` watch should fire. `docs/ux-backlog.md:18` repeats the claim. I would treat this as unconfirmed.
+- **Whether `hyprctl reload` re-runs the autostart list.** It hangs off `hyprland.start`, which suggests start only, but the event's reload behaviour is not defined in this repo. `theme-switch` and the lid-open bind both call `hyprctl reload`, so it matters if it does.
+- **What happens to a `hl.dsp.global` bind when no client has registered that name**, for example during shell startup or if the shell has crashed. In particular, if `quickshell` is not running when `hypridle` fires `lock_cmd`, the source shows no fallback to `hyprlock`.
+- **What already-open GTK, Yazi, Phylax and Obsidian windows do after a switch.** `theme-switch` sends them no signal, apart from the `gsettings` change and the portal restart. Whether they re-read their files, and when, depends on the app.
+- **Whether `awww-daemon` restores its own last image.** If the shell did not start, the source does not show whether the wallpaper would still appear.
+- **Logind lid and power-key settings.** They live in `/etc`, outside this repo. `dot_config/hypr/README.md:31` says lid-close suspend works undocked, so logind is presumably handling it.
+- **Autostart apps not in the list**, such as 1Password. `docs/ux-backlog.md:14` mentions its tray icon, yet nothing in the Hyprland autostart starts it. I did not read its config, as instructed, so how it starts is unknown.

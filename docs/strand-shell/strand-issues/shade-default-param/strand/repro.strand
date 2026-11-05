@@ -1,0 +1,74 @@
+// Every square should draw. Each group has its own base colour, so they cannot
+// affect one another. check.py reads the squares by position, row by row.
+service p from file "~/palette.json" {
+  c0: color; c1: color; c2: color; c3: color; c4: color; c5: color; c6: color; c7: color
+}
+component Sq(c: color) { box { size: 24; bg: c } }
+
+// BUG: one shade is read through a default parameter, the other directly
+let a = p.c0
+let a1 = a.alpha(0.7)
+let a2 = a.alpha(0.3)
+component ADefault(c: color = a1) { box { size: 24; bg: c } }
+component ADirect { box { size: 24; bg: a2 } }
+component ACond(on: bool = false) { box { size: 24; bg: on ? a : a2 } }
+component ABase { box { size: 24; bg: a } }
+
+// BUG: the same, with the direct shade mounted first
+let b = p.c1
+let b1 = b.alpha(0.7)
+let b2 = b.alpha(0.3)
+component BDefault(c: color = b1) { box { size: 24; bg: c } }
+component BDirect { box { size: 24; bg: b2 } }
+
+// BUG: the default parameter's component is declared and never mounted
+let c = p.c2
+let c1 = c.alpha(0.7)
+let c2 = c.alpha(0.3)
+component CUnused(x: color = c1) { box { size: 24; bg: x } }
+component CDirect { box { size: 24; bg: c2 } }
+
+// CONTROL: two shades in components, no default parameter
+let d = p.c3
+let d1 = d.alpha(0.7)
+let d2 = d.alpha(0.3)
+component DOne { box { size: 24; bg: d1 } }
+component DTwo { box { size: 24; bg: d2 } }
+
+// CONTROL: a default parameter, with the shades written out instead of from a let
+let e1 = p.c4.alpha(0.7)
+let e2 = p.c4.alpha(0.3)
+component EDefault(c: color = e1) { box { size: 24; bg: c } }
+component EDirect { box { size: 24; bg: e2 } }
+
+// CONTROL: one shade, read only through a default parameter
+let f = p.c5
+let f1 = f.alpha(0.7)
+component FDefault(c: color = f1) { box { size: 24; bg: c } }
+
+// BUG: another colour method, not alpha
+let g = p.c6
+let g1 = g.lighten(0.1)
+let g2 = g.darken(0.1)
+component GUnused(x: color = g1) { box { size: 24; bg: x } }
+component GDirect { box { size: 24; bg: g2 } }
+
+// BUG: the base is a constant, not a service
+let h = #80a0ff
+let h1 = h.alpha(0.7)
+let h2 = h.alpha(0.3)
+component HUnused(x: color = h1) { box { size: 24; bg: x } }
+component HDirect { box { size: 24; bg: h2 } }
+
+panel P { screens: all; anchor: top_left; size: auto
+  col { gap: 8; pad: 8; bg: #000000
+    row { gap: 8; ADefault; ADirect; ACond; ABase }
+    row { gap: 8; BDirect; BDefault }
+    row { gap: 8; CDirect }
+    row { gap: 8; DOne; DTwo }
+    row { gap: 8; EDefault; EDirect }
+    row { gap: 8; FDefault }
+    row { gap: 8; GDirect }
+    row { gap: 8; HDirect }
+  }
+}
