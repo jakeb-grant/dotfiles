@@ -30,6 +30,8 @@ where they can show the check is working.
 
 ## Open
 
+## Fixed
+
 ### A list reports its starting selection a tick late
 
 Found 2026-11-05 on Strand `9f19dfc6`. No check folder yet; seen on a test copy of this launcher.
@@ -45,7 +47,7 @@ the Themes page opens.
 **Done when:** a list's starting selection reaches its `on select` (or a binding over the list's
 selection) in the tick it mounts, or the docs say it doesn't and give the pattern.
 
-## Fixed
+**Fixed** in Strand `3714cc62` (decisions.md list-start). A list's start now reaches `selected_index`, its `on change` and what reads it in the tick that sets it: as it mounts, when the start changes while you haven't moved, and when a new search or whole new rows start it again. Two edges stay, both in decisions.md: on the launcher's very first opening after boot an `on change` of the preview hears the old row inside the tick (never drawn), and a list whose surface gets the keyboard back starts on its start a frame before logic hears it. **In this config:** the `on change view` workaround for the Themes page is gone. Done in this config on 2026-11-05, on Strand `3714cc62`.
 
 ### Eventually: a dictionary type
 

@@ -237,9 +237,6 @@ let picked_note: Notification? = view == notes && sel >= note_rows ? found_notes
 // the theme moved over on the Themes page, and the one being put on: the whole
 // shell takes its colours (island.strand reads it), Esc or leaving puts them back
 let theme_at = found_themes.index_of(m => m.item.slug == theme_slug) ?? 0
-// the list reports its selection a tick late: the preview starts on the theme in
-// use, not on the row selected before the page opened
-on change view { if view == theme_list { results_at = theme_at } }
 let peek_theme: Theme? = open && view == theme_list && !is_sum ? found_themes.skip(sel).first?.item : null
 export let peek: Theme? = switching != "" ? palettes.all.find(t => t.slug == switching) : peek_theme
 // the wallpaper that theme would bring: the one up now if it suits it, else its own
