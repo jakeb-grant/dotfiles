@@ -2,14 +2,14 @@
 // into ~/Videos. Start and stop it from the launcher, the island's red dot, or a
 // key bound to: strand toggle record.key
 
-permit exec "sh"
+permit exec "mkdir", "wf-recorder"
 
-// Strand passes `~` through as it is, so sh finds the home folder; `exec` leaves
-// wf-recorder in its place, so stopping it finishes the file. -y: never stop to
-// ask about a file; x264 at its fastest, so frames aren't dropped.
-action rec(output: text, name: text) ["sh", "-c",
-  "mkdir -p \"$HOME/Videos\" && exec wf-recorder -y -o \"$1\" -c libx264 -p preset=ultrafast -p crf=18 -f \"$HOME/Videos/$2\"",
-  "sh", output, name]
+// the folder made first, if it isn't there; stopping wf-recorder finishes the
+// file. -y: never stop to ask about a file; x264 at its fastest, so frames
+// aren't dropped.
+action videos(dir: path) -> text? ["mkdir", "-p", dir]
+action rec(output: text, file: path) ["wf-recorder", "-y", "-o", output, "-c", "libx264",
+  "-p", "preset=ultrafast", "-p", "crf=18", "-f", file]
 
 export state key = false            // flipped by whatever starts or stops it
 export let recording = rec.running
@@ -17,5 +17,8 @@ export let failed = rec.error       // why the last one didn't start or ended ba
 
 on change key {
   if rec.running { rec.stop() }
-  else { rec(screens.focused?.name ?? "", "strand-" + clock.format("%Y-%m-%d-%H%M%S") + ".mp4") }
+  else {
+    await videos("~/Videos")
+    rec(screens.focused?.name ?? "", "~/Videos/strand-" + clock.format("%Y-%m-%d-%H%M%S") + ".mp4")
+  }
 }

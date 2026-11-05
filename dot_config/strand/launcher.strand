@@ -33,9 +33,11 @@ action put_theme(slug: text) ["theme-switch", slug]
 // right, round again when there are more monitors, as Quickshell did.
 type Wall { file: text?; name: text?; images: [text]; palettes: [text] }
 service walls from file "~/.config/wallpapers/wallpapers.json" { wallpapers: [Wall]; sets: [Wall] }
-action wall(name: text, files: text) -> text? ["sh", "-c",
-  "d=\"$HOME/.config/wallpapers\"; name=$1; set -- $2; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t; else for m in $(hyprctl -j monitors | jq -r 'sort_by(.x, .y) | .[].name'); do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; wait; fi; printf %s \"$name\" > \"$d/.current\"",
-  "sh", name, files]
+action wall(name: text, files: text, outputs: text) -> text? ["sh", "-c",
+  "d=\"$HOME/.config/wallpapers\"; name=$1; outputs=$3; set -- $2; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t; else for m in $outputs; do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; wait; fi; printf %s \"$name\" > \"$d/.current\"",
+  "sh", name, files, outputs]
+// the monitors by name, left to right (Strand gives them in layout order)
+let monitor_names = screens.all.map(s => s.name).join(" ")
 // what each monitor shows now, asked again after each change (`tick`)
 action on_screen(tick: int) -> text ["sh", "-c", "awww query", "sh", tick]
 
@@ -81,7 +83,6 @@ state view: View = home
 state query = ""
 state armed = ""                // the power command that needs one more Enter
 state problem = ""              // the last thing that failed, shown in the hint row
-state keep_at: int? = null      // where the selection goes back to once a notification is cleared
 state asking = ""               // the Wi-Fi network whose password is being typed
 state secret = ""               // that password, only ever sent to the network
 state tried = ""                // the network last joined with a password: a failure asks again
@@ -91,7 +92,6 @@ state hidden = false            // `asking` is a hidden network: joined by name,
 state typed_pin = ""            // a Bluetooth device's PIN or passkey, only ever sent to its request
 state switching = ""            // the theme theme-switch is putting on
 state results_at = 0            // the selected row, for the preview beside the list
-state theme_held = false        // the Themes page opening: no preview until it is on the theme in use
 state wall_tick = 0             // counts wallpaper changes, so what is shown is asked again
 state applying = ""             // the wallpaper awww is putting up
 state ejecting = ""             // the drive being made safe to remove
@@ -99,7 +99,6 @@ state notice = ""              // the last thing that went well, shown in the hi
 state tray_open = ""            // the tray item whose menu the Tray page shows
 state tray_sub: int? = null      // and the entry of it whose submenu is open
 state tray_leave = ""           // a tray item just activated: the launcher goes unless its menu opens
-state want_profile: PowerProfile? = null  // the profile just asked for, for a second ask
 
 // shape: the closed sizes match the island, so it opens out of it
 let closed_w = 640
@@ -160,9 +159,6 @@ let hits = apps.search(query)
 // what is on it
 let found_spaces = workspaces.all.filter(ws => ws.id > 0 && (ws.occupied || ws.active)).sort_by(ws => ws.id)
   .fuzzy(query, ws => join(" ", ws.name, join(" ", ws.windows.map(w => join(" ", w.app?.name ?? w.app_id, w.title)))))
-// the monitors left to right (Strand gives a screen no place yet: strand-issues.md)
-action monitors_lr(tick: int) -> text ["sh", "-c", "hyprctl -j monitors | jq -r 'sort_by(.x, .y) | .[].name'", "sh", tick]
-let screen_order = (monitors_lr(wall_tick) ?? "").split("\n").filter(l => l != "")
 let found_powers = powers.fuzzy(query, c => c.name)
 // Drives only while one is plugged in
 let found_parts = parts.filter(c => (c.id != "drives" || drives.all.len > 0) && (c.id != "tray" || tray.items.len > 0) && (c.id != "media" || media.players.len > 0)).fuzzy(query, c => c.name)
@@ -241,8 +237,10 @@ let picked_note: Notification? = view == notes && sel >= note_rows ? found_notes
 // the theme moved over on the Themes page, and the one being put on: the whole
 // shell takes its colours (island.strand reads it), Esc or leaving puts them back
 let theme_at = found_themes.index_of(m => m.item.slug == theme_slug) ?? 0
-on change view { theme_held = view == theme_list }
-let peek_theme: Theme? = open && view == theme_list && !theme_held && !is_sum ? found_themes.skip(sel).first?.item : null
+// the list reports its selection a tick late: the preview starts on the theme in
+// use, not on the row selected before the page opened
+on change view { if view == theme_list { results_at = theme_at } }
+let peek_theme: Theme? = open && view == theme_list && !is_sum ? found_themes.skip(sel).first?.item : null
 export let peek: Theme? = switching != "" ? palettes.all.find(t => t.slug == switching) : peek_theme
 // the wallpaper that theme would bring: the one up now if it suits it, else its own
 let peek_slug = peek_theme?.slug ?? ""
@@ -276,18 +274,6 @@ on change walls_key { if open && view == wall_list { open = false } else { view 
 on change switching after 15s { switching = "" }
 on change armed after 3s { armed = "" }
 on change notice after 4s { notice = "" }
-// power-profiles-daemon going from performance to power saver on a laptop whose
-// firmware has no low-power profile lands on balanced (it reads its own firmware
-// write back as a switch); asked again from there, it takes. So a profile asked
-// for that settles on another within two seconds is asked for once more.
-on change power.profile {
-  if want_profile != null && power.profile != (want_profile ?? power.profile) {
-    let w = want_profile ?? power.profile
-    want_profile = null
-    power.profile = w
-  }
-}
-on change want_profile after 2s { want_profile = null }
 
 // a tray menu opened anywhere (an app that is only a menu, activated) shows here,
 // on the Tray page; leaving the page closes it
@@ -313,7 +299,7 @@ on change theme_slug {
       ?? suit_walls.first ?? suit_sets.first ?? Wall()
     if w.file != null || w.name != null {
       applying = wall_name(w)
-      await wall(w.file ?? w.name ?? "", w.file ?? w.images.join(" "))
+      await wall(w.file ?? w.name ?? "", w.file ?? w.images.join(" "), monitor_names)
       applying = ""
       wall_tick += 1
     }
@@ -370,30 +356,6 @@ panel Launcher {
   let picked = view == notes && (results.selected_index ?? -1) >= note_rows
     ? found_notes.skip((results.selected_index ?? 0) - note_rows).first?.item : null
 
-  // after Delete the selection stays where it was, on the one that comes up into
-  // its place (Strand moves it to the first row: strand-issues.md)
-  on change found_notes.len { if keep_at != null { results.select(keep_at ?? 0); keep_at = null } }
-
-  // the Themes page opens on the theme in use: the list mounts once the box has
-  // dropped, its first row selected, and the themes and the one in use are read
-  // only once the page shows, so until the selection is on it, it is moved
-  // there whenever any of those comes; the preview (which recolours
-  // everything) waits for it, not showing the first theme on the way
-  on change view { if view == theme_list && dropped { results.select(theme_at) } }
-  // the Media page opens on the player the island follows
-  on change view { if view == media_list && dropped { results.select(media_at) } }
-  on change dropped { if dropped && view == media_list { results.select(media_at) } }
-  on change dropped { if dropped && theme_held { results.select(theme_at) } }
-  on change theme_at { if theme_held && dropped { results.select(theme_at) } }
-  on change found_themes.len { if theme_held && dropped { results.select(theme_at) } }
-  on change results_at {
-    if theme_held {
-      if results_at == theme_at && theme_slug != "" { theme_held = false }
-      else if dropped { results.select(theme_at) }
-    }
-  }
-  on change theme_held after 1s { theme_held = false }
-
   // the network selected on the Wi-Fi page (its first row is the switch)
   let picked_ap = view == wifi && network.wifi && asking == "" && !naming && (results.selected_index ?? -1) >= 1
     ? found_aps.skip((results.selected_index ?? 0) - 1).first?.item : null
@@ -431,8 +393,8 @@ panel Launcher {
   when picked_player != null {
     on key "left" { picked_player?.previous() }
     on key "right" { picked_player?.next() }
-    on key "shift+left" { if picked_player?.can_seek ?? false { picked_player?.position = clamp((picked_player?.position ?? 0) - seek_step / (picked_player?.length ?? 1s), 0, 1) } }
-    on key "shift+right" { if picked_player?.can_seek ?? false { picked_player?.position = clamp((picked_player?.position ?? 0) + seek_step / (picked_player?.length ?? 1s), 0, 1) } }
+    on key "shift+left" { if picked_player?.can_seek_by ?? false { picked_player?.seek(by: -seek_step) } }
+    on key "shift+right" { if picked_player?.can_seek_by ?? false { picked_player?.seek(by: seek_step) } }
   }
   when on_pvol {
     on key "left" { media.volume = clamp(media.volume - level_step, 0, 1) }
@@ -444,8 +406,8 @@ panel Launcher {
   }
   // on the Power page's profile row, the arrows move along the profiles
   when view == power && show_profile && (results.selected_index ?? -1) == 0 && !is_sum {
-    on key "left" { problem = ""; want_profile = profile_at(-1); power.profile = profile_at(-1) }
-    on key "right" { problem = ""; want_profile = profile_at(1); power.profile = profile_at(1) }
+    on key "left" { problem = ""; power.profile = profile_at(-1) }
+    on key "right" { problem = ""; power.profile = profile_at(1) }
   }
 
   on change card.hover after away_close { if by_pointer && !card.hover { open = false } }
@@ -475,7 +437,7 @@ panel Launcher {
   // on the Notifications page: Delete clears the selected one, Alt and a number
   // presses one of its buttons
   when picked != null {
-    on key "delete" { keep_at = results.selected_index; picked?.dismiss() }
+    on key "delete" { picked?.dismiss() }
     on key "alt+1" { picked?.actions?.first?.invoke() }
     on key "alt+2" { picked?.actions?.skip(1)?.first?.invoke() }
     on key "alt+3" { picked?.actions?.skip(2)?.first?.invoke() }
@@ -600,8 +562,11 @@ panel Launcher {
           bg: linear(90deg, $accent.alpha(0), $accent.alpha(0.03), $accent.alpha(0.08), $accent.alpha(0.03), $accent.alpha(0)) }
         box { width: 3; height: row_h; bg: $accent; shadow: 0 0 12px $accent.alpha(0.55) }
       }
+      // the Themes page opens on the theme in use, the Media page on the player
+      // the island follows
       list { id: results; height: rows * row_h; shrink: 0; wrap: true
         width: has_pane ? list_w : box_w
+        selected_index: view == theme_list ? theme_at : view == media_list ? media_at : null
         if is_sum { SumRow {} }
         else {
           if view == home && query == "" {
@@ -738,7 +703,7 @@ panel Launcher {
           if picked_ap?.known ?? false { Hint "Del" { what: "forget" } }
           if view == clips && picked_clip != null { Hint "Del" { what: "remove" } }
           if view == sound && !is_sum { Hint "← →" { what: "level" } }
-          if picked_player != null { Hint "← →" { what: "track" }; if picked_player?.can_seek ?? false { Hint "⇧ ← →" { what: "15 s" } } }
+          if picked_player != null { Hint "← →" { what: "track" }; if picked_player?.can_seek_by ?? false { Hint "⇧ ← →" { what: "15 s" } } }
           if on_pvol { Hint "← →" { what: "level" } }
           if (picked_tray?.menu?.items?.len ?? 0) > 0 { Hint "→" { what: "menu" } }
           if tray_item != null && !is_sum { Hint "←" { what: "back" } }
@@ -958,9 +923,9 @@ component SpaceRow(m: Match<Workspace>) {
 // workspace is the one it shows
 component Monitors(screen: text, lit: bool = false) {
   row { gap: 2; shrink: 0; align: center
-    for n in (screen_order.len > 0 ? screen_order : screens.all.map(x => x.name)) key n {
+    for s in screens.all key s.name {
       box { width: 9; height: 6; radius: 1.5; shrink: 0
-        bg: n != screen ? $fg.alpha(0.14) : lit ? $accent : $fg.alpha(0.5) }
+        bg: s.name != screen ? $fg.alpha(0.14) : lit ? $accent : $fg.alpha(0.5) }
     }
   }
 }
@@ -1216,7 +1181,6 @@ component ProfileSwitch {
     on activate {
       problem = ""
       let next = power.profiles.skip(power.profiles.len > 0 ? (at + 1) % power.profiles.len : 0).first ?? power.profile
-      want_profile = next
       power.profile = next
     }
     Glyph profile_glyph(power.profile) { on: true }
@@ -1442,7 +1406,7 @@ component PlayerCard(p: Player) {
 component Controls(p: Player) {
   row { gap: 12; align: center
     if p.can_shuffle { Ctl "shuffle" { on: p.shuffle; size: 18; on click { p.shuffle = !p.shuffle } } }
-    if p.can_seek { Ctl "fast_rewind" { size: 20; on click { p.position = clamp(p.position - seek_step / (p.length ?? 1s), 0, 1) } } }
+    if p.can_seek_by { Ctl "fast_rewind" { size: 20; on click { p.seek(by: -seek_step) } } }
     Ctl "skip_previous" { size: 22; dim: !p.can_previous; on click { p.previous() } }
     row { width: 40; height: 40; radius: 12; corners: squircle; justify: center; align: center; shrink: 0; cursor: pointer
       bg: $accent.alpha(0.18); border: 1, $accent.alpha(0.32)
@@ -1450,7 +1414,7 @@ component Controls(p: Player) {
       text p.playing ? "pause" : "play_arrow" { font: "Material Symbols Rounded" 28; color: $accent }
     }
     Ctl "skip_next" { size: 22; dim: !p.can_next; on click { p.next() } }
-    if p.can_seek { Ctl "fast_forward" { size: 20; on click { p.position = clamp(p.position + seek_step / (p.length ?? 1s), 0, 1) } } }
+    if p.can_seek_by { Ctl "fast_forward" { size: 20; on click { p.seek(by: seek_step) } } }
     if p.can_loop { Ctl (p.loop == track ? "repeat_one" : "repeat") { on: p.loop != none; size: 18
       on click { p.loop = p.loop == none ? playlist : p.loop == playlist ? track : none } } }
   }
@@ -1564,7 +1528,7 @@ component WallRow(m: Match<Wall>) {
       if !on {
         problem = ""
         applying = wall_name(w)
-        await wall(w.file ?? w.name ?? "", images.join(" "))
+        await wall(w.file ?? w.name ?? "", images.join(" "), monitor_names)
         applying = ""
         wall_tick += 1
       }
