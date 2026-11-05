@@ -30,6 +30,23 @@ where they can show the check is working.
 
 ## Open
 
+### A list reports its starting selection a tick late
+
+Found 2026-11-05 on Strand `9f19dfc6`. No check folder yet; seen on a test copy of this launcher.
+
+**What happens:** a `list` with `selected_index: n` starts on row `n`, but its `on select` (here
+mirrored into `results_at`) hears of it a tick after the list mounts. Anything that follows the
+mirrored index shows the old row for that tick: the Themes page previewed the first theme for one
+frame before the theme in use, a flash of the whole shell's colours.
+
+**In this config:** `launcher.strand` sets `results_at = theme_at` itself in `on change view` when
+the Themes page opens.
+
+**Done when:** a list's starting selection reaches its `on select` (or a binding over the list's
+selection) in the tick it mounts, or the docs say it doesn't and give the pattern.
+
+## Fixed
+
 ### Eventually: a dictionary type
 
 Found 2026-11-04 on Strand `035ac995`. Not needed yet: parked so it isn't forgotten.
@@ -46,9 +63,7 @@ instead of by last use.
 **Done when:** a typed dictionary (`state seen: {int: text} = {} persist`, with get, set and remove),
 or the docs give the list-of-records pattern with a way to bound it.
 
-**In progress** (2026-11-05): `[K: V]` dictionaries, with `xs.get(k)` on keyed lists, are being built on Strand's `laptop/dictionary` branch. The design is at `~/projects/strand/target/try/notes/dictionary-design.md`.
-
-## Fixed
+**Fixed** in Strand `f657a245` (decisions.md dictionary). `[K: V]` dictionaries: `state last_win: [int: text] = [] persist`, read `m[k]` (null when absent), written `m[k] = v` in a handler, `m.remove(k)` (nothing when absent), `m.clear()`, `m.entries` for a `for`, and `m.filter(…)` to bound one. Keys are `int`, `text`, `path`, `bool` or an enum; persisted as JSON, settings as TOML tables, `strand get`/`set` reach one entry. A keyed list also reads one item with `xs.get(k)`. Braces (`{1: "a"}`) and Python or JS method names (`m.get`, `m.items()`) get errors that say the Strand form. The docs cover them wherever lists and records are, with a how-to on remembering by key. **In this config:** nothing uses one yet; the workspace chips could order icons by last use with `[int: text]`.
 
 ### A player can't be raised, sought by an offset, or matched to its app
 
@@ -64,7 +79,7 @@ entry (MPRIS `DesktopEntry`), so a row can't show the app's icon beside the art.
 **Done when:** `Player.raise()` with `can_raise`, `Player.seek(by: duration)`, and `Player.icon` (or
 `app`), on `media` for the active player too.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md player-raise-seek). `Player.raise()` with `can_raise`, `Player.seek(by: duration)` with its own `can_seek_by` (`can_seek` still means a `position` write works, which needs the length), and `p.icon`/`p.app` from the desktop entry, on `media` too. **In this config:** the Media page's skips can become `p.seek(by: ±seek_step)`, guarded by `can_seek_by`. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md player-raise-seek). `Player.raise()` with `can_raise`, `Player.seek(by: duration)` with its own `can_seek_by` (`can_seek` still means a `position` write works, which needs the length), and `p.icon`/`p.app` from the desktop entry, on `media` too. **In this config:** the Media page's skips can become `p.seek(by: ±seek_step)`, guarded by `can_seek_by`. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### Siblings glide on a curve of their own
 
@@ -83,7 +98,7 @@ shrinks to 0, carrying its gap), so the siblings never have a jump to glide over
 **Done when:** the siblings' glide can take a curve (`~` on the container, say), or a node can follow
 another's laid-out box without scaling. The docs should name the curve either way.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md glide-curve). A glide (and a wheel step, and a dragged row let go) plays the `$motion.spatial` in effect where the node is, so `set { $motion.spatial: glide }` names the curve; no new syntax. Inside a content-sized surface springing over a step, glides still ride the step's curve. **In this config:** the chips can drop their width-from-0 springs and the row can take `set { $motion.spatial: glide }`. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md glide-curve). A glide (and a wheel step, and a dragged row let go) plays the `$motion.spatial` in effect where the node is, so `set { $motion.spatial: glide }` names the curve; no new syntax. Inside a content-sized surface springing over a step, glides still ride the step's curve. **In this config:** the chips can drop their width-from-0 springs and the row can take `set { $motion.spatial: glide }`. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A `list` has no way to start on a row
 
@@ -100,7 +115,7 @@ landing elsewhere) and a hold on the preview so the first theme's colours don't 
 **Done when:** a list can say where its selection starts (`selected: theme_at`, kept until the rows
 it names are there), or the docs give the pattern.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md list-selection). A list takes `selected_index: n` (the issue suggested `selected:`, but `selected` is already a row's own flag), kept until its rows arrive and followed again when it changes, unless the user has moved since. **In this config:** the Themes page's three handlers, `theme_held` and its hold can go. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md list-selection). A list takes `selected_index: n` (the issue suggested `selected:`, but `selected` is already a row's own flag), kept until its rows arrive and followed again when it changes, unless the user has moved since. **In this config:** the Themes page's three handlers, `theme_held` and its hold can go. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A panel's `on change` handlers seem not to run while it is closed
 
@@ -116,7 +131,7 @@ when a surface's handlers run.
 **Done when:** the docs say whether a surface's handlers run while it is closed, and a change made
 in the tick that opens it is seen by them either way.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md panel-change-closed). Real, and reproduced on a copy of this launcher. A closed surface's handlers now wait, and when it opens they catch up with a change they missed, including one made in the tick that opens it. **In this config:** `on change view { theme_held = … }` can move back inside `panel Launcher` (or go with the Themes workaround). The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md panel-change-closed). Real, and reproduced on a copy of this launcher. A closed surface's handlers now wait, and when it opens they catch up with a change they missed, including one made in the tick that opens it. **In this config:** `on change view { theme_held = … }` can move back inside `panel Launcher` (or go with the Themes workaround). The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A power profile asked for can settle on another
 
@@ -135,7 +150,7 @@ more when the daemon settles on another within two seconds.
 write (or the docs say it may, and how to handle it). No check folder yet: it needs a daemon with the
 quirk, which `target/try/notes/looks/ppd_quirk.py` stands in for on top of the dbusmock template.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md power-reask). The builtin `power` asks once more itself when the daemon settles on another profile within 2 s of a write, then follows the daemon. Tried against a stand-in daemon with the quirk, not yet against this laptop's. **In this config:** `want_profile` and its retry can go. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md power-reask). The builtin `power` asks once more itself when the daemon settles on another profile within 2 s of a write, then follows the daemon. Tried against a stand-in daemon with the quirk, not yet against this laptop's. **In this config:** `want_profile` and its retry can go. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A `Screen` has no position, so monitors can't be put in order
 
@@ -151,7 +166,7 @@ with jq, so it works only on Hyprland.
 **Done when:** a `Screen` has its position in the layout (`x`, `y` in logical pixels), or
 `screens.all` is documented to be in layout order.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md screen-position). `Screen` has `x` and `y` (logical pixels, from xdg-output), and `screens.all` is in layout order: left to right, then top to bottom. **In this config:** the `wall` action can use `screens.all` instead of `hyprctl -j monitors` and jq. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md screen-position). `Screen` has `x` and `y` (logical pixels, from xdg-output), and `screens.all` is in layout order: left to right, then top to bottom. **In this config:** the `wall` action can use `screens.all` instead of `hyprctl -j monitors` and jq. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### Removed state opens the reload notice box, listed as "renamed"
 
@@ -167,7 +182,7 @@ up until its × is clicked. "Renamed" is wrong for the three that were deleted, 
 
 **Done when:** a removed cell opens no box (or says "removed"), and the box and `watch` agree.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md removed-state-notice). A cell is called renamed only when its own file or component gained one; a removed cell goes silently unless its whole file went while it held a value you set, and the box and `strand watch` agree. **In this config:** nothing to change. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md removed-state-notice). A cell is called renamed only when its own file or component gained one; a removed cell goes silently unless its whole file went while it held a value you set, and the box and `strand watch` agree. **In this config:** nothing to change. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A list's selection goes to its first row when the selected row leaves
 
@@ -183,7 +198,7 @@ list is shorter (`on change found_notes.len`).
 
 **Done when:** the selection stays at its place (or the docs say where it goes, and how to keep it).
 
-**Fixed** in Strand `9f19dfc6` (decisions.md list-selection). When the selected row leaves and other rows stay, the selection stays at its place (the row that takes it, or the new last row). **In this config:** `keep_at` and its `on change found_notes.len` can go. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md list-selection). When the selected row leaves and other rows stay, the selection stays at its place (the row that takes it, or the new last row). **In this config:** `keep_at` and its `on change found_notes.len` can go. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A `path` argument to an action keeps a literal `~`
 
@@ -201,7 +216,7 @@ else Strand takes a path (`from dir`, `file`, `state … from`), `~/…` is the 
 **Done when:** a `path` argument starting with `~/` reaches the program as a full path (or the
 docs say plainly that it doesn't, and give a way to name the home folder).
 
-**Fixed** in Strand `9f19dfc6` (decisions.md path-tilde). A `path` parameter's `~/…` reaches the program with the home folder in its place, as everywhere else Strand takes a path; a bare `~` and `text` parameters stay as written. **In this config:** `record.strand` can call wf-recorder directly instead of through `sh -c`. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md path-tilde). A `path` parameter's `~/…` reaches the program with the home folder in its place, as everywhere else Strand takes a path; a bare `~` and `text` parameters stay as written. **In this config:** `record.strand` can call wf-recorder directly instead of through `sh -c`. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A delete-then-create save can blank the shell for a moment
 
@@ -220,7 +235,7 @@ save. It's a flash on a save, not a crash. It also makes GitHub's `test` job fai
 
 **Done when:** the test passes that loop.
 
-**Fixed** in Strand `9f19dfc6` (decisions.md save-blank). The watcher's own flush was listing the folder inside the save's gap. Now a file whose removal was heard is never reported removed until its 50 ms grace is over, whichever flush finds it missing. The loop that failed 31 of 320 on `035ac995` passed 1,280 of 1,280. **In this config:** nothing to change. The live shell still runs Strand `035ac995`, so these changes wait for that update.
+**Fixed** in Strand `9f19dfc6` (decisions.md save-blank). The watcher's own flush was listing the folder inside the save's gap. Now a file whose removal was heard is never reported removed until its 50 ms grace is over, whichever flush finds it missing. The loop that failed 31 of 320 on `035ac995` passed 1,280 of 1,280. **In this config:** nothing to change. The live shell still runs Strand `035ac995`; these changes are ready on a test copy and wait for that update.
 
 ### A real card's profiles never reach `AudioDevice.profiles`
 Found 2026-11-04 on Strand `d6623f12`, with AirPods Pro connected.
