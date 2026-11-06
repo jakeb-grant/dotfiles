@@ -469,6 +469,8 @@ panel Launcher {
     col { id: card; clip: true
       width: (wide ? (has_pane ? pane_box_w : box_w) : closed_w) ~ widen
       height: (dropped ? box_h : closed_h) ~ (dropped ? drop : roll_up)
+      // Lock: the box fades as it folds, so the island is itself again when the lock grows out of it.
+      opacity: (lock_next ? 0 : 1) ~ fold
       bg: $surface_lowest; border: 1, $fg.alpha(0.09)
       radius: corner; corners: squircle
       // the island's shadow, deepening as it drops

@@ -30,6 +30,33 @@ where they can show the check is working.
 
 ## Open
 
+None.
+
+## Fixed
+
+### `grain:` replaces a thumbnail's or image's own pixels, and never stops moving
+
+Found 2026-11-06 on Strand `48ae06c4` (branch `laptop/lock-int`), in the lock VM (owner_lock scratch
+test) while adding frost to the lock's blurred desktop.
+
+**What happens:**
+- `grain:` on a `thumbnail` (and any other node that draws its own pixels: `image`, `graph`, a GIF)
+  draws the grain in place of the node's pixels. In `flatten/node.rs` the node's raster is either the
+  one its props build (`effects::raster::built`, which `grain:` makes) or its own source, never both.
+  On the lock, `thumbnail screen { filter: blur(36), brightness(0.6); grain: 0.03 }` drew no blurred
+  desktop at all, so the sharp still showed through.
+- Grain runs on its own 12 fps clock (`effects::raster::GRAIN`) for as long as it is shown. On a
+  full-screen layer that is a full repaint of every monitor 12 times a second, which design.md's
+  "Grain: trivial when static" does not suggest, and which a lock left for half an hour pays all along.
+
+**What it should do:** grain is drawn over the node's own pixels, as a filter would be. A `grain:` that
+doesn't move should be possible (`grain: 0.03` static, a moving one asked for), or design.md should say
+it moves.
+
+**Worked around:** the lock has no grain.
+
+**Fixed** in Strand `073cce42` (decisions.md lock-int, grain-over and its review). Grain now lies over a node's own pixels (a thumbnail's frame, an image, a graph, a shader's pass) and, under a `filter:`, over what the filter draws, so the blur is drawn once and only the grain moves. Grain still moves at 12 fps, as decided in m4-effects-paint-w2; design.md now says so instead of "trivial when static". **In this config:** the lock still has no grain, by choice: on a full-screen layer it would repaint every monitor 12 times a second. Done on 2026-11-06.
+
 ### A lock moves to the GPU only to read its frames back, slower than the CPU
 
 Found 2026-11-05 on Strand `3714cc62`, on this laptop (Hyprland, Arc B390, three monitors), with
@@ -50,6 +77,8 @@ like a panel. Either way no frame of it is slower than the CPU's and nothing alt
 and it never leaves the CPU: first frame 18 to 20 ms after the request, frames 1.1 ms median and
 3.7 ms p95 on all three monitors.
 
+**Fixed** in Strand `073cce42` (decisions.md lock-int, lock-gpu). A lock surface is presented by the GPU thread like a panel, with the CPU as a safety net, and nothing alternates between the two; the hand-off holds each monitor's CPU frame for 250 to 500 ms. **In this config:** the whole lock moves again (the blurred desktop fades in and out). Done on 2026-11-06.
+
 ### A lock's first frames come before its still of the screen
 
 Found 2026-11-05 on Strand `3714cc62`, in the lock VM (owner_lock scratch test, frames grabbed back
@@ -65,6 +94,8 @@ for its stills (`Feeds::before_map`, `HOLD`); a lock's doesn't.
 their stills, so it can open on the desktop and change from there.
 
 **Worked around:** the lock shows no desktop behind it.
+
+**Fixed** in Strand `073cce42` (decisions.md lock-polish, lock-int). A lock's first frame shows its stills, taken at each screen's own size after Strand's own surfaces settle, so a lock opens on the desktop exactly as it was. **In this config:** the lock opens on the desktop and blurs it. Done on 2026-11-06.
 
 ### Full-screen blur is slow on the GPU, and a backdrop's first draw differs
 
@@ -89,6 +120,8 @@ nothing after; a backdrop looks the same from its first frame; an animated soft 
 
 **Worked around:** the lock has no blur and the card no shadow (and see the next issue).
 
+**Fixed** in Strand `073cce42` (decisions.md lock-blur). A large `filter: blur` is drawn once at reduced scale in the frame that first shows it (about 7 ms of a laptop's CPU for a full-screen still, against 1.7 s at full size) and kept while what it blurs is unchanged; the GPU draws it at the CPU's scale, so a surface promoted mid-animation keeps its look; a blurred plain box is drawn as a shadow is. **In this config:** the blurred desktop is back behind the lock. Done on 2026-11-06.
+
 ### A `shadow:` inside a lock shrinks the lock and delays it
 
 Found 2026-11-05 on Strand `3714cc62`. No check folder: it needs the lock VM
@@ -108,6 +141,8 @@ and the shadow is cut at its edge.
 **Worked around:** the card has no shadow. A blurred box standing in for one cost about 20 ms a frame
 while the card grew (below).
 
+**Fixed** in Strand `073cce42` (decisions.md lock-polish). A lock is its output's size and a shadow in it is paint, cut at the output's edge. **In this config:** the card still has no shadow; it doesn't need one over the blur. Done on 2026-11-06.
+
 ### A lock can't play its way out
 
 Found 2026-11-05 on Strand `3714cc62`.
@@ -118,7 +153,7 @@ animation (the island shrinking back up into the bar) the way the launcher has o
 **What it should do:** a lock could keep its surface for an `exit { }` pose after it unlocks, as
 other surfaces do when they close.
 
-## Fixed
+**Fixed** in Strand `073cce42` (decisions.md lock-polish, lock-int). Once the password is accepted the lock plays its `exit` poses, and the session unlocks once each monitor's last frame has been shown (at most 1 s). **In this config:** the island shrinks back up into the bar and the blur fades off the desktop as it unlocks. Done on 2026-11-06.
 
 ### A list reports its starting selection a tick late
 

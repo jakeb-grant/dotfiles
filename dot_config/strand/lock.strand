@@ -1,10 +1,13 @@
-// lock.strand: the lock screen, on every monitor. It grows out of the island: the
-// screen goes dark, the island swells and drops to the middle, and the time, the date
-// and a field for your password come up inside it. Esc empties the field; a wrong
-// password shakes it. Only the island moves: anything moving over the whole screen
-// sends a lock to the GPU, which Strand draws there by reading each frame back, too
-// slowly, and the desktop's still comes a few frames late (strand-issues.md), so the
-// lock shows no desktop behind it for now.
+// lock.strand: the lock screen, on every monitor. It grows out of the island over the
+// desktop as it was: a blurred, dimmed copy of the screen fades in over it, the island
+// swells and drops to the middle, and the time, the date and a field for your password
+// rise into it one after another. Left alone a few seconds it rests: the field slips away
+// and the island settles round the time; any key or touch wakes it, and the key you
+// pressed is already in the field. It glows softly as you type, flares red and shakes at
+// a wrong password, and opens its padlock as it lets you in: the island shrinks back up
+// into the bar and the blur fades off the desktop, then the session unlocks (Strand waits
+// at most a second for that). While music plays, what is playing hangs under it.
+// Nothing moves while nothing happens, so a locked laptop left alone draws nothing.
 // Only your password takes it down. If anything in it breaks, Strand shows its own
 // password field instead. Everything you would tune is in the first block.
 //
@@ -16,8 +19,13 @@
 
 // colour (island.strand's palette)
 let lock_ink   = $surface_lowest              // the island
-let lock_edge  = $fg.alpha(0.09)              // its hairline
-let lock_night = $shadow                      // behind it
+let lock_edge  = linear(180deg, $fg.alpha(0.16), $fg.alpha(0.05))   // its hairline, lit from above
+let lock_night = $shadow                      // behind it all, where a monitor has no still
+let lock_glow  = $accent                      // the light it gives off as you type and as it opens
+
+// the desktop behind it
+let lock_blur  = 36                           // how soft the desktop goes
+let lock_dim   = 0.6                          // how bright it stays (1 is as it was)
 
 // shape: the island as island.strand draws it, and what it grows into
 let lock_island_w = 640
@@ -26,66 +34,105 @@ let lock_gap_top  = 6
 let lock_corner   = 12
 let card_w = 420
 let card_h = 268
+let rest_h = 150                              // resting: just the time and the date
 
 // what it says
 let lock_sans = "IBM Plex Sans"
 let lock_mono = "JetBrainsMono Nerd Font"
-let lock_clock = "%H:%M"
-let lock_date  = "%A %-d %B"
+let lock_date = "%A %-d %B"
 
 // time
-let lock_swell = spring(380, 0.86)   // the island growing, with a little give
+let lock_swell = spring(380, 0.86)   // the island growing, resting and going back, with a little give
 let lock_shake = spring(2200, 0.18)  // a refused password
-let lock_mist  = 420ms               // what the island holds coming up
+let lock_mist  = 420ms               // the blur coming up and going, and what the island holds
+let lock_rise  = 55ms                // between the time, the date and the field coming up
+let lock_rest  = 8s                  // left alone this long, it rests
 
 export state locked = false
 on session.lock_requested { locked = true }
 
-state lock_n = 0                // each lock counted, so its face is new and grows again
 state secret = ""
 state wrong = false             // a refused password, shown until typing starts again
 state nudge = false             // the island knocked aside, for a refused password
+state flare = false             // the red flash of a refused password
+state listening = false         // keys came in a moment ago
 state queued = false            // Return pressed while the last password was still being checked
-on change locked { if locked { lock_n += 1 } else { secret = ""; wrong = false; queued = false } }
-on change auth.failed { if auth.failed { wrong = true; nudge = true } }
+on change locked { if !locked { secret = ""; wrong = false; queued = false } }
+on change auth.failed { if auth.failed { wrong = true; nudge = true; flare = true } }
 on change nudge after 70ms { nudge = false }
-on change secret { if secret != "" { wrong = false } }
+on change flare after 650ms { flare = false }
+on change secret { if secret != "" { wrong = false; listening = true } }
+on change secret after 900ms { listening = false }
 // PAM takes a moment to refuse one; what was typed meanwhile goes as soon as it has
 on change auth.busy { if !auth.busy && queued { queued = false; if secret != "" { auth.submit(secret); secret = "" } } }
+
+// at rest only while there is nothing to say: no half-typed password, no check under way, no PAM text
+// (a refusal keeps until you type again, but it rests over it)
+let resting = locked && idle.after(lock_rest) && secret == "" && !auth.busy && auth.message == ""
+let card_now = resting ? rest_h : card_h
+let halo = !locked ? lock_glow.alpha(0.5) : flare ? $red.alpha(0.4) : lock_glow.alpha(listening ? 0.2 : 0)
 
 lock {
   open: <-> locked
   bg: lock_night
-  // a new face each lock: it plays its way in from the island on its first frame
-  if lock_n % 2 == 0 { LockFace } else { LockFace }
-}
 
-component LockFace {
-  // the island, where island.strand has it, grown and dropped to the middle
+  // the desktop as it was when it locked: it stays as it is, so the last frame
+  // on the way out is the desktop again
+  thumbnail screen { width: screen.width; height: screen.height; fit: cover }
+
+  // the same, soft and dim, fading in over it and off it again
+  thumbnail screen { width: screen.width; height: screen.height; fit: cover
+    filter: blur(lock_blur), brightness(lock_dim)
+    opacity: 1 ~ lock_mist
+    enter { opacity: 0 }
+    exit { opacity: 0 }
+  }
+
+  // the island, where island.strand has it, grown and dropped to the middle, with what
+  // is playing under it
   col { width: screen.width; height: screen.height; align: center; pad: lock_gap_top, 0, 0, 0
     stack {
       width: card_w ~ lock_swell
-      height: card_h ~ lock_swell
-      y: (screen.height / 2 - card_h / 2 - lock_gap_top) ~ lock_swell
+      height: card_now ~ lock_swell
+      y: (screen.height / 2 - card_now / 2 - lock_gap_top) ~ lock_swell
       x: (nudge ? 10 : 0) ~ lock_shake
-      enter { width: lock_island_w; height: lock_island_h; y: 0 }
+      opacity: 1 ~ lock_mist
+      // it fades in as it grows: at full strength from the first frame, it would blank the island's
+      // icons on the still before dropping off them
+      enter { width: lock_island_w; height: lock_island_h; y: 0; opacity: 0 }
+      exit { width: lock_island_w; height: lock_island_h; y: 0; opacity: 0 }
       stack { width: 100%; height: 100%; clip: true
         radius: lock_corner; corners: squircle
-        bg: lock_ink; border: 1, lock_edge
-        when wrong { border: 1, $red.alpha(0.7) }
+        bg: lock_ink; border: 1, lock_edge; rim: top, $fg.alpha(0.08)
+        glow: 18, halo ~ 260ms
+        when wrong && !resting { border: 1, $red.alpha(0.7) }
 
-        col { width: card_w; height: card_h; pad: 30, 28, 22, 28; align: center
-          opacity: 1 ~ lock_mist; enter { opacity: 0 }
-          text clock.format(lock_clock) { color: $fg; font: lock_mono 64px 600 }
-          text clock.format(lock_date) { color: $fg.alpha(0.55); font: lock_sans 15px 500 }
+        // laid out at full size always: resting, the island closes over the field rather than
+        // fading it (a node at opacity 0 lets go of the keyboard), so the key that wakes it is typed
+        col { width: card_w; height: card_h; pad: 30, 28, 22, 28; align: center; stagger: lock_rise
+          exit { opacity: 0 }
+          row { align: center; font: lock_mono 64px 600; color: $fg
+            y: (resting ? -16 : 0) ~ lock_swell
+            enter { y: 14; opacity: 0 }
+            text clock.format("%H") { roll: true }
+            text ":" { color: $fg.alpha(resting ? 0.45 : 0.8) }
+            text clock.format("%M") { roll: true }
+          }
+          text clock.format(lock_date) { color: $fg.alpha(0.55); font: lock_sans 15px 500
+            y: (resting ? -16 : 0) ~ lock_swell
+            enter { y: 10; opacity: 0 }
+          }
           box { grow: 1 }
 
           // the field, as the polkit prompt's
           row { width: 100%; height: lock_island_h; pad: 0, 10; gap: 8; align: center; radius: 8
             bg: $fg.alpha(0.05); border: 1, $fg.alpha(0.08)
-            when wrong { border: 1, $red.alpha(0.5) }
-            text "lock" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
-              color: wrong ? $red : $fg.alpha(0.7) }
+            y: (resting ? 12 : 0) ~ lock_swell
+            enter { y: 10; opacity: 0 }
+            when wrong && !resting { border: 1, $red.alpha(0.5) }
+            when listening { border: 1, lock_glow.alpha(0.35) }
+            text locked ? "lock" : "lock_open" { font: "Material Symbols Rounded" 16; width: 16; shrink: 0
+              color: !locked ? lock_glow : wrong ? $red : $fg.alpha(0.7) }
             input { type: password; text: <-> secret; focus: true; grow: 1; color: $fg; font: lock_sans 13px 600
               placeholder: "Password"
               opacity: (auth.busy ? 0.4 : 1) ~ 120ms
@@ -98,10 +145,29 @@ component LockFace {
 
           // what is going on: refused, what PAM says (a fingerprint reader), Caps Lock
           row { height: 26; gap: 12; align: end; font: lock_sans 12px 500
+            opacity: (resting ? 0 : 1) ~ 220ms
             if wrong { text "Wrong password" { color: $red } }
             else if auth.message != "" { text auth.message { color: $fg.alpha(0.7); max_lines: 1; ellipsis: end } }
-            if keyboard.caps_lock { text "Caps Lock is on" { color: $orange } }
+            if keyboard.caps_lock { text "Caps Lock is on" { color: $orange; enter { y: 4; opacity: 0 } } }
           }
+        }
+      }
+    }
+
+    // what is playing, as the island shows it, hanging under it
+    if media.playing && media.title != null {
+      row { height: 34; max_width: card_w; pad: 0, 12, 0, 6; gap: 9; align: center; margin: 12, 0, 0, 0
+        radius: 10; corners: squircle; bg: lock_ink.alpha(0.9); border: 1, $fg.alpha(0.08)
+        y: (screen.height / 2 - card_now / 2 - lock_gap_top) ~ lock_swell
+        enter { opacity: 0 }
+        if media.art != null {
+          image media.art ?? "" { width: 22; height: 22; fit: cover; radius: 5; corners: squircle; shrink: 0 }
+        } else {
+          text "music_note" { font: "Material Symbols Rounded" 16; width: 22; shrink: 0; color: $fg.alpha(0.6) }
+        }
+        text media.title ?? "" { color: $fg; font: lock_sans 13px 600; shrink: 1; ellipsis: end }
+        if (media.artist ?? "") != "" {
+          text " · " + (media.artist ?? "") { color: $fg.alpha(0.55); font: lock_sans 12px 500; shrink: 2; ellipsis: end }
         }
       }
     }
