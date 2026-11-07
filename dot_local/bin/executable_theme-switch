@@ -470,6 +470,7 @@ async def main() -> None:
         "~/.config/kitty",
         "~/.config/btop",
         "~/.config/qt5ct/colors",
+        "~/.config/qt5ct/qss",
         "~/knowledge/.obsidian",
     ]
     proc = await asyncio.create_subprocess_exec(

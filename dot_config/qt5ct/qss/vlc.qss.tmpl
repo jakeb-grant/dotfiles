@@ -1,0 +1,11 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+/* Rendered from palette/active.json (chezmoi template) by
+   dot_config/qt5ct/qss/vlc.qss.tmpl, and listed in qt5ct.conf.
+
+   VLC 3's errors dialog colours its own text, the title red and the message
+   black (setTextColor, which no palette reaches), so on a dark palette its
+   text box takes the palette's light text colour as its ground for both to
+   read. A light palette's ground already does. */
+{{ if ne $p._variant "light" }}
+ErrorsDialog QTextEdit { background-color: {{ $p.text }}; }
+{{ end -}}
