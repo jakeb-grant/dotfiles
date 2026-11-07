@@ -101,6 +101,7 @@ state hidden = false            // `asking` is a hidden network: joined by name,
 state typed_pin = ""            // a Bluetooth device's PIN or passkey, only ever sent to its request
 state switching = ""            // the theme theme-switch is putting on
 state results_at = 0            // the selected row, for the preview beside the list
+let wash = island.is_dark ? 1.0 : 2.0  // the selection's accent wash
 state wall_tick = 0             // counts wallpaper changes, so what is shown is asked again
 state applying = ""             // the wallpaper awww is putting up
 state ejecting = ""             // the drive being made safe to remove
@@ -597,9 +598,11 @@ panel Launcher {
       stack { width: has_pane ? list_w : box_w; height: row_h; clip: true
         y: (results.selected_index ?? 0) * row_h - results.scroll_y
         opacity: results.selected_index == null ? 0 : 1
-        // eased out over the whole width, so it has no edge where it ends
-        bg: linear(90deg, $accent.alpha(0.22), $accent.alpha(0.175), $accent.alpha(0.135), $accent.alpha(0.1),
-          $accent.alpha(0.07), $accent.alpha(0.045), $accent.alpha(0.025), $accent.alpha(0.01), $accent.alpha(0))
+        // eased out over the whole width, so it has no edge where it ends; twice
+        // as strong on a light palette, where a pale wash all but vanishes
+        bg: linear(90deg, $accent.alpha(0.22 * wash), $accent.alpha(0.175 * wash), $accent.alpha(0.135 * wash),
+          $accent.alpha(0.1 * wash), $accent.alpha(0.07 * wash), $accent.alpha(0.045 * wash),
+          $accent.alpha(0.025 * wash), $accent.alpha(0.01 * wash), $accent.alpha(0))
         box { width: 200; height: row_h; x: (has_pane ? list_w : box_w) * (0.2 + 0.2 * wave(7s)) - 100
           bg: linear(90deg, $accent.alpha(0), $accent.alpha(0.03), $accent.alpha(0.08), $accent.alpha(0.03), $accent.alpha(0)) }
         box { width: 3; height: row_h; bg: $accent; shadow: 0 0 12px $accent.alpha(0.55) }

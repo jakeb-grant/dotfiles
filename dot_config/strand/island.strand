@@ -15,7 +15,7 @@ service theme from file "~/.config/palette/active.json" {
 }
 // the launcher's theme preview while you move over its Themes page, else the theme in use
 let look = launcher.peek
-let is_dark = look?.dark ?? ((theme._variant ?? "dark") != "light")
+export let is_dark = look?.dark ?? ((theme._variant ?? "dark") != "light")
 use palette palette(
   from: material(seed: #89b4fa, dark: true), dark: is_dark,
   surface: look?.base ?? theme.base, surface_lowest: look?.crust ?? theme.crust, surface_low: look?.mantle ?? theme.mantle,

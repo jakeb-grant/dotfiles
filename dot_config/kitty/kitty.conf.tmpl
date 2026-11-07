@@ -5,9 +5,17 @@
 # which Kitty draws itself, take the GTK colour block's roles.
 include themes/{{ $p._slug }}.conf
 
-# Needed for a reload to change the opacity
+# Needed for a reload to change the opacity. A light background shows the
+# wallpaper through it as a grey cast, so light palettes are nearly opaque; dim
+# text (SGR 2) is likewise stronger on them, where kitty's 0.4 falls below 2:1
 dynamic_background_opacity yes
+{{- if eq $p._variant "light" }}
+background_opacity 0.97
+dim_opacity 0.7
+{{- else }}
 background_opacity 0.9
+dim_opacity 0.4
+{{- end }}
 
 tab_bar_background      {{ $p.crust }}
 active_tab_background   {{ $p._accent }}
