@@ -7,7 +7,7 @@
 -- ------------------------------------------------------------------------------
 -- Programs
 -- ------------------------------------------------------------------------------
-local terminal     = "ghostty +new-window"
+local terminal     = "kitty -1"
 local editor       = "zeditor --wait"
 local file_manager = "pane-fm"
 local mod          = "SUPER"
@@ -15,6 +15,7 @@ local mod          = "SUPER"
 -- ------------------------------------------------------------------------------
 -- Environment Variables
 -- ------------------------------------------------------------------------------
+hl.env("TERMINAL",                     "kitty")  -- Strand runs Terminal=true apps with it
 hl.env("EDITOR",                       "zeditor")
 hl.env("VISUAL",                       "zeditor")
 hl.env("GIT_EDITOR",                   "zeditor --wait")

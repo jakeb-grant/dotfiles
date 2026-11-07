@@ -19,10 +19,9 @@ Palette JSON          theme-switch              Chezmoi Template            Fina
 - `{{ template "rgba" (list $p.crust 0.5) }}` → `rgba(17, 17, 27, 0.50)` (CSS)
 - `{{ template "rgb_values" $p.red }}` → `243, 139, 168` (CSS custom props)
 
-Templated this way: gtk-3.0, gtk-4.0, zed `settings.json`, yazi, hyprlock, obsidian (`knowledge/dot_obsidian/themes/Palette/theme.css.tmpl` → `~/knowledge/.obsidian/...`), btop (`btop/themes/palette.theme.tmpl` — a single templated theme file; `color_theme = "palette"` is static in `btop.conf`), and pane-fm (`pane-fm/themes/palette.css.tmpl`, plus `config.toml.tmpl` for the variant-driven `light_icons`; `theme = "palette"` is static).
+Templated this way: gtk-3.0, gtk-4.0, kitty (`kitty.conf.tmpl` includes `themes/<_kitty_theme>.conf`, one per palette, converted from the Ghostty built-in theme each palette used before the move to Kitty; opacity is `_blur_opacity`, tabs and split borders take palette roles), zed `settings.json`, yazi, hyprlock, obsidian (`knowledge/dot_obsidian/themes/Palette/theme.css.tmpl` → `~/knowledge/.obsidian/...`), btop (`btop/themes/palette.theme.tmpl` — a single templated theme file; `color_theme = "palette"` is static in `btop.conf`), and pane-fm (`pane-fm/themes/palette.css.tmpl`, plus `config.toml.tmpl` for the variant-driven `light_icons`; `theme = "palette"` is static).
 
 Some apps have their config direct-written by `theme-switch` rather than fully templated — precise updates to specific keys, not full-file substitution:
-- **Ghostty**: `_ghostty_theme` → writes `theme = ...` and `background-opacity = ...` to config
 - **Chromium/Chrome**: `_chromium_seed_color` + `_variant` → writes a managed policy JSON under `/etc/chromium/policies/managed/` (and the Chrome equivalent).
 - **GTK**: `_variant` → gsettings `gtk-theme` (`adw-gtk3` or `adw-gtk3-dark`), `_gtk_color_scheme` → `color-scheme`. GTK3's built-in Adwaita ignores the libadwaita `@define-color` names; adw-gtk3 reads them, so `gtk-3.0/gtk.css.tmpl` and `gtk-4.0/gtk.css.tmpl` carry the same colour block (accent = `_accent`, shades libadwaita's own by `_variant`). gtk-4.0 adds one `:root` line because adw-gtk3's GTK4 tweaks pin plain GTK4 apps to GNOME blue. Restyle through those names, not per-widget selectors.
 
@@ -65,7 +64,7 @@ Strand (https://strand.jacobgrant.dev) provides the island bar, launcher, notifi
 
 Locking is Strand's (`lock.strand`): everything locks through `loginctl lock-session`, and Strand answers logind's request. hypridle starts hyprlock only while no `strand` process is running. Recovering from a lock screen that died is in `dot_config/hypr/README.md`.
 
-Quickshell (`dot_config/quickshell/`) has not been started since the switch on 2026-11-04. Its config, the `_quickshell` palette keys and `toggle-bar-mode` stay as a rollback until about 2026-11-11, then go. Before dropping `_quickshell`, move its `accent`: theme-switch derives `_accent` from it (and validates it, and lists it in `--list`), and the Strand launcher's theme preview reads it, all falling back to `blue` when it's missing.
+Quickshell (`dot_config/quickshell/`) has not been started since the switch on 2026-11-04. Its config, the `_quickshell` palette keys and `toggle-bar-mode` stay as a rollback (it opens terminal apps in Ghostty, so Ghostty stays installed with it) until about 2026-11-11, then go. Before dropping `_quickshell`, move its `accent`: theme-switch derives `_accent` from it (and validates it, and lists it in `--list`), and the Strand launcher's theme preview reads it, all falling back to `blue` when it's missing.
 
 ## Machine-Specific Config
 

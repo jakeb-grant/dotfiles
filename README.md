@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, Strand, GTK, Ghostty, Zed, Obsidian — so switching from Everforest to Catppuccin is a single command with live animated transitions.
+Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, Strand, GTK, Kitty, Zed, Obsidian — so switching from Everforest to Catppuccin is a single command with live animated transitions.
 
 ## Preview
 
@@ -14,7 +14,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 
 - **Window Manager**: Hyprland
 - **Desktop Shell**: [Strand](https://strand.jacobgrant.dev) (island bar, launcher, notifications, lock screen, polkit password prompt, wallpaper picker, screen recording; hyprlock is the fallback locker)
-- **Terminal**: Ghostty
+- **Terminal**: Kitty (its drag-and-drop protocol lets Yazi drag files in and out)
 - **Editor**: Zed with hand-crafted themes per palette
 - **File Manager**: Yazi (terminal, themed), pane-fm (GUI, themed)
 - **System Monitor**: btop
@@ -90,7 +90,7 @@ dot_config/
 │   ├── notify.strand       # Notification server
 │   └── record.strand       # Screen recording (wf-recorder)
 ├── quickshell/         # Previous shell, not started; kept as a rollback until ~2026-11-11
-├── ghostty/            # Terminal emulator
+├── kitty/              # Terminal emulator + a colour theme per palette
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
 ├── pane-fm/            # pane-fm file manager config + themes
@@ -131,14 +131,14 @@ Palette JSON              active.json                     Chezmoi Template      
 (everforest.json) --->   written by theme-switch --->   (style.css.tmpl reads  ---> (style.css)
                                                           active.json) chezmoi apply
 ```
-Used by: GTK3/4, Yazi, Zed settings, Obsidian, hyprlock, btop, pane-fm. btop and pane-fm each get a single generated theme (`palette.theme` / `palette.css`) that always matches the active palette — their configs point at it statically.
+Used by: GTK3/4, Kitty, Yazi, Zed settings, Obsidian, hyprlock, btop, pane-fm. btop and pane-fm each get a single generated theme (`palette.theme` / `palette.css`) that always matches the active palette — their configs point at it statically.
 
-**Direct-write apps** (built-in theme selection or generated config):
+**Direct-write apps** (config written by theme-switch itself):
 ```
-Palette JSON              theme-switch                    Final Config
-(everforest.json) --->   reads _ghostty_theme   --->    writes theme = Everforest Dark Hard
+Palette JSON              theme-switch                         Final Config
+(everforest.json) --->   reads _chromium_seed_color   --->    writes a managed policy JSON
 ```
-Used by: Ghostty (`_ghostty_theme`) and Chromium/Chrome (managed color policy). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch syncs Zed's settings and pane-fm's theme CSS in place before apply so their inode-level hot-reload watches survive.)
+Used by: Chromium/Chrome (managed color policy) and GTK (gsettings). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch syncs Zed's settings and pane-fm's theme CSS in place before apply so their inode-level hot-reload watches survive.)
 
 **Lua-required (Hyprland)**:
 ```

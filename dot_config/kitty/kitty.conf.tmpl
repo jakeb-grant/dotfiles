@@ -1,0 +1,28 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+# Kitty configuration (chezmoi template, re-rendered by theme-switch, which then
+# sends kitty SIGUSR1 to reload). Terminal colours are the palette's kitty theme,
+# converted from the Ghostty theme each palette used; tabs and split borders,
+# which Kitty draws itself, take the GTK colour block's roles.
+include themes/{{ $p._kitty_theme }}.conf
+
+# Needed for a reload to change the opacity
+dynamic_background_opacity yes
+background_opacity {{ $p._blur_opacity }}
+
+tab_bar_background      {{ $p.crust }}
+active_tab_background   {{ $p._accent }}
+active_tab_foreground   {{ $p.crust }}
+inactive_tab_background {{ $p.mantle }}
+inactive_tab_foreground {{ $p.text }}
+active_border_color     {{ $p._accent }}
+inactive_border_color   {{ $p.surface1 }}
+
+# Ghostty's defaults, kept: JetBrains Mono at 12pt, 2pt padding
+font_family          family="JetBrainsMono Nerd Font"
+font_size            12
+window_padding_width 2
+
+confirm_os_window_close 0
+
+# Shift+Enter sends ESC CR, a newline without submitting (Claude Code and the like)
+map shift+enter send_text all \x1b\r
