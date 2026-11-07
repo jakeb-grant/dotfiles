@@ -15,7 +15,7 @@ local mod          = "SUPER"
 -- ------------------------------------------------------------------------------
 -- Environment Variables
 -- ------------------------------------------------------------------------------
-hl.env("TERMINAL",                     "kitty")  -- Strand runs Terminal=true apps with it
+hl.env("TERMINAL",                     "term")   -- ~/.local/bin/term, Kitty's single instance: Strand runs Terminal=true apps with it
 hl.env("EDITOR",                       "zeditor")
 hl.env("VISUAL",                       "zeditor")
 hl.env("GIT_EDITOR",                   "zeditor --wait")
@@ -23,7 +23,9 @@ hl.env("GDK_BACKEND",                  "wayland,x11")
 hl.env("XCURSOR_THEME",                "phinger-cursors-light")  -- cursor.sync_gsettings_theme hands it to GTK
 hl.env("XCURSOR_SIZE",                 "24")
 hl.env("HYPRCURSOR_SIZE",              "24")
-hl.env("PATH",                         os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or ""))
+-- once: a reload re-runs this with the PATH it set last time
+local path, bin = os.getenv("PATH") or "", os.getenv("HOME") .. "/.local/bin"
+if not (":" .. path .. ":"):find(":" .. bin .. ":", 1, true) then hl.env("PATH", bin .. ":" .. path) end
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
 
 {{ if eq .graphics "intel" -}}

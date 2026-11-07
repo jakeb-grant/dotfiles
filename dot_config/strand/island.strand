@@ -200,9 +200,9 @@ panel Polkit {
           }
         }
         row { gap: 14; align: center
-          AskHint "Enter" { what: "authenticate" }
-          AskHint "Esc" { what: "cancel" }
-          if users.len > 1 { AskHint "← →" { what: "user" } }
+          Hint "Enter" { what: "authenticate" }
+          Hint "Esc" { what: "cancel" }
+          if users.len > 1 { Hint "← →" { what: "user" } }
           spacer {}
           if wrong {
             text "Wrong password, try again" { color: $red; shrink: 1; ellipsis: end; font: sans 11px 600 }
@@ -244,15 +244,6 @@ component AskFace(icon: text) {
       bg: (wrong ? $red : $accent).alpha(0.16)
       text "admin_panel_settings" { font: "Material Symbols Rounded" 20; color: wrong ? $red : $accent }
     }
-  }
-}
-
-// a key and what it does, as the launcher's hint row has them
-component AskHint(key: text, what: text) {
-  row { gap: 5; shrink: 0; align: center
-    text key { color: $fg.alpha(0.75); font: mono 10px 700; height: 16; pad: 0, 4; radius: 4; shrink: 0
-      border: 1, $fg.alpha(0.18); align: center }
-    text what { color: $fg.alpha(0.5); font: sans 11px 500 }
   }
 }
 

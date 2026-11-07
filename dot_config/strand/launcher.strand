@@ -5,23 +5,24 @@
 // has the same keys.
 //
 // Bind in the compositor:  strand toggle launcher.open
-// and for a part directly: strand toggle launcher.spaces_key (or clipboard_key,
-// notes_key, drives_key, themes_key, walls_key, tray_key, media_key, keys_key). A Bluetooth device asking for a PIN or a code to confirm
+// and for a page directly: strand toggle launcher.<page>_key (hyprland.lua binds
+// clipboard_key and power_key; the island's symbols flip wifi, bt, sound, notes,
+// drives and tray). A Bluetooth device asking for a PIN or a code to confirm
 // opens it on the Bluetooth page, the question in place of the search.
 
-permit exec "qalc", "sh", "theme-switch"
+permit exec "qalc", "sh", "theme-switch", "kitty"
 action calc(q: text) -> text ["qalc", "-t", q]
 
-// themes: theme-switch's own list (file|name|six colours) with each one's whole
-// palette from ~/.config/palette, read every minute while shown, and the one in
-// use, as theme-switch writes it
+// themes: theme-switch's own list, each with its palette, accent and variant
+// (`--list --json`), read every minute while shown, and the one in use, as
+// theme-switch writes it
 type Theme {
   slug: text; name: text; colors: [color]; dark: bool?
   base: color?; crust: color?; mantle: color?; surface0: color?; surface1: color?; surface2: color?
   overlay0: color?; subtext0: color?; text: color?; accent: color?; lavender: color?; mauve: color?
   red: color?; peach: color?; yellow: color?; green: color?; teal: color?; blue: color?; pink: color?
 }
-service palettes from poll ["sh", "-c", "theme-switch --list | while IFS='|' read -r f n r; do p=\"$HOME/.config/palette/$f\"; [ -f \"$p\" ] || p=/dev/null; jq -nc --arg f \"$f\" --arg n \"$n\" --arg r \"$r\" '(try input catch {}) as $p | ($p | {base, crust, mantle, surface0, surface1, surface2, overlay0, subtext0, text, lavender, mauve, red, peach, yellow, green, teal, blue, pink, accent: (._accent // ._quickshell.accent // .blue), dark: (._variant != \"light\")}) + {slug: ($f | rtrimstr(\".json\")), name: $n, colors: ($r | split(\"|\"))}' \"$p\"; done | jq -sc '{all: .}'"] every 60s {
+service palettes from poll ["theme-switch", "--list", "--json"] every 60s {
   all: [Theme]
 }
 service in_use from file "~/.config/palette/active.json" { _name: text? }
@@ -33,9 +34,14 @@ action put_theme(slug: text) ["theme-switch", slug]
 // right, round again when there are more monitors, as Quickshell did.
 type Wall { file: text?; name: text?; images: [text]; palettes: [text] }
 service walls from file "~/.config/wallpapers/wallpapers.json" { wallpapers: [Wall]; sets: [Wall] }
-action wall(name: text, files: text, outputs: text) -> text? ["sh", "-c",
-  "d=\"$HOME/.config/wallpapers\"; name=$1; outputs=$3; set -- $2; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t; else for m in $outputs; do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; wait; fi; printf %s \"$name\" > \"$d/.current\"",
+// It fails (`wall.error`) when awww does, for any monitor; `.current` is for the
+// Quickshell rollback, and goes with it.
+action wall(name: text, files: text, outputs: text) ["sh", "-c",
+  "d=\"$HOME/.config/wallpapers\"; name=$1; outputs=$3; set -- $2; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t || exit 1; else for m in $outputs; do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; for p in $(jobs -p); do wait $p || exit 1; done; fi; printf %s \"$name\" > \"$d/.current\"",
   "sh", name, files, outputs]
+// a mounted drive opened in Yazi, in the terminal
+action browse(dir: path) ["kitty", "-1", "yazi", dir]
+
 // the monitors by name, left to right (Strand gives them in layout order)
 let monitor_names = screens.all.map(s => s.name).join(" ")
 // what each monitor shows now, asked again after each change (`tick`)
@@ -78,6 +84,8 @@ export state by_pointer = false    // opened with a click: leaving it closes it
 
 enum View { home, app_list, spaces, wifi, bt, sound, clips, notes, power, drives_list, theme_list, wall_list, tray_list, media_list, keys_list }
 type Command { id: text; name: text; glyph: text }
+// a page: its row at home, its name over the search, its icon and Alt letter in the hint row
+type Page { view: View; name: text; glyph: text; letter: text }
 
 state view: View = home
 state query = ""
@@ -131,22 +139,31 @@ let powers: [Command] = [
   Command(id: "reboot", name: "Restart", glyph: "restart_alt"),
   Command(id: "off", name: "Shut down", glyph: "power_settings_new"),
 ]
-let parts: [Command] = [
-  Command(id: "apps", name: "Apps", glyph: "apps"),
-  Command(id: "spaces", name: "Workspaces", glyph: "space_dashboard"),
-  Command(id: "wifi", name: "Wi-Fi", glyph: "wifi"),
-  Command(id: "bt", name: "Bluetooth", glyph: "bluetooth"),
-  Command(id: "sound", name: "Sound", glyph: "volume_up"),
-  Command(id: "clips", name: "Clipboard", glyph: "content_paste"),
-  Command(id: "notes", name: "Notifications", glyph: "notifications"),
-  Command(id: "drives", name: "Drives", glyph: "usb"),
-  Command(id: "themes", name: "Themes", glyph: "palette"),
-  Command(id: "walls", name: "Wallpapers", glyph: "wallpaper"),
-  Command(id: "tray", name: "Tray", glyph: "widgets"),
-  Command(id: "media", name: "Media", glyph: "music_note"),
-  Command(id: "keys", name: "Keys", glyph: "keyboard"),
-  Command(id: "power", name: "Power", glyph: "power_settings_new"),
+// A new page is a row here, an `on key "alt+…"` claim and an `on change …_key`
+// (key patterns are literals), and its rows in the list
+let pages: [Page] = [
+  Page(view: app_list, name: "Apps", glyph: "apps", letter: "A"),
+  Page(view: spaces, name: "Workspaces", glyph: "space_dashboard", letter: "W"),
+  Page(view: wifi, name: "Wi-Fi", glyph: "wifi", letter: "N"),
+  Page(view: bt, name: "Bluetooth", glyph: "bluetooth", letter: "B"),
+  Page(view: sound, name: "Sound", glyph: "volume_up", letter: "S"),
+  Page(view: clips, name: "Clipboard", glyph: "content_paste", letter: "C"),
+  Page(view: notes, name: "Notifications", glyph: "notifications", letter: "I"),
+  Page(view: theme_list, name: "Themes", glyph: "palette", letter: "T"),
+  Page(view: wall_list, name: "Wallpapers", glyph: "wallpaper", letter: "L"),
+  Page(view: tray_list, name: "Tray", glyph: "widgets", letter: "R"),
+  Page(view: media_list, name: "Media", glyph: "music_note", letter: "M"),
+  Page(view: drives_list, name: "Drives", glyph: "usb", letter: "D"),
+  Page(view: keys_list, name: "Keys", glyph: "keyboard", letter: "K"),
+  Page(view: power, name: "Power", glyph: "power_settings_new", letter: "P"),
 ]
+// Drives, the Tray and Media are offered only while there is something on them
+// (open directly, Tray and Media say they are empty)
+fn available(p: Page) -> bool {
+  (p.view != drives_list || drives.all.len > 0) && (p.view != tray_list || tray.items.len > 0)
+    && (p.view != media_list || media.players.len > 0)
+}
+let open_pages = pages.filter(p => available(p))
 
 // a query starting with `=` is a sum for qalc, whatever the view
 let is_sum = query.starts_with("=")
@@ -159,8 +176,11 @@ let hits = apps.search(query)
 let found_spaces = workspaces.all.filter(ws => ws.id > 0 && (ws.occupied || ws.active)).sort_by(ws => ws.id)
   .fuzzy(query, ws => join(" ", ws.name, join(" ", ws.windows.map(w => join(" ", w.app?.name ?? w.app_id, w.title)))))
 let found_powers = powers.fuzzy(query, c => c.name)
-// Drives only while one is plugged in
-let found_parts = parts.filter(c => (c.id != "drives" || drives.all.len > 0) && (c.id != "tray" || tray.items.len > 0) && (c.id != "media" || media.players.len > 0)).fuzzy(query, c => c.name)
+let found_parts = open_pages.fuzzy(query, p => p.name)
+// home search: apps first, but a page whose name starts with what's typed comes
+// above them (Alt and its letter is the quick way to the rest)
+let lead_parts = found_parts.filter(m => m.item.name.lower().starts_with(query.lower()))
+let late_parts = found_parts.filter(m => !m.item.name.lower().starts_with(query.lower()))
 // the network joined first, then by strength; devices connected first
 let found_aps = network.access_points.sort_by(a => (a.active ? 0 : 1) + 1 - a.strength).fuzzy(query, a => a.ssid)
 let found_paired = bluetooth.devices.sort_by(d => d.connected ? 0 : 1).fuzzy(query, d => d.name)
@@ -173,7 +193,6 @@ let found_recording = audio.streams.filter(s => s.direction == input).fuzzy(quer
 // microphone, microphones, programs recording
 let n_playing = audio.sinks.len > 1 ? found_playing.len : 0
 let mic_at = 1 + found_sinks.len + n_playing
-let n_recording = audio.sources.len > 1 ? found_recording.len : 0
 let level_step = 0.05           // a scroll's notch, or an arrow, on a level
 // a Bluetooth headset's microphone works only in its headset (call) mode: in its
 // music mode the microphone in use is asleep, and a meter doesn't wake it
@@ -205,9 +224,6 @@ let suit_sets = walls.sets.filter(w => suits(w.palettes))
 let found_walls = suit_walls.fuzzy(query, w => wall_name(w))
 let found_sets = suit_sets.fuzzy(query, w => wall_name(w))
 let showing = on_screen(wall_tick) ?? ""
-// a page with a preview of the selected row beside its list
-// (a pane only where the selected row holds more than the row can show, and it's
-// judged before acting on it; elsewhere the rows carry it)
 // Media: every player, the playing first; the card beside the list shows the
 // one selected, and a row after them sets the leading player's own volume
 let found_players = media.players.sort_by(p => p.playing ? 0 : 1).fuzzy(query, p => join(" ", p.name, p.title ?? "", p.artist ?? ""))
@@ -217,6 +233,9 @@ let media_at = found_players.index_of(m => m.item.active) ?? 0
 let show_pvol = media.can_volume && found_players.len > 0 && query == ""
 let on_pvol = view == media_list && !is_sum && show_pvol && sel == found_players.len
 let seek_step = 15s              // Shift and an arrow, or the card's buttons
+// a page with a preview of the selected row beside its list
+// (a pane only where the selected row holds more than the row can show, and it's
+// judged before acting on it; elsewhere the rows carry it)
 let has_pane = !is_sum && (view == spaces || view == media_list || view == wall_list || view == theme_list || view == clips || view == notes || view == keys_list)
 let sel = results_at
 let picked_wall: Wall? = view != wall_list ? null
@@ -248,25 +267,35 @@ let peek_up = peek_walls.find(w => shows(w, showing)) ?? peek_sets.find(w => sho
 let peek_wall = peek_up ?? peek_walls.find(w => w.file == peek_default) ?? peek_sets.find(w => w.name == peek_default)
   ?? peek_walls.first ?? peek_sets.first
 let found_rec = [Command(id: "rec", name: "Record screen", glyph: "screen_record")].fuzzy(query, c => c.name)
+// the Bluetooth device selected (the switch is row 0, then paired, then nearby)
+let picked_bt: BluetoothDevice? = view == bt && !is_sum && sel >= 1 ? found_paired.skip(sel - 1).first?.item : null
+// the app selected, here or in home search, and a window of it already open
+let hit_list = hits.value ?? []
+let picked_hit: Hit? = is_sum ? null : view == app_list ? hit_list.skip(sel).first
+  : view == home && query != "" && sel >= lead_parts.len ? hit_list.skip(sel - lead_parts.len).first : null
+let picked_win: Window? = picked_hit != null ? windows.all.find(w => w.app?.id == (picked_hit?.app?.id ?? "")) : null
+// the filesystem selected on the Drives page: each drive's filesystems, then its Eject row
+type VolPick { left: int; vol: Volume? }
+let picked_volume: Volume? = view != drives_list || is_sum ? null : found_drives.reduce(VolPick(left: sel, vol: null), (a, m) =>
+  a.vol != null || a.left < 0 ? a
+    : a.left < m.item.volumes.len ? VolPick(left: -1, vol: m.item.volumes.skip(a.left).first)
+    : VolPick(left: a.left - m.item.volumes.len - (m.item.can_eject ? 1 : 0), vol: null)).vol
 
-on change apps_key { if open && view == app_list { open = false } else { view = app_list; query = ""; armed = ""; problem = ""; open = true } }
-on change spaces_key { if open && view == spaces { open = false } else { view = spaces; query = ""; armed = ""; problem = ""; open = true } }
-on change power_key { if open && view == power { open = false } else { view = power; query = ""; armed = ""; problem = ""; open = true } }
-on change wifi_key { if open && view == wifi { open = false } else { view = wifi; query = ""; armed = ""; problem = ""; open = true } }
-on change bt_key { if open && view == bt { open = false } else { view = bt; query = ""; armed = ""; problem = ""; open = true } }
-on change sound_key { if open && view == sound { open = false } else { view = sound; query = ""; armed = ""; problem = ""; open = true } }
-on change clipboard_key { if open && view == clips { open = false } else { view = clips; query = ""; armed = ""; problem = ""; open = true } }
-on change notes_key { if open && view == notes { open = false } else { view = notes; query = ""; armed = ""; problem = ""; open = true } }
-on change drives_key { if open && view == drives_list { open = false } else { view = drives_list; query = ""; armed = ""; problem = ""; open = true } }
-on change themes_key { if open && view == theme_list { open = false } else { view = theme_list; query = ""; armed = ""; problem = ""; open = true } }
-on change keys_key { if open && view == keys_list { open = false } else { view = keys_list; query = ""; armed = ""; problem = ""; open = true } }
-on change media_key { if open && view == media_list { open = false } else { view = media_list; query = ""; armed = ""; problem = ""; open = true } }
-on change tray_key { if open && view == tray_list { open = false } else { view = tray_list; query = ""; armed = ""; problem = ""; open = true } }
-on change walls_key { if open && view == wall_list { open = false } else { view = wall_list; query = ""; armed = ""; problem = ""; open = true } }
+on change apps_key { if open && view == app_list { open = false } else { view = app_list; open = true } }
+on change spaces_key { if open && view == spaces { open = false } else { view = spaces; open = true } }
+on change power_key { if open && view == power { open = false } else { view = power; open = true } }
+on change wifi_key { if open && view == wifi { open = false } else { view = wifi; open = true } }
+on change bt_key { if open && view == bt { open = false } else { view = bt; open = true } }
+on change sound_key { if open && view == sound { open = false } else { view = sound; open = true } }
+on change clipboard_key { if open && view == clips { open = false } else { view = clips; open = true } }
+on change notes_key { if open && view == notes { open = false } else { view = notes; open = true } }
+on change drives_key { if open && view == drives_list { open = false } else { view = drives_list; open = true } }
+on change themes_key { if open && view == theme_list { open = false } else { view = theme_list; open = true } }
+on change keys_key { if open && view == keys_list { open = false } else { view = keys_list; open = true } }
+on change media_key { if open && view == media_list { open = false } else { view = media_list; open = true } }
+on change tray_key { if open && view == tray_list { open = false } else { view = tray_list; open = true } }
+on change walls_key { if open && view == wall_list { open = false } else { view = wall_list; open = true } }
 
-// a theme switched, here or by theme-switch anywhere: a wallpaper that doesn't
-// suit it gives way to the one wallpapers.json names for it, else the first that
-// suits it
 on change switching after 15s { switching = "" }
 on change armed after 3s { armed = "" }
 on change notice after 4s { notice = "" }
@@ -280,11 +309,13 @@ on change menu_up?.id {
   }
 }
 on change tray_leave after 300ms { if tray_leave != "" { tray_leave = ""; open = false } }
-on change view {
-  if view != tray_list && tray_open != "" {
-    tray.items.find(i => i.id == tray_open)?.menu?.close(); tray_open = ""; tray_sub = null
-  }
-}
+// a wallpaper put up: what each monitor shows is asked again; one that failed says why
+on change wall.running { if !wall.running { applying = ""; wall_tick += 1 } }
+on change wall.error { if wall.error != null { problem = wall.error ?? "" } }
+
+// a theme switched, here or by theme-switch anywhere: a wallpaper that doesn't
+// suit it gives way to the one wallpapers.json names for it, else the first that
+// suits it
 on change theme_slug {
   if theme_slug == switching { switching = "" }
   let now = theme_slug != "" ? await on_screen(wall_tick) : ""
@@ -295,9 +326,7 @@ on change theme_slug {
       ?? suit_walls.first ?? suit_sets.first ?? Wall()
     if w.file != null || w.name != null {
       applying = wall_name(w)
-      await wall(w.file ?? w.name ?? "", w.file ?? w.images.join(" "), monitor_names)
-      applying = ""
-      wall_tick += 1
+      wall(w.file ?? w.name ?? "", w.file ?? w.images.join(" "), monitor_names)
     }
   }
 }
@@ -330,7 +359,14 @@ on network.failed(ssid, error) {
     asking = ssid; secret = ""; hidden = !network.access_points.any(a => a.ssid == ssid)
   }
 }
-on change view { asking = ""; secret = ""; naming = false; hidden_name = ""; notice = "" }
+// a page left: its search, its question and what it said go; a tray menu open on it closes
+on change view {
+  query = ""; armed = ""; problem = ""; notice = ""
+  asking = ""; secret = ""; naming = false; hidden_name = ""
+  if view != tray_list && tray_open != "" {
+    tray.items.find(i => i.id == tray_open)?.menu?.close(); tray_open = ""; tray_sub = null
+  }
+}
 on bluetooth.failed(address, error) { problem = error }
 on drives.failed(device, error) { problem = device + ": " + error; if device == ejecting { ejecting = "" } }
 // the drive being ejected gone: say it may be pulled out
@@ -345,12 +381,6 @@ panel Launcher {
   exit { opacity: 0 }
   // reset once gone, unless something opened it again meanwhile
   on hide { if !open { if tray_open != "" { tray.items.find(i => i.id == tray_open)?.menu?.close() }; tray_open = ""; tray_sub = null; view = home; query = ""; armed = ""; problem = ""; asking = ""; secret = ""; naming = false; hidden_name = ""; by_pointer = false; wide = false; dropped = false } }
-
-  // Opened with a click and nothing typed since: the pointer leaving the box and
-  // staying away closes it. Opened from the keyboard, or typed in, it stays.
-  // the notification selected on its page
-  let picked = view == notes && (results.selected_index ?? -1) >= note_rows
-    ? found_notes.skip((results.selected_index ?? 0) - note_rows).first?.item : null
 
   // the network selected on the Wi-Fi page (its first row is the switch)
   let picked_ap = view == wifi && network.wifi && asking == "" && !naming && (results.selected_index ?? -1) >= 1
@@ -406,23 +436,25 @@ panel Launcher {
     on key "right" { problem = ""; power.profile = profile_at(1) }
   }
 
+  // Opened with a click and nothing typed since: the pointer leaving the box and
+  // staying away closes it. Opened from the keyboard, or typed in, it stays.
   on change card.hover after away_close { if by_pointer && !card.hover { open = false } }
 
   on key "ctrl+n" { results.next() }
   on key "ctrl+p" { results.prev() }
-  on key "alt+a" { view = app_list; query = ""; armed = ""; problem = "" }
-  on key "alt+w" { view = spaces; query = ""; armed = ""; problem = "" }
-  on key "alt+n" { view = wifi; query = ""; armed = ""; problem = "" }
-  on key "alt+b" { view = bt; query = ""; armed = ""; problem = "" }
-  on key "alt+s" { view = sound; query = ""; armed = ""; problem = "" }
-  on key "alt+c" { view = clips; query = ""; armed = ""; problem = "" }
-  on key "alt+i" { view = notes; query = ""; armed = ""; problem = "" }
-  on key "alt+t" { view = theme_list; query = ""; armed = ""; problem = "" }
-  on key "alt+l" { view = wall_list; query = ""; armed = ""; problem = "" }
-  on key "alt+r" { view = tray_list; query = ""; armed = ""; problem = "" }
-  on key "alt+m" { view = media_list; query = ""; armed = ""; problem = "" }
-  on key "alt+k" { view = keys_list; query = ""; armed = ""; problem = "" }
-  on key "alt+d" { if drives.all.len > 0 { view = drives_list; query = ""; armed = ""; problem = "" } }
+  on key "alt+a" { view = app_list }
+  on key "alt+w" { view = spaces }
+  on key "alt+n" { view = wifi }
+  on key "alt+b" { view = bt }
+  on key "alt+s" { view = sound }
+  on key "alt+c" { view = clips }
+  on key "alt+i" { view = notes }
+  on key "alt+t" { view = theme_list }
+  on key "alt+l" { view = wall_list }
+  on key "alt+r" { view = tray_list }
+  on key "alt+m" { view = media_list }
+  on key "alt+k" { view = keys_list }
+  on key "alt+d" { if drives.all.len > 0 { view = drives_list } }
   // on the Tray page: Right opens the selected app's menu here, Left goes back out
   when picked_tray != null && (picked_tray?.menu?.items?.len ?? 0) > 0 {
     on key "right" { tray_open = picked_tray?.id ?? ""; tray_sub = null; query = ""; picked_tray?.menu?.open() }
@@ -432,17 +464,29 @@ panel Launcher {
   }
   // on the Notifications page: Delete clears the selected one, Alt and a number
   // presses one of its buttons
-  when picked != null {
-    on key "delete" { picked?.dismiss() }
-    on key "alt+1" { picked?.actions?.first?.invoke() }
-    on key "alt+2" { picked?.actions?.skip(1)?.first?.invoke() }
-    on key "alt+3" { picked?.actions?.skip(2)?.first?.invoke() }
+  when picked_note != null {
+    on key "delete" { picked_note?.dismiss() }
+    on key "alt+1" { picked_note?.actions?.first?.invoke() }
+    on key "alt+2" { picked_note?.actions?.skip(1)?.first?.invoke() }
+    on key "alt+3" { picked_note?.actions?.skip(2)?.first?.invoke() }
+  }
+  // on the Bluetooth page: Delete forgets the selected device
+  when picked_bt != null {
+    on key "delete" { problem = ""; picked_bt?.forget() }
+  }
+  // an app with a window open: Shift+Enter goes to it rather than starting another
+  when picked_win != null {
+    on key "shift+return" { picked_win?.focus(); open = false }
+  }
+  // on the Drives page: → opens a mounted filesystem in Yazi
+  when picked_volume?.mounted ?? false {
+    on key "right" { browse(picked_volume?.path ?? ""); open = false }
   }
   // on the Clipboard page: Delete removes the selected entry from the history
   when picked_clip != null && !is_sum {
     on key "delete" { picked_clip?.remove() }
   }
-  on key "alt+p" { view = power; query = ""; armed = ""; problem = "" }
+  on key "alt+p" { view = power }
   // a pairing device's question in place of the search: Return allows a code it
   // shows or a service it wants (a PIN is its field's Return), Escape refuses it
   let asked = view == bt && pairing
@@ -568,13 +612,14 @@ panel Launcher {
         if is_sum { SumRow {} }
         else {
           if view == home && query == "" {
-            for m in found_parts key m.item.id { Part m.item }
+            for m in found_parts key m.item.letter { Part m.item }
             RecordRow {}
           }
           if view == home && query != "" {
-            for m in found_parts key m.item.id { Part m.item }
-            for m in found_rec key m.item.id { RecordRow {} }
+            for m in lead_parts key m.item.letter { Part m.item }
             for h in hits { AppRow h }
+            for m in late_parts key m.item.letter { Part m.item }
+            for m in found_rec key m.item.id { RecordRow {} }
             for m in found_spaces key m.item.id { SpaceRow m }
             for m in found_powers key m.item.id { PowerRow m }
           }
@@ -675,30 +720,20 @@ panel Launcher {
             text "and a page's letter opens it" { color: $fg.alpha(0.5); font: sans 11px 500 }
           } else {
             Cap "Alt"
-            Jump "A" { glyph: "apps"; to: app_list }
-            Jump "W" { glyph: "space_dashboard"; to: spaces }
-            Jump "N" { glyph: "wifi"; to: wifi }
-            Jump "B" { glyph: "bluetooth"; to: bt }
-            Jump "S" { glyph: "volume_up"; to: sound }
-            Jump "C" { glyph: "content_paste"; to: clips }
-            Jump "I" { glyph: "notifications"; to: notes }
-            Jump "T" { glyph: "palette"; to: theme_list }
-            Jump "L" { glyph: "wallpaper"; to: wall_list }
-            if tray.items.len > 0 { Jump "R" { glyph: "widgets"; to: tray_list } }
-            if media.players.len > 0 { Jump "M" { glyph: "music_note"; to: media_list } }
-            if drives.all.len > 0 { Jump "D" { glyph: "usb"; to: drives_list } }
-            Jump "K" { glyph: "keyboard"; to: keys_list }
-            Jump "P" { glyph: "power_settings_new"; to: power }
+            for p in open_pages key p.letter { Jump p.letter { glyph: p.glyph; to: p.view } }
           }
         }
         row { pad: 0, 14; gap: 14; align: center
           opacity: (keyboard.alt ? 0 : 1) ~ hint_fade
           when keyboard.alt { hit: none }
-          let enter_what = asked ? asked_does(kind) : on_hidden ? "name it" : enter_does(picked, picked_ap, results.selected_index ?? 0)
+          let enter_what = asked ? asked_does(kind) : on_hidden ? "name it" : enter_does(picked_ap, results.selected_index ?? 0)
           if enter_what != "" { Hint "Enter" { what: enter_what } }
           Hint "Esc" { what: (asked ? "refuse" : asking != "" || naming ? "cancel" : query != "" ? "clear" : view != home ? "back" : "close") }
           // the page's own keys
+          if picked_win != null { Hint "⇧ Enter" { what: "go to it" } }
           if picked_ap?.known ?? false { Hint "Del" { what: "forget" } }
+          if picked_bt != null { Hint "Del" { what: "forget" } }
+          if picked_volume?.mounted ?? false { Hint "→" { what: "open" } }
           if view == clips && picked_clip != null { Hint "Del" { what: "remove" } }
           if view == sound && !is_sum { Hint "← →" { what: "level" } }
           if picked_player != null { Hint "← →" { what: "track" }; if picked_player?.can_seek_by ?? false { Hint "⇧ ← →" { what: "15 s" } } }
@@ -720,23 +755,11 @@ panel Launcher {
   }
 }
 
-// a part chosen from inside the launcher: the search starts over
-fn view_of(id: text) -> View {
-  id == "apps" ? app_list : id == "spaces" ? spaces : id == "wifi" ? wifi
-    : id == "bt" ? bt : id == "sound" ? sound : id == "clips" ? clips : id == "notes" ? notes
-    : id == "drives" ? drives_list : id == "themes" ? theme_list : id == "walls" ? wall_list : id == "tray" ? tray_list : id == "media" ? media_list : id == "keys" ? keys_list : power
-}
-
-fn view_name() -> text {
-  view == app_list ? "Apps" : view == spaces ? "Workspaces" : view == wifi ? "Wi-Fi"
-    : view == bt ? "Bluetooth" : view == sound ? "Sound" : view == clips ? "Clipboard"
-    : view == notes ? "Notifications" : view == power ? "Power" : view == drives_list ? "Drives"
-    : view == theme_list ? "Themes" : view == wall_list ? "Wallpapers" : view == tray_list ? "Tray" : view == media_list ? "Media" : view == keys_list ? "Keys" : ""
-}
+fn view_name() -> text { pages.find(p => p.view == view)?.name ?? "" }
 
 // what Enter does on the selected row (`at`, its place in the list)
-fn enter_does(picked: Notification?, ap: AccessPoint?, at: int) -> text {
-  is_sum ? "copy" : view == wifi ? wifi_does(ap) : view == bt ? "connect"
+fn enter_does(ap: AccessPoint?, at: int) -> text {
+  is_sum ? "copy" : view == home ? home_does(at) : view == wifi ? wifi_does(ap) : view == bt ? bt_does(at)
     : view == power ? (show_profile && at == 0 ? "next" : at < power_top ? ""
         : armed == (found_powers.skip((at - power_top).round()).first?.item?.id ?? "") ? "confirm" : "run")
     : view == sound ? sound_does(at)
@@ -746,7 +769,28 @@ fn enter_does(picked: Notification?, ap: AccessPoint?, at: int) -> text {
     : view == keys_list ? ""
     : view == media_list ? (picked_player == null ? "" : (picked_player?.playing ?? false) ? "pause" : "play")
     : view == tray_list ? (tray_item == null ? "open" : at == 0 ? "back" : entry_does(picked_entry))
-    : view == notes && picked != null && !(picked?.can_activate ?? false) ? "clear" : "open"
+    : view == notes ? (at == 0 ? (notifications.dnd ? "turn off" : "turn on") : at == 1 ? "clear all"
+        : picked_note != null && !(picked_note?.can_activate ?? false) ? "clear" : "open")
+    : "open"
+}
+
+// home: the pages, then Record screen; searched, the rows as the list has them
+fn home_does(at: int) -> text {
+  let rec = record.recording ? "stop" : "record"
+  query == "" ? (at < found_parts.len ? "open" : rec)
+    : at < lead_parts.len ? "open"
+    : at < lead_parts.len + hit_list.len ? "launch"
+    : at < lead_parts.len + hit_list.len + late_parts.len ? "open"
+    : at < lead_parts.len + hit_list.len + late_parts.len + found_rec.len ? rec
+    : at < lead_parts.len + hit_list.len + late_parts.len + found_rec.len + found_spaces.len ? "go"
+    : "run"
+}
+
+// the Bluetooth page: the switch, the paired devices, those nearby
+fn bt_does(at: int) -> text {
+  at == 0 ? (bluetooth.powered ? "turn off" : "turn on")
+    : picked_bt != null ? ((picked_bt?.connected ?? false) ? "disconnect" : "connect")
+    : "pair"
 }
 
 fn sound_does(at: int) -> text {
@@ -780,7 +824,7 @@ component Cap(key: text) {
 // and it, or a click, goes there
 component Jump(letter: text, glyph: text, to: View) {
   row { id: j; gap: 4; shrink: 0; align: center; cursor: pointer
-    on click { view = to; query = ""; armed = ""; problem = "" }
+    on click { view = to }
     text glyph { font: "Material Symbols Rounded" 15; color: (view == to ? $accent : j.hover ? $fg.alpha(0.85) : $fg.alpha(0.55)) }
     text letter { color: (view == to ? $accent : $fg.alpha(0.8)); font: mono 10px 700 }
   }
@@ -821,12 +865,12 @@ component Aside(what: text) {
   text what { color: $fg.alpha(0.45); shrink: 0 }
 }
 
-component Part(c: Command) {
+component Part(p: Page) {
   Row {
-    on activate { query = ""; armed = ""; problem = ""; view = view_of(c.id) }
-    Glyph c.glyph
-    text c.name { color: $fg; grow: 1 }
-    PartKey part_letter(c.id)
+    on activate { view = p.view }
+    Glyph p.glyph
+    text p.name { color: $fg; grow: 1 }
+    PartKey p.letter
   }
 }
 
@@ -845,12 +889,6 @@ component PartKey(l: text) {
   } else {
     text "›" { color: $fg.alpha(0.5); shrink: 0 }
   }
-}
-
-fn part_letter(id: text) -> text {
-  id == "apps" ? "A" : id == "spaces" ? "W" : id == "wifi" ? "N" : id == "bt" ? "B" : id == "sound" ? "S"
-    : id == "clips" ? "C" : id == "notes" ? "I" : id == "themes" ? "T" : id == "walls" ? "L" : id == "tray" ? "R"
-    : id == "media" ? "M" : id == "drives" ? "D" : id == "keys" ? "K" : id == "power" ? "P" : ""
 }
 
 // starts or stops a recording of the focused monitor (record.strand), which
@@ -888,12 +926,15 @@ component SumRow {
   }
 }
 
+// an app; one with a window open says on which workspace (Shift+Enter goes there)
 component AppRow(h: Hit) {
+  let win = windows.all.find(w => w.app?.id == h.app.id)
   Row {
     on activate { h.app.launch(); open = false }
     image h.app.icon { size: 20; shrink: 0 }
     text h.app.name { color: $fg; marks: h.ranges; mark_color: $accent; shrink: 0 }
-    text h.app.comment ?? "" { color: $fg.alpha(0.45); grow: 1; ellipsis: end; font: "JetBrainsMono Nerd Font" 11px 500 }
+    text h.app.comment ?? "" { color: $fg.alpha(0.45); grow: 1; ellipsis: end; font: sans 12px 400 }
+    if win != null { Aside "on " + num(win?.workspace ?? 0, 0) }
   }
 }
 
@@ -1458,13 +1499,6 @@ component NoteRow(m: Match<Notification>) {
   }
 }
 
-component Key(key: text, what: text) {
-  row { gap: 4; shrink: 0; align: center
-    text key { color: $fg.alpha(0.7); font: "JetBrainsMono Nerd Font" 10px 700 }
-    text what { color: $fg.alpha(0.45); font: "JetBrainsMono Nerd Font" 10px 500 }
-  }
-}
-
 fn when_of(n: Notification) -> text {
   n.time.format("%F") == clock.format("%F") ? n.time.format("%H:%M") : n.time.format("%d %b")
 }
@@ -1526,9 +1560,7 @@ component WallRow(m: Match<Wall>) {
       if !on {
         problem = ""
         applying = wall_name(w)
-        await wall(w.file ?? w.name ?? "", images.join(" "), monitor_names)
-        applying = ""
-        wall_tick += 1
+        wall(w.file ?? w.name ?? "", images.join(" "), monitor_names)
       }
     }
     image "~/.config/wallpapers/" + (images.first ?? "") { width: 40; height: 24; radius: 4; fit: cover; clip: true }
@@ -1668,7 +1700,6 @@ component WinTile(w: Window, x: float, y: float, wd: float, ht: float) {
   }
 }
 
-// the frame of every preview beside the list
 // the Keys page: a group, and a line of one
 component KeyGroupRow(g: KeyGroup) {
   Row {
@@ -1737,6 +1768,7 @@ component KeyCap(k: text) {
     align: center; bg: $fg.alpha(0.07); border: 1, $fg.alpha(0.13); shadow: 0 1px 0 $fg.alpha(0.12) }
 }
 
+// the frame of every preview beside the list
 component Pane {
   col { grow: 1; height: rows * row_h - 16; margin: 8; pad: 18, 20; gap: 12; justify: start; clip: true
     radius: 10; bg: $surface_low; border: 1, $fg.alpha(0.05)

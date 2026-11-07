@@ -10,6 +10,7 @@ Reads palette JSON files and applies them across all apps.
 Palette JSONs are the single source of truth for all theme colors.
 
 Usage: theme-switch [THEME]
+       theme-switch --list [--json]
 """
 
 import asyncio
@@ -103,9 +104,26 @@ def load_palette(theme_name: str) -> dict:
         return json.load(f)
 
 
-def list_themes() -> None:
-    """Print one `file|name|swatch...` line per palette (Quickshell launcher
-    themes menu). Swatch order: base, accent, red, green, yellow, mauve."""
+def accent_of(p: dict) -> str:
+    """The palette's accent: `_quickshell.accent`, else `blue`. The one place it
+    is derived; everything else reads `_accent` from active.json or `--list`."""
+    return (p.get("_quickshell") or {}).get("accent") or p.get("blue", "")
+
+
+# What the Strand launcher's Themes page reads of each palette (`--list --json`)
+LIST_ROLES = [
+    "base", "crust", "mantle", "surface0", "surface1", "surface2", "overlay0",
+    "subtext0", "text", "lavender", "mauve", "red", "peach", "yellow", "green",
+    "teal", "blue", "pink",
+]
+
+
+def list_themes(as_json: bool = False) -> None:
+    """One `file|name|swatch...` line per palette (the Quickshell rollback's
+    themes menu), or with `as_json` `{"all": [...]}` with each palette's roles,
+    accent and variant (the Strand launcher). Swatch order: base, accent, red,
+    green, yellow, mauve."""
+    themes = []
     for palette_file in sorted(PALETTE_DIR.glob("*.json")):
         if palette_file.name == "active.json":
             continue
@@ -114,16 +132,25 @@ def list_themes() -> None:
             name = p.get("_name", "")
             if not name:
                 continue
-            accent = p.get("_quickshell", {}).get("accent", p.get("blue", ""))
-            swatches = "|".join([
-                p.get("base", ""), accent, p.get("red", ""),
+            swatches = [
+                p.get("base", ""), accent_of(p), p.get("red", ""),
                 p.get("green", ""), p.get("yellow", ""), p.get("mauve", ""),
-            ])
+            ]
         except Exception:
             # A malformed palette should drop itself from the menu, not the
             # files sorted after it.
             continue
-        print(f"{palette_file.name}|{name}|{swatches}")
+        if not as_json:
+            print(f"{palette_file.name}|{name}|{'|'.join(swatches)}")
+            continue
+        theme = {role: p[role] for role in LIST_ROLES if role in p}
+        theme.update(
+            slug=palette_file.stem, name=name, colors=swatches,
+            accent=accent_of(p), dark=p.get("_variant") != "light",
+        )
+        themes.append(theme)
+    if as_json:
+        print(json.dumps({"all": themes}, separators=(",", ":")))
 
 
 # The 26 color roles every palette must define (Catppuccin naming).
@@ -424,7 +451,7 @@ async def main() -> None:
 
     # Derive accent + its HSL before the active.json writes — chezmoi templates
     # (gtk, obsidian) read these straight from active.json.
-    accent = palette_data.get("_quickshell", {}).get("accent") or palette_data.get("blue", "")
+    accent = accent_of(palette_data)
     if accent:
         palette_data["_accent"] = accent
         h, s, l = hex_to_hsl(accent)
@@ -481,6 +508,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--list":
-        list_themes()
+        list_themes(as_json="--json" in sys.argv[2:])
     else:
         asyncio.run(main())

@@ -1,0 +1,4 @@
+#!/bin/sh
+# The terminal ($TERMINAL): Kitty's single instance, so a terminal app the
+# launcher starts (`term -e btop`) opens as a window of the Kitty already running.
+exec kitty -1 "$@"
