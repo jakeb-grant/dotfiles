@@ -55,9 +55,12 @@ a second on each monitor while the lock moved to the GPU.
 copied; a lock's first frame waits at most 100 ms for its text; a GPU stall and the logic watchdog are
 judged only after the replies are read; the GPU safety net waits 2 s and renews at once only on a real
 failure. On the desk every monitor's first frame came 36 to 99 ms after the request and the hand-off
-took 42 to 178 ms (three 1920-class monitors; recheck on the 4K desk). Left: the opening's hand-off
-still rebuilds the blurred still on the main thread for each monitor (tens of ms per 4K monitor in a
-release build), the next thing to move off it. Done on 2026-11-06.
+took 42 to 178 ms (three 1920-class monitors; recheck on the 4K desk). Done on 2026-11-06.
+Then Strand `57830288` (decisions.md blur-ready), for every shell: a large blur and colour matrix run in
+bands on the raster's helper threads (AVX2 where the CPU has it, the same bytes), and thumbnails of one
+still share one pixmap. The frame that first shows the blurred desktop on a 4K monitor went from about
+46 ms of the main thread to about 14.5; a lock-only pre-blurred still was dropped as not worth it.
+Done on 2026-11-07.
 
 ### `grain:` replaces a thumbnail's or image's own pixels, and never stops moving
 
