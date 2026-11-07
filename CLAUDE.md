@@ -64,7 +64,14 @@ Strand (https://strand.jacobgrant.dev) provides the island bar, launcher, notifi
 
 Locking is Strand's (`lock.strand`): everything locks through `loginctl lock-session`, and Strand answers logind's request. hypridle starts hyprlock only while no `strand` process is running. Recovering from a lock screen that died is in `dot_config/hypr/README.md`.
 
-Quickshell, the shell before Strand, was retired on 2026-11-07 with Ghostty and pane-fm. `docs/archive/` holds the docs of that time: history, not current state.
+Quickshell, the shell before Strand, was retired on 2026-11-07 with Ghostty and pane-fm; its config and docs are in git history.
+
+## Docs
+
+- `docs/strand-shell/`: what the shell does (`features.md`) and parked Strand problems, with a harness to check them (`strand-issues.md`).
+- `docs/review-2026-11-07.md`: what the last review decided against and what's still open. Read it before raising those again.
+- `docs/zed-theme-guide.md`: Zed's theme properties, for the hand-made themes in `dot_config/zed/themes/`.
+- `dot_config/hypr/README.md`: locking, recovering a dead lock screen, and why there's no auto-suspend.
 
 ## Machine-Specific Config
 

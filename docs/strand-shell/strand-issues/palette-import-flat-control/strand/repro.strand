@@ -1,7 +1,0 @@
-// Control for palette-import-flat: the same import, with the same colours as W3C tokens.
-use palette import("w3c:~/palette.json")
-panel P { screens: all; anchor: top_left; size: auto
-  row { pad: 8; bg: #000000
-    box { size: 24; bg: $palette.text ?? #ff00ff }
-  }
-}

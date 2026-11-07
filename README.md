@@ -2,15 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, Strand, GTK, Kitty, Zed, Obsidian — so switching from Everforest to Catppuccin is a single command with live animated transitions.
-
-## Preview
-
-These predate the move to Strand and Kitty (they show the shell before it).
-
-| Everforest | Catppuccin Mocha |
-|:---:|:---:|
-| ![Everforest](screenshots/everforest.png) | ![Catppuccin Mocha](screenshots/mocha.png) |
+Chezmoi-managed dotfiles for my Hyprland desktop. A palette-driven theme system wires one JSON into every app (Hyprland, Strand, GTK, Qt, Kitty, Zed, Yazi, btop, Obsidian), so switching from Everforest to Catppuccin is a single command, and the shell animates to the new colours.
 
 ## Features
 
@@ -22,56 +14,30 @@ These predate the move to Strand and Kitty (they show the shell before it).
 - **System Monitor**: btop
 - **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color names for GTK4 apps, and the same for GTK3 apps through the adw-gtk3 theme
+- **Qt Theming**: Qt5 apps (VLC) through qt5ct, Fusion coloured from the palette
+- **Monitors**: hyprpier, a profile per dock (it owns `monitors.lua`)
 - **Login Manager**: greetd + tuigreet
-
-## Getting Started
-
-```bash
-# 1. Initialize and apply dotfiles
-chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
-
-# 2. Restart your shell (or log out and back in)
-exec bash
-
-# 3. Apply a theme
-theme-switch everforest
-```
 
 ## Installation
 
-### Quick Start
-
 ```bash
 chezmoi init --apply https://github.com/jakeb-grant/dotfiles.git
+exec bash                  # or log out and back in
+theme-switch everforest
 ```
 
-### Safe Installation (Preserving Existing Configs)
-
-Chezmoi will overwrite managed files. To preview changes first:
-
-```bash
-# Clone without applying
-chezmoi init https://github.com/jakeb-grant/dotfiles.git
-
-# Preview what would change
-chezmoi diff
-
-# Apply when ready
-chezmoi apply
-```
+chezmoi overwrites the files it manages. To see what would change first, run `chezmoi init` with the same URL, then `chezmoi diff`, then `chezmoi apply`.
 
 ### Dependencies
 
-These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), which provides a custom Arch ISO with all required packages pre-installed.
+These dotfiles are built for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), a custom Arch ISO, but its package lists predate Strand and Kitty. Until they catch up, the configs and scripts also need:
 
-On any other base system, the configs and scripts additionally assume:
-
-- `uv` — `theme-switch` runs via a `uv run --script` shebang
-- `adw-gtk-theme` — the GTK3 base theme (`adw-gtk3` / `adw-gtk3-dark`) that `theme-switch` sets and `gtk-3.0/gtk.css` recolours
-- `jq` and ImageMagick (`magick`) — `wallpaper-split`
-- `fnm` — sourced in `.bashrc` (guarded; skipped if absent)
-- `setfacl` (acl package) — the Chromium policy setup script
-- `tuigreet`, a `greeter` user, and `start-hyprland` — the greetd setup script writes `/etc/greetd/config.toml` pointing at all three (`start-hyprland` ships with the hyprland package)
+- **Strand**, the shell: `curl -fsSL https://strand.jacobgrant.dev/install.sh | sh -s -- --edge`. Edge, because these configs track Strand's main branch.
+- **Apps**: `kitty`, `yazi`, `zed`, `btop`, and `1password` (AUR), whose SSH agent `private_1Password/` configures
+- **Desktop**: `awww` (wallpapers), `hyprpier` (AUR; monitor profiles), `hypridle`, `hyprlock`, `phinger-cursors` (AUR), `adw-gtk-theme` (the GTK3 base that `theme-switch` sets and `gtk-3.0/gtk.css` recolours), `qt5ct`
+- **Shell features**: `wf-recorder` (screen recording), `libqalculate` (the launcher's sums), `grim`, `slurp` and `wl-clipboard` (screenshots), `hyprpicker`
+- **Scripts**: `uv` (`theme-switch` and `wallpaper-upscale` run as `uv run --script`), `jq` and ImageMagick (`wallpaper-split`), `acl` (`setfacl`, for the Chromium policy script); `fzf` and `fnm` are used by `.bashrc` when present
+- **Login**: `greetd`, `greetd-tuigreet` and a `greeter` user; the greetd setup script writes `/etc/greetd/config.toml` pointing at them and at `start-hyprland`, which ships with hyprland
 
 Install notes:
 
@@ -122,11 +88,13 @@ dot_local/bin/
 └── win-vm              # Windows VM management
 dot_bashrc              # Shell config (PATH, Zed as $EDITOR, history, fzf, y for Yazi, fnm)
 dot_claude/             # Claude Code config (writing skills)
+.chezmoitemplates/      # Colour helpers, GTK's shared colour block, the IPU7 camera's /etc files
+run_*                   # Setup scripts: greetd, Chromium policies, GPU symlinks, IPU7 camera
 ```
 
 ## Theme System
 
-Palette JSONs are the single source of truth. `theme-switch` applies them across all apps via three methods:
+Palette JSONs are the single source of truth. `theme-switch` applies them across all apps in four ways:
 
 **Templated apps** (chezmoi templates reading the active palette):
 ```
@@ -134,7 +102,7 @@ Palette JSON              active.json                     Chezmoi Template      
 (everforest.json) --->   written by theme-switch --->   (style.css.tmpl reads  ---> (style.css)
                                                           active.json) chezmoi apply
 ```
-Used by: GTK3/4, Kitty, Yazi, Zed settings, Obsidian, hyprlock, btop. btop gets a single generated theme (`palette.theme`) that always matches the active palette — its config points at it statically.
+Used by: GTK3/4, Qt5 (qt5ct), Kitty, Yazi, Zed settings, Obsidian, hyprlock, btop. btop gets a single templated theme (`palette.theme`) that always matches the active palette; its config points at it statically.
 
 **Direct-write apps** (config written by theme-switch itself):
 ```
@@ -210,8 +178,9 @@ Chezmoi variables (Go templates, processed by `chezmoi apply`):
 ### Usage
 
 ```bash
-# Switch theme (updates active.json, applies chezmoi, reloads apps)
-theme-switch everforest
+theme-switch everforest    # switch (updates active.json, applies chezmoi, reloads apps)
+theme-switch               # apply the theme in use again
+theme-switch --list        # the themes
 ```
 
 ## Wallpaper System
