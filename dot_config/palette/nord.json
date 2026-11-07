@@ -1,12 +1,7 @@
 {
   "_name": "Nord",
   "_variant": "dark",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Nord",
-  "_zed_theme_light": "",
-  "_kitty_theme": "nord",
-  "_gtk_color_scheme": "prefer-dark",
-  "_chromium_seed_color": "#434c5e",
+  "_zed_theme": "Nord",
 
   "crust": "#2e3440",
   "mantle": "#3b4252",

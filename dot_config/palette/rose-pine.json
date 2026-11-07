@@ -1,12 +1,7 @@
 {
   "_name": "Rosé Pine",
   "_variant": "dark",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Rosé Pine",
-  "_zed_theme_light": "",
-  "_kitty_theme": "rose-pine",
-  "_gtk_color_scheme": "prefer-dark",
-  "_chromium_seed_color": "#26233a",
+  "_zed_theme": "Rosé Pine",
 
   "crust": "#191724",
   "mantle": "#1f1d2e",

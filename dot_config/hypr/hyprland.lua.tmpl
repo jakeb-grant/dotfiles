@@ -198,7 +198,8 @@ hl.config({
       enabled      = true,
       range        = 4,
       render_power = 3,
-      color        = p.crust_rgba(0.93),
+      -- crust on a dark palette; on a light one its crust is pale, so a soft black
+      color        = p.dark and p.crust_rgba(0.93) or "rgba(00000040)",
     },
   },
 })

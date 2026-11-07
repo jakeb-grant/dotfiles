@@ -1,0 +1,25 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+-- Hyprland's palette (chezmoi template from palette/active.json), read by
+-- hyprland.lua as `local p = require("palette")`: each role as p.<role> (hex),
+-- p.<role>_rgb() and p.<role>_rgba(opacity), the derived accent as `accent`, and
+-- p.dark for the variant.
+local hex = {
+{{- range $role, $v := $p }}
+{{- if and (not (hasPrefix "_" $role)) (kindIs "string" $v) (hasPrefix "#" $v) }}
+  {{ $role }} = "{{ trimPrefix "#" $v }}",
+{{- end }}
+{{- end }}
+  accent = "{{ trimPrefix "#" $p._accent }}",
+}
+
+local function alpha(o)
+  return string.format("%02x", math.floor((o or 1.0) * 255))
+end
+
+local p = { dark = {{ ne $p._variant "light" }} }
+for name, h in pairs(hex) do
+  p[name] = h
+  p[name .. "_rgb"]  = function()  return "rgb("  .. h .. ")" end
+  p[name .. "_rgba"] = function(o) return "rgba(" .. h .. alpha(o) .. ")" end
+end
+return p

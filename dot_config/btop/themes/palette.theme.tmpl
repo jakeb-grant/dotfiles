@@ -3,7 +3,7 @@
 # Catppuccin btop role mapping, applied to whichever palette is active.
 
 # Main background, empty for terminal default, need to be empty if you want transparent background
-theme[main_bg]="{{ $p.base }}"
+theme[main_bg]=""
 
 # Main text color
 theme[main_fg]="{{ $p.text }}"
@@ -12,13 +12,13 @@ theme[main_fg]="{{ $p.text }}"
 theme[title]="{{ $p.text }}"
 
 # Highlight color for keyboard shortcuts
-theme[hi_fg]="{{ $p.blue }}"
+theme[hi_fg]="{{ $p._accent }}"
 
 # Background color of selected item in processes box
 theme[selected_bg]="{{ $p.surface1 }}"
 
 # Foreground color of selected item in processes box
-theme[selected_fg]="{{ $p.blue }}"
+theme[selected_fg]="{{ $p._accent }}"
 
 # Color of inactive/disabled text
 theme[inactive_fg]="{{ $p.overlay1 }}"
@@ -36,7 +36,7 @@ theme[proc_misc]="{{ $p.rosewater }}"
 theme[cpu_box]="{{ $p.mauve }}" #Mauve
 theme[mem_box]="{{ $p.green }}" #Green
 theme[net_box]="{{ $p.maroon }}" #Maroon
-theme[proc_box]="{{ $p.blue }}" #Blue
+theme[proc_box]="{{ $p._accent }}"
 
 # Box divider line and small boxes line color
 theme[div_line]="{{ $p.overlay0 }}"

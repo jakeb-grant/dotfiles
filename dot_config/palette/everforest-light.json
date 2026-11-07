@@ -1,12 +1,7 @@
 {
   "_name": "Everforest Light",
   "_variant": "light",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Everforest",
-  "_zed_theme_light": "Everforest Light",
-  "_kitty_theme": "everforest-light",
-  "_gtk_color_scheme": "prefer-light",
-  "_chromium_seed_color": "#FDF6E3",
+  "_zed_theme": "Everforest Light",
 
   "crust": "#EFEBD4",
   "mantle": "#F4F0D9",

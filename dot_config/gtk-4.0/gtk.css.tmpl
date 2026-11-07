@@ -1,48 +1,8 @@
 {{- $p := include "dot_config/palette/active.json" | fromJson -}}
-{{- $shade := ternary "rgba(0, 0, 6, 0.07)" "rgba(0, 0, 6, 0.25)" (eq $p._variant "light") -}}
-/* GTK4/libadwaita colors from palette/active.json (chezmoi template); the same
-   block as gtk-3.0/gtk.css.tmpl. Shades are libadwaita's own, by _variant. */
+/* GTK4/libadwaita colors from palette/active.json (chezmoi template); the block
+   is .chezmoitemplates/gtk-colors, shared with gtk-3.0. */
 
-@define-color window_bg_color {{ $p.crust }};
-@define-color window_fg_color {{ $p.text }};
-@define-color view_bg_color {{ $p.crust }};
-@define-color view_fg_color {{ $p.text }};
-@define-color accent_bg_color {{ $p._accent }};
-@define-color accent_fg_color {{ $p.crust }};
-@define-color accent_color {{ $p._accent }};
-@define-color headerbar_bg_color {{ $p.crust }};
-@define-color headerbar_fg_color {{ $p.text }};
-@define-color headerbar_backdrop_color {{ $p.crust }};
-@define-color card_bg_color {{ $p.mantle }};
-@define-color card_fg_color {{ $p.text }};
-@define-color popover_bg_color {{ $p.mantle }};
-@define-color popover_fg_color {{ $p.text }};
-@define-color dialog_bg_color {{ $p.mantle }};
-@define-color dialog_fg_color {{ $p.text }};
-@define-color sidebar_bg_color {{ $p.crust }};
-@define-color sidebar_fg_color {{ $p.text }};
-@define-color sidebar_backdrop_color {{ $p.crust }};
-@define-color sidebar_shade_color {{ $shade }};
-@define-color secondary_sidebar_bg_color {{ $p.crust }};
-@define-color secondary_sidebar_fg_color {{ $p.text }};
-@define-color secondary_sidebar_backdrop_color {{ $p.crust }};
-@define-color secondary_sidebar_shade_color {{ $shade }};
-
-/* Semantic colors */
-@define-color error_bg_color {{ $p.red }};
-@define-color error_fg_color {{ $p.crust }};
-@define-color error_color {{ $p.red }};
-@define-color warning_bg_color {{ $p.yellow }};
-@define-color warning_fg_color {{ $p.crust }};
-@define-color warning_color {{ $p.yellow }};
-@define-color success_bg_color {{ $p.green }};
-@define-color success_fg_color {{ $p.crust }};
-@define-color success_color {{ $p.green }};
-
-/* Borders and separators */
-@define-color borders {{ $p.surface1 }};
-@define-color shade_color {{ $shade }};
-@define-color scrollbar_outline_color {{ $p.surface1 }};
+{{ template "gtk-colors" $p }}
 
 /* adw-gtk3's GTK4 tweaks pin plain (non-libadwaita) GTK4 apps to GNOME's blue;
    point them back at the accent above */

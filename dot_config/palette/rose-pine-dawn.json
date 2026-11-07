@@ -1,12 +1,7 @@
 {
   "_name": "Rosé Pine Dawn",
   "_variant": "light",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Rosé Pine",
-  "_zed_theme_light": "Rosé Pine Dawn",
-  "_kitty_theme": "rose-pine-dawn",
-  "_gtk_color_scheme": "prefer-light",
-  "_chromium_seed_color": "#fffaf3",
+  "_zed_theme": "Rosé Pine Dawn",
 
   "crust": "#f2e9e1",
   "mantle": "#faf4ed",

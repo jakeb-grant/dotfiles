@@ -135,23 +135,24 @@ Used by: GTK3/4, Kitty, Yazi, Zed settings, Obsidian, hyprlock, btop. btop gets 
 **Direct-write apps** (config written by theme-switch itself):
 ```
 Palette JSON              theme-switch                         Final Config
-(everforest.json) --->   reads _chromium_seed_color   --->    writes a managed policy JSON
+(everforest.json) --->   reads base and _variant      --->    writes a managed policy JSON
 ```
-Used by: Chromium/Chrome (managed color policy) and GTK (gsettings). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch syncs Zed's settings in place before apply so its inode-level hot-reload watch survives.)
+Used by: Chromium/Chrome (managed color policy) and GTK (gsettings). (Zed theme selection is templated via the `_zed_theme` meta key; theme-switch syncs Zed's settings in place before apply so its inode-level hot-reload watch survives.)
 
 **Lua-required (Hyprland)**:
 ```
-Palette JSON              theme-switch                    palette.lua            hyprland.lua
-(everforest.json) --->   generates palette.lua --->     local p = require()  ---> p.surface0_rgba(0.93)
+active.json               palette.lua.tmpl                hyprland.lua
+(written by       --->   renders palette.lua    --->     local p = require("palette") ---> p.surface0_rgba(0.93)
+ theme-switch)
 ```
-`hyprland.lua` requires `palette.lua` and reads role-helpers like `p.surface0_rgba(0.93)`. Lets `hyprctl reload` pick up new colors without re-rendering a chezmoi template.
+`hyprland.lua` requires `palette.lua` (a chezmoi template like the rest) and reads role-helpers like `p.surface0_rgba(0.93)`.
 
 **Strand** reads `active.json` through a `from file` service and springs to the new colours — no restart needed.
 
 ### How It Works
 
 1. **Palette files** (`dot_config/palette/*.json`) define color roles using Catppuccin-style naming
-2. **`theme-switch`** writes `active.json` (palette + derived `_accent*` keys), generates `palette.lua`, updates direct-write apps
+2. **`theme-switch`** writes `active.json` (palette + derived `_slug`, `_accent*` and `_on_accent` keys), updates direct-write apps
 3. **`chezmoi apply`** renders themed `.tmpl` configs from `active.json` and machine-specific variables (GPU config)
 4. **Strand** sees the `active.json` change and animates to the new colours instantly
 

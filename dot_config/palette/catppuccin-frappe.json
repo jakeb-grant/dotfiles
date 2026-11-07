@@ -1,12 +1,7 @@
 {
   "_name": "Catppuccin Frappé",
   "_variant": "dark",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Catppuccin Frappé",
-  "_zed_theme_light": "",
-  "_kitty_theme": "catppuccin-frappe",
-  "_gtk_color_scheme": "prefer-dark",
-  "_chromium_seed_color": "#303446",
+  "_zed_theme": "Catppuccin Frappé",
 
   "crust": "#232634",
   "mantle": "#292c3c",

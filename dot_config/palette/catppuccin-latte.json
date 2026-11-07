@@ -1,12 +1,7 @@
 {
   "_name": "Catppuccin Latte",
   "_variant": "light",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Catppuccin Mocha",
-  "_zed_theme_light": "Catppuccin Latte",
-  "_kitty_theme": "catppuccin-latte",
-  "_gtk_color_scheme": "prefer-light",
-  "_chromium_seed_color": "#eff1f5",
+  "_zed_theme": "Catppuccin Latte",
 
   "crust": "#dce0e8",
   "mantle": "#e6e9ef",

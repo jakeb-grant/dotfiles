@@ -1,12 +1,7 @@
 {
   "_name": "Catppuccin Mocha",
   "_variant": "dark",
-  "_blur_opacity": 0.9,
-  "_zed_theme_dark": "Catppuccin Mocha",
-  "_zed_theme_light": "",
-  "_kitty_theme": "catppuccin-mocha",
-  "_gtk_color_scheme": "prefer-dark",
-  "_chromium_seed_color": "#1e1e2e",
+  "_zed_theme": "Catppuccin Mocha",
 
   "crust": "#11111b",
   "mantle": "#181825",

@@ -19,8 +19,16 @@
   },
   "theme": {
     "mode": "{{ $p._variant }}",
-    "dark": "{{ $p._zed_theme_dark }}",
-    "light": "{{ $p._zed_theme_light }}"
+    "dark": "{{ $p._zed_theme }}",
+    "light": "{{ $p._zed_theme }}"
+  },
+  "theme_overrides": {
+    "{{ $p._zed_theme }}": {
+      "text.accent": "{{ $p._accent }}",
+      "icon.accent": "{{ $p._accent }}",
+      "border.focused": "{{ $p._accent }}66",
+      "players": [{ "cursor": "{{ $p._accent }}", "background": "{{ $p._accent }}", "selection": "{{ $p._accent }}3d" }]
+    }
   },
   "icon_theme": {
     "mode": "dark",

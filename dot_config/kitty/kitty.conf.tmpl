@@ -3,15 +3,15 @@
 # sends kitty SIGUSR1 to reload). Terminal colours are the palette's kitty theme,
 # converted from the Ghostty theme each palette used; tabs and split borders,
 # which Kitty draws itself, take the GTK colour block's roles.
-include themes/{{ $p._kitty_theme }}.conf
+include themes/{{ $p._slug }}.conf
 
 # Needed for a reload to change the opacity
 dynamic_background_opacity yes
-background_opacity {{ $p._blur_opacity }}
+background_opacity 0.9
 
 tab_bar_background      {{ $p.crust }}
 active_tab_background   {{ $p._accent }}
-active_tab_foreground   {{ $p.crust }}
+active_tab_foreground   {{ $p._on_accent }}
 inactive_tab_background {{ $p.mantle }}
 inactive_tab_foreground {{ $p.text }}
 active_border_color     {{ $p._accent }}
