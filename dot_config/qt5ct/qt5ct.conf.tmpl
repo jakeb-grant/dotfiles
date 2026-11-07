@@ -1,0 +1,14 @@
+# Qt5 apps (VLC) through qt5ct (QT_QPA_PLATFORMTHEME, set in hyprland.lua):
+# Fusion recoloured by colors/palette.conf, rendered from the palette, with
+# GTK's fonts and icons. qt5ct's own window writes this file; move a change
+# made there into this template, or the next chezmoi apply puts it back.
+[Appearance]
+color_scheme_path={{ .chezmoi.homeDir }}/.config/qt5ct/colors/palette.conf
+custom_palette=true
+icon_theme=Adwaita
+standard_dialogs=xdgdesktopportal
+style=Fusion
+
+[Fonts]
+fixed="JetBrainsMono Nerd Font,11,-1,5,50,0,0,0,0,0"
+general="Adwaita Sans,11,-1,5,50,0,0,0,0,0"

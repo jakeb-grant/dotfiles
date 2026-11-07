@@ -98,6 +98,7 @@ dot_config/
 ├── btop/               # System monitor theme
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
+├── qt5ct/              # Qt5 apps (VLC): Fusion, coloured from the palette
 ├── age/                # age recipients (public key) — ~/knowledge's git clean
 │                       #   filter encrypts personal/finance/** to this key
 │                       #   (decrypt side reads the private key from 1Password)

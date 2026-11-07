@@ -1,0 +1,20 @@
+{{- $p := include "dot_config/palette/active.json" | fromJson -}}
+{{- $dark := ne $p._variant "light" -}}
+{{- /* QPalette roles, in qt5ct's order: WindowText, Button, Light, Midlight,
+       Dark, Mid, Text, BrightText, ButtonText, Base, Window, Shadow, Highlight,
+       HighlightedText, Link, LinkVisited, AlternateBase, NoRole, ToolTipBase,
+       ToolTipText, PlaceholderText. Window and Base follow GTK's (crust), and
+       Fusion's bevels (Light..Mid) step away from them by variant. */ -}}
+{{- $light := ternary $p.surface2 $p.base $dark -}}
+{{- $midlight := ternary $p.surface1 $p.mantle $dark -}}
+{{- $mid := ternary $p.mantle $p.surface1 $dark -}}
+{{- $shadow := "#000000" -}}
+{{- define "qt5ct_argb" }}#ff{{ trimPrefix "#" . }}{{ end -}}
+{{- $roles := list $p.text $p.surface0 $light $midlight $p.crust $mid $p.text $p.base $p.text $p.crust $p.crust $shadow $p._accent $p._on_accent $p._accent $p.mauve $p.mantle $p.crust $p.surface0 $p.text $p.overlay1 -}}
+{{- $off := list $p.overlay0 $p.surface0 $light $midlight $p.crust $mid $p.overlay0 $p.base $p.overlay0 $p.crust $p.crust $shadow $p.surface1 $p.overlay0 $p.overlay0 $p.overlay0 $p.mantle $p.crust $p.surface0 $p.overlay0 $p.overlay0 -}}
+# Rendered from palette/active.json (chezmoi template) by
+# dot_config/qt5ct/colors/palette.conf.tmpl
+[ColorScheme]
+active_colors={{ range $i, $c := $roles }}{{ if $i }}, {{ end }}{{ template "qt5ct_argb" $c }}{{ end }}
+disabled_colors={{ range $i, $c := $off }}{{ if $i }}, {{ end }}{{ template "qt5ct_argb" $c }}{{ end }}
+inactive_colors={{ range $i, $c := $roles }}{{ if $i }}, {{ end }}{{ template "qt5ct_argb" $c }}{{ end }}

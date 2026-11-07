@@ -235,17 +235,18 @@ INODE_WATCHED_TARGETS = [
 
 def keep_unsynced_edits(target: str) -> None:
     """Zed writes settings.json itself (a setting changed in its UI, a migration).
-    Before the switch re-renders it, a live file that differs from the current
-    render holds such an edit: keep a copy as settings.json.bak and say so, so it
-    can be carried into the template rather than lost."""
+    Before the switch re-renders it, a live file that changed since chezmoi last
+    wrote it (`chezmoi status`'s first column) holds such an edit: keep a copy as
+    settings.json.bak and say so, so it can be carried into the template rather
+    than lost. A template edit alone doesn't count, as it would against a fresh render."""
     path = Path(target.replace("~", str(Path.home()), 1))
     try:
         result = subprocess.run(
-            ["chezmoi", "cat", target], capture_output=True, text=True, timeout=15
+            ["chezmoi", "status", target], capture_output=True, text=True, timeout=15
         )
     except (OSError, subprocess.TimeoutExpired):
         return
-    if result.returncode != 0 or not path.exists() or path.read_text() == result.stdout:
+    if result.returncode != 0 or not path.exists() or not result.stdout.startswith("M"):
         return
     backup = path.with_name(path.name + ".bak")
     shutil.copyfile(path, backup)
@@ -482,6 +483,7 @@ async def main() -> None:
         "~/.config/zed/settings.json",
         "~/.config/kitty",
         "~/.config/btop",
+        "~/.config/qt5ct/colors",
         "~/knowledge/.obsidian",
     ]
     proc = await asyncio.create_subprocess_exec(
