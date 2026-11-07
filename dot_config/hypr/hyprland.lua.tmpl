@@ -161,12 +161,14 @@ hl.bind("XF86AudioPrev",         hl.dsp.exec_cmd("strand toggle island.prev_key"
 -- ------------------------------------------------------------------------------
 hl.config({
   general = {
-    gaps_in     = 5,
-    gaps_out    = 10,
+    -- Tiles sit 2 * gaps_in apart; the top gap plus island.strand's gap_low
+    -- puts the island that far above the windows too
+    gaps_in     = 3,
+    gaps_out    = { top = 4, right = 10, bottom = 10, left = 10 },
     border_size = 2,
     col = {
-      active_border   = p.surface0_rgba(0.93),
-      inactive_border = p.surface1_rgba(0.5),
+      active_border   = p.accent_rgba(1.0),
+      inactive_border = p.surface1_rgba(0.8),
     },
     resize_on_border = false,
     allow_tearing    = false,

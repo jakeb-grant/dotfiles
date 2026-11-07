@@ -29,7 +29,7 @@ Zed's template substitutes the `_zed_theme_dark`/`_zed_theme_light`/`_variant` m
 
 Two targets are hot-reloaded by their apps via inotify watches on the file's *inode* — Zed `settings.json` and pane-fm `themes/palette.css`. chezmoi applies by atomic rename, which replaces the inode and kills such watches, so `theme-switch` renders these via `chezmoi cat` and syncs them in place *before* apply (apply then sees no diff and never touches them). The list lives in `INODE_WATCHED_TARGETS` in theme-switch.
 
-**Hyprland** uses a Lua-require pattern (`hl.config({...})` API, 0.55+). `theme-switch` generates `dot_config/hypr/palette.lua` — a Lua module exposing role helpers like `p.surface0_rgba(0.93)`. `dot_config/hypr/hyprland.lua.tmpl` does `local p = require("palette")`, so it carries no palette tokens itself; its `{{ }}` blocks are real Go template conditionals for machine-specific GPU config. `hyprlock` (the fallback locker) stays on hyprlang, themed like the other `.tmpl` configs; `hypridle` is a plain config with no templating.
+**Hyprland** uses a Lua-require pattern (`hl.config({...})` API, 0.55+). `theme-switch` generates `dot_config/hypr/palette.lua` — a Lua module exposing role helpers like `p.surface0_rgba(0.93)`, for the 26 roles plus the derived accent as `accent` (window borders use it). `dot_config/hypr/hyprland.lua.tmpl` does `local p = require("palette")`, so it carries no palette tokens itself; its `{{ }}` blocks are real Go template conditionals for machine-specific GPU config. `hyprlock` (the fallback locker) stays on hyprlang, themed like the other `.tmpl` configs; `hypridle` is a plain config with no templating.
 
 ### Palette Definitions (`dot_config/palette/`)
 

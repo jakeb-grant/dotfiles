@@ -2,6 +2,7 @@
 -- Source of truth: ~/.config/palette/active.json
 
 local hex = {
+  accent = "89b4fa",
   base = "1e1e2e",
   blue = "89b4fa",
   crust = "11111b",
