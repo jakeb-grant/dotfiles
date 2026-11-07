@@ -19,7 +19,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 - **File Manager**: Yazi (terminal, themed), pane-fm (GUI, themed)
 - **System Monitor**: btop
 - **Theme System**: Palette-based runtime theme switching across all apps
-- **GTK Theming**: libadwaita color overrides for GTK3/GTK4 apps
+- **GTK Theming**: libadwaita color names for GTK4 apps, and the same for GTK3 apps through the adw-gtk3 theme
 - **Login Manager**: greetd + tuigreet
 - **Boot Theming**: GRUB bootloader theme
 
@@ -66,6 +66,7 @@ These dotfiles are designed for [arch-quickstart](https://github.com/jakeb-grant
 On any other base system, the configs and scripts additionally assume:
 
 - `uv` — `theme-switch` runs via a `uv run --script` shebang
+- `adw-gtk-theme` — the GTK3 base theme (`adw-gtk3` / `adw-gtk3-dark`) that `theme-switch` sets and `gtk-3.0/gtk.css` recolours
 - `jq` and ImageMagick (`magick`) — `wallpaper-split`
 - `fnm` — sourced in `.bashrc` (guarded; skipped if absent)
 - `setfacl` (acl package) — the Chromium policy setup script

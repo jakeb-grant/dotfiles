@@ -382,6 +382,15 @@ async def reload_btop() -> None:
 
 
 async def set_gtk_theme(palette_data: dict) -> None:
+    # GTK3 ignores color-scheme; adw-gtk3 is its light/dark base, recoloured
+    # by gtk-3.0/gtk.css's @define-color block
+    gtk3_theme = "adw-gtk3" if palette_data.get("_variant") == "light" else "adw-gtk3-dark"
+    await run_async([
+        "gsettings", "set", "org.gnome.desktop.interface",
+        "gtk-theme", gtk3_theme
+    ])
+    print(f"    GTK3 theme: {gtk3_theme}")
+
     scheme = palette_data.get("_gtk_color_scheme")
     if not scheme:
         return

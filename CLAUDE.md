@@ -24,6 +24,7 @@ Templated this way: gtk-3.0, gtk-4.0, zed `settings.json`, yazi, hyprlock, obsid
 Some apps have their config direct-written by `theme-switch` rather than fully templated — precise updates to specific keys, not full-file substitution:
 - **Ghostty**: `_ghostty_theme` → writes `theme = ...` and `background-opacity = ...` to config
 - **Chromium/Chrome**: `_chromium_seed_color` + `_variant` → writes a managed policy JSON under `/etc/chromium/policies/managed/` (and the Chrome equivalent).
+- **GTK**: `_variant` → gsettings `gtk-theme` (`adw-gtk3` or `adw-gtk3-dark`), `_gtk_color_scheme` → `color-scheme`. GTK3's built-in Adwaita ignores the libadwaita `@define-color` names; adw-gtk3 reads them, so `gtk-3.0/gtk.css.tmpl` and `gtk-4.0/gtk.css.tmpl` carry the same colour block (accent = `_accent`, shades libadwaita's own by `_variant`). gtk-4.0 adds one `:root` line because adw-gtk3's GTK4 tweaks pin plain GTK4 apps to GNOME blue. Restyle through those names, not per-widget selectors.
 
 Zed's template substitutes the `_zed_theme_dark`/`_zed_theme_light`/`_variant` meta keys into `settings.json`, with per-palette Zed theme JSON in `dot_config/zed/themes/` (Zed themes stay hand-made — per-role alpha nuance earns it).
 
