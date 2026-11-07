@@ -12,7 +12,7 @@ Palette JSON          theme-switch              Chezmoi Template            Fina
                      (Strand instant)          [Go: {{ }}] chezmoi apply
 ```
 
-`theme-switch <name>` copies the palette to `active.json` (plus derived keys: `_slug`, the theme's file name; `_accent` and its HSL as `_accent_h/_s/_l`; `_on_accent`, whichever of crust, base and text reads best on it), then runs `chezmoi apply` on the themed targets. With no name it re-applies the theme in use. Themed configs are chezmoi templates that read the palette at apply time — the `.tmpl` starts with `{{- $p := include "dot_config/palette/active.json" | fromJson -}}` and uses `{{ $p.<role> }}` plus color helpers from `.chezmoitemplates/`:
+`theme-switch <name>` copies the palette to `active.json` (plus derived keys: `_slug`, the theme's file name; `_accent`, the palette's own or else `blue`, and its HSL as `_accent_h/_s/_l`; `_on_accent`, whichever of crust, base and text reads best on it), then runs `chezmoi apply` on the themed targets. With no name it re-applies the theme in use. Themed configs are chezmoi templates that read the palette at apply time — the `.tmpl` starts with `{{- $p := include "dot_config/palette/active.json" | fromJson -}}` and uses `{{ $p.<role> }}` plus color helpers from `.chezmoitemplates/`:
 
 - `{{ template "hypr_rgb" $p.base }}` → `rgb(1e1e2e)` (hyprlang)
 - `{{ template "hypr_rgba" (list $p.base 0.8) }}` → `rgba(1e1e2ecb)` (hyprlang)
@@ -27,15 +27,15 @@ Some apps have their config direct-written by `theme-switch` rather than fully t
 
 Zed's template substitutes the `_zed_theme`/`_variant` meta keys into `settings.json`, with per-palette Zed theme JSON in `dot_config/zed/themes/` (Zed themes stay hand-made — per-role alpha nuance earns it), and a `theme_overrides` block puts `_accent` on its accent, focus border and cursor.
 
-Zed hot-reloads `settings.json` via an inotify watch on the file's *inode*. chezmoi applies by atomic rename, which replaces the inode and kills such watches, so `theme-switch` renders it via `chezmoi cat` and syncs it in place *before* apply (apply then sees no diff and never touches it). The list lives in `INODE_WATCHED_TARGETS` in theme-switch. Zed also writes its settings itself: a live file that differs from the current render is first copied to `settings.json.bak`, with a notification, so the change can be moved into the template.
+Zed hot-reloads `settings.json` via an inotify watch on the file's *inode*. chezmoi applies by atomic rename, which replaces the inode and kills such watches, so `theme-switch` renders it via `chezmoi cat` and syncs it in place *before* apply (apply then sees no diff and never touches it). The list lives in `INODE_WATCHED_TARGETS` in theme-switch. Zed also writes its settings itself: a live file changed since chezmoi last wrote it (`chezmoi status`) is first copied to `settings.json.bak`, with a notification, so the change can be moved into the template.
 
 **Hyprland** uses a Lua-require pattern (`hl.config({...})` API, 0.55+). `dot_config/hypr/palette.lua.tmpl` renders a Lua module exposing role helpers like `p.surface0_rgba(0.93)`, for the 26 roles plus the derived accent as `accent` (window borders use it) and `p.dark`. `dot_config/hypr/hyprland.lua.tmpl` does `local p = require("palette")`, so it carries no palette tokens itself; its `{{ }}` blocks are real Go template conditionals for machine-specific GPU config. `hyprlock` (the fallback locker) stays on hyprlang, themed like the other `.tmpl` configs; `hypridle` is a plain config with no templating.
 
 ### Palette Definitions (`dot_config/palette/`)
 
 Catppuccin-style JSON files with named color roles:
-- `everforest.json`, `catppuccin-mocha.json`, `rose-pine.json`, etc.
-- `active.json` — copy of current theme written by theme-switch (watched by Strand for live updates; committed so fresh clones apply cleanly). Also carries derived `_accent*` keys — palette files themselves don't define them.
+- `everforest.json`, `catppuccin-mocha.json`, `rose-pine.json`, etc.: the 26 roles, plus meta keys `_name`, `_variant` (`dark` or `light`), `_accent` and `_zed_theme`
+- `active.json` — copy of current theme written by theme-switch (watched by Strand for live updates; committed so fresh clones apply cleanly). Also carries the derived keys above. Palette files give their accent as `_accent`; the rest is derived.
 
 ### Chezmoi Templates
 
@@ -64,7 +64,7 @@ Strand (https://strand.jacobgrant.dev) provides the island bar, launcher, notifi
 
 Locking is Strand's (`lock.strand`): everything locks through `loginctl lock-session`, and Strand answers logind's request. hypridle starts hyprlock only while no `strand` process is running. Recovering from a lock screen that died is in `dot_config/hypr/README.md`.
 
-Quickshell (`dot_config/quickshell/`) has not been started since the switch on 2026-11-04. Its config, the `_quickshell` palette keys and `toggle-bar-mode` stay as a rollback (it opens terminal apps in Ghostty, so Ghostty stays installed with it) until about 2026-11-11, then go. Before dropping `_quickshell`, move its `accent`: theme-switch derives `_accent` from it (and validates it, and lists it in `--list`), and the Strand launcher's theme preview reads it, all falling back to `blue` when it's missing. theme-switch's `barMode` carry-over (it keeps `_quickshell.barMode` in active.json for toggle-bar-mode) goes with it. So does `dot_local/share/applications/com.mitchellh.ghostty.desktop` (it hides Ghostty from the launcher), and the Quickshell-era docs (the closed reviews and backlogs, the 0.55 migration notes, the strand-shell catalogues and strand-offers) move to `docs/archive/`, with `docs/strand-shell/features.md`'s links repointed; docs/archive is history, not current state.
+Quickshell, the shell before Strand, was retired on 2026-11-07 with Ghostty and pane-fm. `docs/archive/` holds the docs of that time: history, not current state.
 
 ## Machine-Specific Config
 

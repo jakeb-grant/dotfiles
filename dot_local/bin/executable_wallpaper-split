@@ -7,7 +7,7 @@ WALLPAPER_DIR="$HOME/.config/wallpapers"
 CONFIG="$WALLPAPER_DIR/wallpapers.json"
 
 # Chezmoi source copies — slices and registrations are written to both the
-# live dir and the source, like theme-switch/toggle-bar-mode, so a plain
+# live dir and the source, like theme-switch's active.json, so a plain
 # `chezmoi apply` never reverts them and new sets are tracked in the repo.
 SOURCE_ROOT=$(chezmoi source-path 2>/dev/null) || SOURCE_ROOT="$HOME/.local/share/chezmoi"
 SOURCE_WALLPAPER_DIR="$SOURCE_ROOT/dot_config/wallpapers"

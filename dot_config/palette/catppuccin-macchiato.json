@@ -1,6 +1,7 @@
 {
   "_name": "Catppuccin Macchiato",
   "_variant": "dark",
+  "_accent": "#8aadf4",
   "_zed_theme": "Catppuccin Macchiato",
 
   "crust": "#181926",
@@ -29,15 +30,5 @@
   "sky": "#91d7e3",
   "sapphire": "#7dc4e4",
   "blue": "#8aadf4",
-  "lavender": "#b7bdf8",
-
-  "_quickshell": {
-    "accent": "#8aadf4",
-    "disabledText": "#6e738d",
-    "subtleText": "#8087a2",
-    "separator": "#494d64",
-    "pillBg": "#24273a",
-    "hoverBg": "#494d64",
-    "barMode": "side"
-  }
+  "lavender": "#b7bdf8"
 }

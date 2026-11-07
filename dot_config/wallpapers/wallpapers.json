@@ -1,7 +1,7 @@
 {
-  "defaults": {
-    "*": "lavender3.png"
-  },
+  "defaults": [
+    { "palettes": ["*"], "file": "lavender3.png" }
+  ],
   "wallpapers": [
     {
       "file": "astronaut3.png",

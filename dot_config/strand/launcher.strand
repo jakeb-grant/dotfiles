@@ -31,14 +31,17 @@ action put_theme(slug: text) ["theme-switch", slug]
 
 // wallpapers: those wallpapers.json gives the theme in use (every one, for a theme
 // it doesn't know), drawn by awww. A set puts its images on the monitors left to
-// right, round again when there are more monitors, as Quickshell did.
+// right, round again when there are more monitors. `defaults` names the one a
+// theme switch picks (a wallpaper's file or a set's name) for the palettes listed.
 type Wall { file: text?; name: text?; images: [text]; palettes: [text] }
-service walls from file "~/.config/wallpapers/wallpapers.json" { wallpapers: [Wall]; sets: [Wall] }
-// It fails (`wall.error`) when awww does, for any monitor; `.current` is for the
-// Quickshell rollback, and goes with it.
-action wall(name: text, files: text, outputs: text) ["sh", "-c",
-  "d=\"$HOME/.config/wallpapers\"; name=$1; outputs=$3; set -- $2; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t || exit 1; else for m in $outputs; do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; for p in $(jobs -p); do wait $p || exit 1; done; fi; printf %s \"$name\" > \"$d/.current\"",
-  "sh", name, files, outputs]
+type WallDefault { palettes: [text]; file: text }
+service walls from file "~/.config/wallpapers/wallpapers.json" {
+  wallpapers: [Wall]; sets: [Wall]; defaults: [WallDefault]
+}
+// It fails (`wall.error`) when awww does, for any monitor.
+action wall(files: text, outputs: text) ["sh", "-c",
+  "d=\"$HOME/.config/wallpapers\"; outputs=$2; set -- $1; t='--transition-type center --transition-duration 1 --transition-fps 60'; if [ $# -eq 1 ]; then awww img \"$d/$1\" $t || exit 1; else for m in $outputs; do f=$1; shift; set -- \"$@\" \"$f\"; awww img \"$d/$f\" --outputs \"$m\" $t & done; for p in $(jobs -p); do wait $p || exit 1; done; fi",
+  "sh", files, outputs]
 // a mounted drive opened in Yazi, in the terminal
 action browse(dir: path) ["kitty", "-1", "yazi", dir]
 
@@ -59,11 +62,6 @@ service keybinds from poll ["sh", "-c", "hyprctl binds -j | jq -c \"$1\"", "sh",
   groups: [KeyGroup]
   all: [KeyLine]
 }
-// the wallpaper wallpapers.json's `defaults` names for a theme: its own, else a
-// `prefix*` one it matches, else `*`
-action wall_default(slug: text) -> text? ["sh", "-c",
-  "jq -r --arg s \"$1\" '(.defaults // {}) as $d | $d[$s] // ([$d | to_entries[] | select(.key != \"*\" and (.key | endswith(\"*\"))) | select(.key[:-1] as $p | $s | startswith($p)) | .value] | first) // $d[\"*\"] // empty' \"$HOME/.config/wallpapers/wallpapers.json\"",
-  "sh", slug]
 
 export state open = false
 export state apps_key = false
@@ -260,7 +258,7 @@ let peek_theme: Theme? = open && view == theme_list && !is_sum ? found_themes.sk
 export let peek: Theme? = switching != "" ? palettes.all.find(t => t.slug == switching) : peek_theme
 // the wallpaper that theme would bring: the one up now if it suits it, else its own
 let peek_slug = peek_theme?.slug ?? ""
-let peek_default = wall_default(peek_slug) ?? ""
+let peek_default = wall_default(peek_slug)
 let peek_walls = walls.wallpapers.filter(w => suits_for(w.palettes, peek_slug))
 let peek_sets = walls.sets.filter(w => suits_for(w.palettes, peek_slug))
 let up_now = showing.split("\n").filter(l => l.contains("image: ")).map(l => l.slice((l.index_of("image: ") ?? 0) + 7))
@@ -322,12 +320,12 @@ on change theme_slug {
   let now = theme_slug != "" ? await on_screen(wall_tick) : ""
   let fits = suit_walls.any(w => shows(w, now)) || suit_sets.any(w => shows(w, now))
   if theme_slug != "" && !fits {
-    let named = await wall_default(theme_slug)
+    let named = wall_default(theme_slug)
     let w = suit_walls.find(x => x.file == named) ?? suit_sets.find(x => x.name == named)
       ?? suit_walls.first ?? suit_sets.first ?? Wall()
     if w.file != null || w.name != null {
       applying = wall_name(w)
-      wall(w.file ?? w.name ?? "", w.file ?? w.images.join(" "), monitor_names)
+      wall(w.file ?? w.images.join(" "), monitor_names)
     }
   }
 }
@@ -1521,6 +1519,13 @@ fn when_of(n: Notification) -> text {
 // a wallpaper suits the theme in use when wallpapers.json lists it, or `*`, or
 // a `prefix*` it starts with
 fn suits(palettes: [text]) -> bool { suits_for(palettes, theme_slug) }
+// the wallpaper wallpapers.json's `defaults` names for a theme: one listing it by
+// name, else by a `prefix*` it matches, else by `*`
+fn wall_default(slug: text) -> text {
+  (walls.defaults.find(d => d.palettes.any(p => p == slug))
+    ?? walls.defaults.find(d => d.palettes.any(p => p != "*" && suits_for([p], slug)))
+    ?? walls.defaults.find(d => d.palettes.any(p => p == "*")))?.file ?? ""
+}
 fn suits_for(palettes: [text], slug: text) -> bool {
   slug == "" || palettes.any(p => p == "*" || p == slug
     || (p.ends_with("*") && slug.starts_with(p.slice(0, -1))))
@@ -1575,7 +1580,7 @@ component WallRow(m: Match<Wall>) {
       if !on {
         problem = ""
         applying = wall_name(w)
-        wall(w.file ?? w.name ?? "", images.join(" "), monitor_names)
+        wall(images.join(" "), monitor_names)
       }
     }
     image "~/.config/wallpapers/" + (images.first ?? "") { width: 40; height: 24; radius: 4; fit: cover; clip: true }

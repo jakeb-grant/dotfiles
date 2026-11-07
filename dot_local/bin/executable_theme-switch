@@ -116,9 +116,9 @@ def load_palette(theme_name: str) -> dict:
 
 
 def accent_of(p: dict) -> str:
-    """The palette's accent: `_quickshell.accent`, else `blue`. The one place it
-    is derived; everything else reads `_accent` from active.json or `--list`."""
-    return (p.get("_quickshell") or {}).get("accent") or p.get("blue", "")
+    """The palette's accent: its `_accent`, else `blue`. The one place it is
+    derived; everything else reads `_accent` from active.json or `--list`."""
+    return p.get("_accent") or p.get("blue", "")
 
 
 # What the Strand launcher's Themes page reads of each palette (`--list --json`)
@@ -130,10 +130,9 @@ LIST_ROLES = [
 
 
 def list_themes(as_json: bool = False) -> None:
-    """One `file|name|swatch...` line per palette (the Quickshell rollback's
-    themes menu), or with `as_json` `{"all": [...]}` with each palette's roles,
-    accent and variant (the Strand launcher). Swatch order: base, accent, red,
-    green, yellow, mauve."""
+    """One `slug  name` line per palette, or with `as_json` `{"all": [...]}` with
+    each palette's roles, accent and variant (the Strand launcher's Themes page).
+    Swatch order: base, accent, red, green, yellow, mauve."""
     themes = []
     for palette_file in sorted(PALETTE_DIR.glob("*.json")):
         if palette_file.name == "active.json":
@@ -148,11 +147,11 @@ def list_themes(as_json: bool = False) -> None:
                 p.get("green", ""), p.get("yellow", ""), p.get("mauve", ""),
             ]
         except Exception:
-            # A malformed palette should drop itself from the menu, not the
+            # A malformed palette should drop itself from the list, not the
             # files sorted after it.
             continue
         if not as_json:
-            print(f"{palette_file.name}|{name}|{'|'.join(swatches)}")
+            print(f"{palette_file.stem:24}{name}")
             continue
         theme = {role: p[role] for role in LIST_ROLES if role in p}
         theme.update(
@@ -198,9 +197,9 @@ def validate_palette(theme_name: str, palette_data: dict) -> None:
 
     # The accent is parsed by hex_to_hsl before the active.json writes —
     # validate it here so a typo gets the notify+exit path, not a traceback.
-    accent = (palette_data.get("_quickshell") or {}).get("accent", "")
+    accent = palette_data.get("_accent", "")
     if accent and (not isinstance(accent, str) or not HEX_RE.match(accent)):
-        errors.append(f"bad hex for _quickshell.accent: {accent!r}")
+        errors.append(f"bad hex for _accent: {accent!r}")
 
     if palette_data.get("_variant") not in ("dark", "light"):
         errors.append(f"_variant must be dark or light, not {palette_data.get('_variant')!r}")
@@ -436,20 +435,7 @@ async def main() -> None:
         keep_unsynced_edits(target)
 
     # 2. Copy palette → active.json (both chezmoi source and live config)
-    #    Preserve barMode from current active.json so toggling survives theme
-    #    switches (toggle-bar-mode, Quickshell only: delete with it)
     print("==> Updating active palette...")
-    active_bar_mode = None
-    if live_palette.exists():
-        try:
-            with open(live_palette) as f:
-                active_data = json.load(f)
-            active_bar_mode = active_data.get("_quickshell", {}).get("barMode")
-        except (json.JSONDecodeError, OSError):
-            pass
-
-    if active_bar_mode:
-        palette_data.setdefault("_quickshell", {})["barMode"] = active_bar_mode
 
     # Derived keys, before the active.json writes — chezmoi templates read them
     # straight from active.json: the theme's slug, the accent with its HSL

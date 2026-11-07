@@ -16,7 +16,7 @@
 The sections below are the scoping draft of 2026-10-31, written while Quickshell was still the
 shell. The switch came on 2026-11-04 (`21cc7a8`), so they are now the record of how the choices were
 made, with rows noting where a feature landed; the list above is what's current. IDs refer to
-`catalogue-quickshell.md`. Strand facts come from `strand-offers.md`, which was written from reading
+`../archive/catalogue-quickshell.md`. Strand facts come from `../archive/strand-offers.md`, which was written from reading
 the code and docs, so anything marked "to try" there was not run.
 
 ## 1. What you have today

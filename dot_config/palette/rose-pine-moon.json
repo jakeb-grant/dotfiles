@@ -1,6 +1,7 @@
 {
   "_name": "Rosé Pine Moon",
   "_variant": "dark",
+  "_accent": "#c4a7e7",
   "_zed_theme": "Rosé Pine Moon",
 
   "crust": "#232136",
@@ -29,15 +30,5 @@
   "sky": "#9ccfd8",
   "sapphire": "#3e8fb0",
   "blue": "#3e8fb0",
-  "lavender": "#c4a7e7",
-
-  "_quickshell": {
-    "accent": "#c4a7e7",
-    "disabledText": "#6e6a86",
-    "subtleText": "#908caa",
-    "separator": "#44415a",
-    "pillBg": "#232136",
-    "hoverBg": "#44415a",
-    "barMode": "side"
-  }
+  "lavender": "#c4a7e7"
 }

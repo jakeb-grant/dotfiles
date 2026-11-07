@@ -5,9 +5,6 @@ LICENSE
 docs/
 screenshots/
 
-# Runtime state (not managed by chezmoi)
-.config/wallpapers/.current
-
 
 # Python bytecode — never deploy (theme-switch tooling can create these in source)
 **/__pycache__

@@ -1,6 +1,7 @@
 {
   "_name": "Catppuccin Frappé",
   "_variant": "dark",
+  "_accent": "#8caaee",
   "_zed_theme": "Catppuccin Frappé",
 
   "crust": "#232634",
@@ -29,15 +30,5 @@
   "sky": "#99d1db",
   "sapphire": "#85c1dc",
   "blue": "#8caaee",
-  "lavender": "#babbf1",
-
-  "_quickshell": {
-    "accent": "#8caaee",
-    "disabledText": "#737994",
-    "subtleText": "#838ba7",
-    "separator": "#51576d",
-    "pillBg": "#303446",
-    "hoverBg": "#51576d",
-    "barMode": "side"
-  }
+  "lavender": "#babbf1"
 }

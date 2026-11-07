@@ -1,6 +1,7 @@
 {
   "_name": "Catppuccin Latte",
   "_variant": "light",
+  "_accent": "#209fb5",
   "_zed_theme": "Catppuccin Latte",
 
   "crust": "#dce0e8",
@@ -29,16 +30,5 @@
   "sky": "#04a5e5",
   "sapphire": "#209fb5",
   "blue": "#1e66f5",
-  "lavender": "#7287fd",
-
-  "_quickshell": {
-    "accent": "#209fb5",
-    "disabledText": "#7c7f93",
-    "subtleText": "#6c6f85",
-    "separator": "#acb0be",
-    "pillBg": "#dce0e8",
-    "hoverBg": "#ccd0da",
-    "islandShadowColor": "#9ca0b0",
-    "barMode": "side"
-  }
+  "lavender": "#7287fd"
 }

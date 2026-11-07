@@ -1,6 +1,7 @@
 {
   "_name": "Everforest Light",
   "_variant": "light",
+  "_accent": "#8DA101",
   "_zed_theme": "Everforest Light",
 
   "crust": "#EFEBD4",
@@ -29,16 +30,5 @@
   "sky": "#3A94C5",
   "sapphire": "#3A94C5",
   "blue": "#3A94C5",
-  "lavender": "#DF69BA",
-
-  "_quickshell": {
-    "accent": "#8DA101",
-    "disabledText": "#A6B0A0",
-    "subtleText": "#939F91",
-    "separator": "#E0DCC7",
-    "pillBg": "#EFEBD4",
-    "hoverBg": "#E6E2CC",
-    "islandShadowColor": "#A6B0A0",
-    "barMode": "side"
-  }
+  "lavender": "#DF69BA"
 }

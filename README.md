@@ -6,7 +6,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 
 ## Preview
 
-These predate the move to Strand and Kitty (they show the old Quickshell bar).
+These predate the move to Strand and Kitty (they show the shell before it).
 
 | Everforest | Catppuccin Mocha |
 |:---:|:---:|
@@ -90,7 +90,6 @@ dot_config/
 │   ├── lock.strand         # Lock screen (answers loginctl lock-session)
 │   ├── notify.strand       # Notification server
 │   └── record.strand       # Screen recording (wf-recorder)
-├── quickshell/         # Previous shell, not started; kept as a rollback until ~2026-11-11
 ├── kitty/              # Terminal emulator + a colour theme per palette; launch-actions
 │                       #   opens folders handed to it (the system folder handler) in Yazi
 ├── zed/                # Zed editor settings + hand-crafted themes
@@ -112,14 +111,12 @@ knowledge/
     ├── appearance.json     # Selects "Palette" theme
     └── themes/Palette/     # Theme CSS template + manifest
 dot_local/share/applications/
-├── win-vm.desktop      # "Windows VM" in the launcher
-└── com.mitchellh.ghostty.desktop  # Hides Ghostty from the launcher (goes with Quickshell)
+└── win-vm.desktop      # "Windows VM" in the launcher
 dot_local/bin/
 ├── ipu7-camera-check   # Check the IPU7 camera relay end to end
 ├── screenshot          # Capture (region/full) + clipboard + notification
 ├── term                # Kitty's single instance; Strand's launcher runs terminal apps through it
 ├── theme-switch        # Theme switching utility
-├── toggle-bar-mode     # Quickshell's sidebar/topbar switch (goes with Quickshell)
 ├── wallpaper-split     # Split wide/panoramic images into per-monitor sets
 ├── wallpaper-upscale   # AI upscale images using EDSR 4x (CPU)
 └── win-vm              # Windows VM management
@@ -234,16 +231,19 @@ Wallpapers live in a flat directory (`~/.config/wallpapers/`) with a `wallpapers
       "palettes": ["catppuccin*"]
     }
   ],
-  "defaults": { "everforest*": "forest.jpg", "*": "sunset.jpg" }
+  "defaults": [
+    { "palettes": ["everforest*"], "file": "forest.jpg" },
+    { "palettes": ["*"], "file": "sunset.jpg" }
+  ]
 }
 ```
 
 - **Singles** apply one image across all monitors
 - **Sets** assign images to monitors left-to-right, cycling with modulo if there are fewer images than monitors
 - **Palettes** supports exact names (`catppuccin-mocha`), globs (`catppuccin*`), or `*` for all themes
-- **Defaults** name the wallpaper a theme falls back to, keyed by an exact name, a trailing glob (`everforest*`) or `*`
+- **Defaults** name the wallpaper (its file, or a set's name) a theme switch falls back to: one listing the theme by exact name wins, then a trailing glob (`everforest*`), then `*`
 - The launcher's Wallpapers page lists those suited to the theme in use and puts one up with awww; after a theme switch it keeps the wallpaper if it suits the new theme, else puts up the theme's default
-- Strand reads `wallpapers.json` live; `awww-daemon` restores the last images at login, and the launcher writes the current one's name to `~/.config/wallpapers/.current`
+- Strand reads `wallpapers.json` live; `awww-daemon` restores the last images at login
 
 ### Wallpaper Tools
 

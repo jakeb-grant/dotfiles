@@ -1,6 +1,7 @@
 {
   "_name": "Nord",
   "_variant": "dark",
+  "_accent": "#88c0d0",
   "_zed_theme": "Nord",
 
   "crust": "#2e3440",
@@ -29,15 +30,5 @@
   "sky": "#88c0d0",
   "sapphire": "#81a1c1",
   "blue": "#5e81ac",
-  "lavender": "#81a1c1",
-
-  "_quickshell": {
-    "accent": "#88c0d0",
-    "disabledText": "#78849a",
-    "subtleText": "#8d96a8",
-    "separator": "#59657a",
-    "pillBg": "#2e3440",
-    "hoverBg": "#4c566a",
-    "barMode": "side"
-  }
+  "lavender": "#81a1c1"
 }

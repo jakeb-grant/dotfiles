@@ -1,6 +1,7 @@
 {
   "_name": "Everforest",
   "_variant": "dark",
+  "_accent": "#A7C080",
   "_zed_theme": "Everforest",
 
   "crust": "#232A2E",
@@ -29,15 +30,5 @@
   "sky": "#7FBBB3",
   "sapphire": "#7FBBB3",
   "blue": "#7FBBB3",
-  "lavender": "#D699B6",
-
-  "_quickshell": {
-    "accent": "#A7C080",
-    "disabledText": "#7A8478",
-    "subtleText": "#859289",
-    "separator": "#475258",
-    "pillBg": "#232A2E",
-    "hoverBg": "#475258",
-    "barMode": "side"
-  }
+  "lavender": "#D699B6"
 }

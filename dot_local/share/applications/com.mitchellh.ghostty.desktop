@@ -1,7 +1,0 @@
-# Hides Ghostty from the launcher while it stays installed for the Quickshell
-# rollback (which runs the binary directly). Delete with the rollback (~2026-11-11).
-[Desktop Entry]
-Type=Application
-Name=Ghostty
-Exec=ghostty
-NoDisplay=true

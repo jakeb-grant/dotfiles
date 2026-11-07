@@ -1,6 +1,7 @@
 {
   "_name": "Rosé Pine Dawn",
   "_variant": "light",
+  "_accent": "#907aa9",
   "_zed_theme": "Rosé Pine Dawn",
 
   "crust": "#f2e9e1",
@@ -29,16 +30,5 @@
   "sky": "#56949f",
   "sapphire": "#286983",
   "blue": "#286983",
-  "lavender": "#907aa9",
-
-  "_quickshell": {
-    "accent": "#907aa9",
-    "disabledText": "#9893a5",
-    "subtleText": "#797593",
-    "separator": "#cecacd",
-    "pillBg": "#f2e9e1",
-    "hoverBg": "#dfdad9",
-    "islandShadowColor": "#9893a5",
-    "barMode": "side"
-  }
+  "lavender": "#907aa9"
 }
