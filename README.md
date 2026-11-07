@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, GTK, Ghostty, Zed, Obsidian, Quickshell — so switching from Everforest to Catppuccin is a single command with live animated transitions.
+Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven theme system wires one JSON into every app — Hyprland, Strand, GTK, Ghostty, Zed, Obsidian — so switching from Everforest to Catppuccin is a single command with live animated transitions.
 
 ## Preview
 
@@ -13,7 +13,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 ## Features
 
 - **Window Manager**: Hyprland
-- **Desktop Shell**: Quickshell (bar, launcher, notifications, lock screen, wallpaper picker — uses hyprlock's PAM config for authentication; hyprlock configured as fallback)
+- **Desktop Shell**: [Strand](https://strand.jacobgrant.dev) (island bar, launcher, notifications, lock screen, polkit password prompt, wallpaper picker, screen recording; hyprlock is the fallback locker)
 - **Terminal**: Ghostty
 - **Editor**: Zed with hand-crafted themes per palette
 - **File Manager**: Yazi (terminal, themed), pane-fm (GUI, themed)
@@ -82,20 +82,18 @@ Install notes:
 ```
 dot_config/
 ├── hypr/               # Hyprland window manager + hypridle + hyprlock (fallback)
-├── quickshell/         # Desktop shell
-│   └── modules/
-│       ├── bar/            # Status bar (sidebar + topbar modes)
-│       ├── drawers/        # Slide-out panels
-│       ├── launcher/       # App launcher
-│       ├── lockscreen/     # Lock screen (uses hyprlock PAM)
-│       ├── notifications/  # Notification center
-│       └── wallpaper/      # Wallpaper picker
+├── strand/             # Desktop shell (Strand)
+│   ├── island.strand       # The island: workspaces, status, clock, OSD, polkit prompt
+│   ├── launcher.strand     # Launcher: apps, Wi-Fi, Bluetooth, sound, themes, wallpapers, power…
+│   ├── lock.strand         # Lock screen (answers loginctl lock-session)
+│   ├── notify.strand       # Notification server
+│   └── record.strand       # Screen recording (wf-recorder)
+├── quickshell/         # Previous shell, not started; kept as a rollback until ~2026-11-11
 ├── ghostty/            # Terminal emulator
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
 ├── pane-fm/            # pane-fm file manager config + themes
 ├── btop/               # System monitor theme
-├── phylax/             # Desktop widget styling
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
 ├── grub/               # GRUB bootloader theme
@@ -111,14 +109,15 @@ knowledge/
     ├── appearance.json     # Selects "Palette" theme
     └── themes/Palette/     # Theme CSS template + manifest
 dot_local/bin/
+├── ipu7-camera-check   # Check the IPU7 camera relay end to end
 ├── screenshot          # Capture (region/full) + clipboard + notification
 ├── theme-switch        # Theme switching utility
-├── toggle-bar-mode     # Switch between sidebar and topbar layouts
+├── toggle-bar-mode     # Quickshell's sidebar/topbar switch (goes with Quickshell)
 ├── wallpaper-split     # Split wide/panoramic images into per-monitor sets
 ├── wallpaper-upscale   # AI upscale images using EDSR 4x (CPU)
 └── win-vm              # Windows VM management
 dot_bashrc              # Shell config (PATH, Zed as $EDITOR, fnm)
-dot_claude/             # Claude Code config (writing skill)
+dot_claude/             # Claude Code config (writing skills)
 ```
 
 ## Theme System
@@ -131,7 +130,7 @@ Palette JSON              active.json                     Chezmoi Template      
 (everforest.json) --->   written by theme-switch --->   (style.css.tmpl reads  ---> (style.css)
                                                           active.json) chezmoi apply
 ```
-Used by: GTK3/4, Phylax, Yazi, Zed settings, Obsidian, hyprlock, btop, pane-fm. btop and pane-fm each get a single generated theme (`palette.theme` / `palette.css`) that always matches the active palette — their configs point at it statically.
+Used by: GTK3/4, Yazi, Zed settings, Obsidian, hyprlock, btop, pane-fm. btop and pane-fm each get a single generated theme (`palette.theme` / `palette.css`) that always matches the active palette — their configs point at it statically.
 
 **Direct-write apps** (built-in theme selection or generated config):
 ```
@@ -147,14 +146,14 @@ Palette JSON              theme-switch                    palette.lua           
 ```
 `hyprland.lua` requires `palette.lua` and reads role-helpers like `p.surface0_rgba(0.93)`. Lets `hyprctl reload` pick up new colors without re-rendering a chezmoi template.
 
-**Quickshell** watches `active.json` directly for live animated transitions — no restart needed.
+**Strand** reads `active.json` through a `from file` service and springs to the new colours — no restart needed.
 
 ### How It Works
 
 1. **Palette files** (`dot_config/palette/*.json`) define color roles using Catppuccin-style naming
 2. **`theme-switch`** writes `active.json` (palette + derived `_accent*` keys), generates `palette.lua`, updates direct-write apps
-3. **`chezmoi apply`** renders themed `.tmpl` configs from `active.json` and machine-specific variables (GPU config, hostname)
-4. **Quickshell** detects `active.json` change and animates to new colors instantly
+3. **`chezmoi apply`** renders themed `.tmpl` configs from `active.json` and machine-specific variables (GPU config)
+4. **Strand** sees the `active.json` change and animates to the new colours instantly
 
 ### Available Palettes
 
@@ -226,15 +225,17 @@ Wallpapers live in a flat directory (`~/.config/wallpapers/`) with a `wallpapers
       "images": ["cyberpunk-1.png", "cyberpunk-2.png", "cyberpunk-3.png"],
       "palettes": ["catppuccin*"]
     }
-  ]
+  ],
+  "defaults": { "everforest*": "forest.jpg", "*": "sunset.jpg" }
 }
 ```
 
 - **Singles** apply one image across all monitors
 - **Sets** assign images to monitors left-to-right, cycling with modulo if there are fewer images than monitors
 - **Palettes** supports exact names (`catppuccin-mocha`), globs (`catppuccin*`), or `*` for all themes
-- The current wallpaper persists across reboots via `~/.config/wallpapers/.current`
-- Quickshell watches `wallpapers.json` for live updates via `FileView`
+- **Defaults** name the wallpaper a theme falls back to, keyed by an exact name, a trailing glob (`everforest*`) or `*`
+- The launcher's Wallpapers page lists those suited to the theme in use and puts one up with awww; after a theme switch it keeps the wallpaper if it suits the new theme, else puts up the theme's default
+- Strand reads `wallpapers.json` live; `awww-daemon` restores the last images at login, and the launcher writes the current one's name to `~/.config/wallpapers/.current`
 
 ### Wallpaper Tools
 

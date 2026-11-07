@@ -13,11 +13,11 @@
 - Notifications (`strand/notify.strand`): Strand is the notification server. A notification is the island growing down into a card of its width (640) on the focused monitor: the sender's icon (a bell when it has none), the summary and one line of the body, in IBM Plex Sans. A new one takes the place of the one showing, so they never stack. Each goes after 5 s (the sender's time when shorter), an urgent one (a red edge) after 10 s, held while the pointer is on it, then the card settles back into the island. A click opens it, a right click clears it. It waits while the launcher is open. Until a notification is opened or cleared, the island shows a bell with a dot; a click on it opens the Notifications page, as do Alt+I and `launcher.notes_key`. `strand toggle notify.open_key` opens the one showing, `notify.clear_key` clears it, and `notify.clear_all_key` clears every one. The page has do not disturb (only urgent ones show; the island's bell is crossed out), Clear all, and every one kept, newest first, across restarts, each row with its summary and the start of its body (a red stripe on an urgent one): Enter opens one (or clears it when it has nothing to open), Delete clears it, Alt+1 to 3 press its buttons, which the selected row lists.
 - Screen recording (`strand/record.strand`): records the focused monitor with wf-recorder, every frame Hyprland draws, into `~/Videos/strand-<date>-<time>.mp4`. Start and stop it with "Record screen" in the launcher (or type "rec"), a key bound to `strand toggle record.key`, or by clicking the red dot the island shows while it records. If wf-recorder fails, the launcher row says why.
 
-Nothing here is decided yet. IDs refer to `catalogue-quickshell.md`. Strand facts come from
-`strand-offers.md`, which was written from reading the code and docs, so anything marked
-"to try" has not been run.
-
-Mark each line: **keep**, **later** or **drop**.
+The sections below are the scoping draft of 2026-10-31, written while Quickshell was still the
+shell. The switch came on 2026-11-04 (`21cc7a8`), so they are now the record of how the choices were
+made, with rows noting where a feature landed; the list above is what's current. IDs refer to
+`catalogue-quickshell.md`. Strand facts come from `strand-offers.md`, which was written from reading
+the code and docs, so anything marked "to try" there was not run.
 
 ## 1. What you have today
 
@@ -26,15 +26,15 @@ Mark each line: **keep**, **later** or **drop**.
 | Feature | Today | On Strand |
 | --- | --- | --- |
 | Launcher: apps, workspaces, combined search (L1, L4 to L6) | Super+Space | Built in: `apps.search` is fuzzy with frecency and highlights matches |
-| Launcher submenus: Wi-Fi, Bluetooth, audio, tray, themes, wallpapers, clipboard, notifications (L3, L9 to L16) | Launcher | Lists work. Escape-goes-back needs a Strand change (gap 2) |
+| Launcher submenus: Wi-Fi, Bluetooth, audio, tray, themes, wallpapers, clipboard, notifications (L3, L9 to L16) | Launcher | Built. Esc goes back (gap 2, closed) |
 | Run actions from search: window actions, screenshots, power, tools (L18 to L25) | Launcher | Declared actions |
 | Calculator (L7) | `=` in the launcher | Declared action with typed output, such as `qalc` |
 | Bar: workspaces, clock, status icons, tray (B1, B5, B8 to B18) | Always there | Built in |
 | Notifications: cards, DND, history, dismiss keys (N1 to N12) | Daemon in the shell | Built in; history kept across restarts |
 | OSD: volume, brightness, mic, media (O1 to O6) | Keys | Built in |
-| Lock screen (K1 to K11) | Super+L, idle, sleep | Built in (`strand/lock.strand`), passing in the lock VM (a wrong password refused, a password typed during a check sent after it, Caps Lock, Esc, a second lock). Tried on this laptop 2026-11-05 and held. Since Strand `073cce42` (2026-11-06) it opens on the blurred desktop, grows out of the island, rests round the time after 8 s alone and wakes on the first key, glows as you type and plays its way back into the bar as it unlocks. Super+L, the launcher's Lock, idle and sleep put it up through logind; hyprlock only while Strand isn't running (`hypr/README.md` has the hand-off). It grows out of the island: the screen goes dark and the island swells and drops to the middle, the time, the date and the field fading up inside it (no desktop behind it until the Strand issues on locks are fixed); a wrong password reddens its edge and knocks it aside. The launcher's Lock closes the launcher first, so the lock's still of the screen is without it |
+| Lock screen (K1 to K11) | Super+L, idle, sleep | Built in (`strand/lock.strand`), passing in the lock VM (a wrong password refused, a password typed during a check sent after it, Caps Lock, Esc, a second lock). Tried on this laptop 2026-11-05 and held. Since Strand `073cce42` (2026-11-06) it opens on the blurred desktop, grows out of the island, rests round the time after 8 s alone and wakes on the first key, glows as you type and plays its way back into the bar as it unlocks. Super+L, the launcher's Lock, idle and sleep put it up through logind; hyprlock only while Strand isn't running (`hypr/README.md` has the hand-off). A wrong password reddens its edge and knocks it aside. The launcher's Lock closes the launcher first, so the lock's still of the screen is without it |
 | Theme follows `theme-switch` (T1 to T3) | Watches `active.json` | Done. `theme-switch` stays in charge and needs no change. Anything drawn with `$` tokens follows it, the launcher included |
-| Wallpaper picker and per-theme wallpaper (W1 to W9) | Launcher, `awww` | To try: `wallpapers.json` as a file service, `awww` as an action. The slanted strips need their own arrow handling (gap 3) |
+| Wallpaper picker and per-theme wallpaper (W1 to W9) | Launcher, `awww` | Built: `wallpapers.json` as a file service, `awww` as an action, a list with thumbnails and a preview on your monitors in place of the slanted strips |
 
 ### Open questions on what to carry over
 
@@ -72,7 +72,7 @@ Mark each line: **keep**, **later** or **drop**.
 | Camera and screencast indicator | `video.streams` |
 | Battery detail | Time left, charge history as a graph, peripheral batteries |
 | Graphs that have history when opened | `cpu`, `memory`, network and battery |
-| Your own polkit dialog | `polkit`, in place of `phylax`: the island grows into the admin password prompt, takes the keyboard and stays until answered or cancelled. In the shell since 2026-11-05; it takes over once phylax stops (branch `retire-phylax`) |
+| Your own polkit dialog | `polkit`, in place of `phylax`: the island grows into the admin password prompt, takes the keyboard and stays until answered or cancelled. In the shell since 2026-11-05, and the only polkit agent since phylax stopped starting the same day; phylax's config left the repo on 2026-11-07 |
 | Your own login screen | `greetd`, in place of `tuigreet` |
 | Display settings | `outputs`, though `hyprpier` owns this today, so it may not belong here |
 | Command line control | `strand toggle`, `set`, `get`, `call`. Quickshell has no IPC today |
@@ -116,7 +116,7 @@ has been run by hand on nested Hyprland and has no automated test. Kept as the r
 
 ## 4. What a switch would touch
 
-Small, and all of it happens at the very end. Everything else stays where it is.
+Done on 2026-11-04 (`21cc7a8`); the line numbers are from before it. Kept as the record.
 
 - `hyprland.lua.tmpl:71`: start `strand` in place of `quickshell`.
 - Eight `quickshell:` global shortcut binds in `hyprland.lua.tmpl`, and one in `hypridle.conf:9`.

@@ -1,6 +1,6 @@
 # Hypr Idle / Sleep Configuration
 
-## Current state (as of 2026-05-14)
+## Current state (as of 2026-11-05)
 
 - **Lock at 10 min idle** → `loginctl lock-session` → Strand's lock screen (`strand/lock.strand`); hyprlock only while Strand isn't running
 - **Displays off at 30 min idle** → `hyprctl dispatch 'hl.dsp.dpms({ action = "off" })'` (kept longer than the lock timeout so the lockscreen stays visible for ~20 min before screens sleep)
