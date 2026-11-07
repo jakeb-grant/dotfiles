@@ -492,7 +492,6 @@ async def main() -> None:
         "~/.config/gtk-3.0",
         "~/.config/gtk-4.0",
         "~/.config/yazi",
-        "~/.config/phylax",
         "~/.config/zed/settings.json",
         "~/.config/ghostty",
         "~/.config/btop",
