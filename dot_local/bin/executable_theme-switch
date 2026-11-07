@@ -234,7 +234,6 @@ def update_palette_lua(palette_data: dict) -> None:
 # the watcher survives.
 INODE_WATCHED_TARGETS = [
     "~/.config/zed/settings.json",           # Zed settings hot-reload
-    "~/.config/pane-fm/themes/palette.css",  # pane-fm theme watcher
 ]
 
 
@@ -460,7 +459,6 @@ async def main() -> None:
         "~/.config/zed/settings.json",
         "~/.config/kitty",
         "~/.config/btop",
-        "~/.config/pane-fm",
         "~/knowledge/.obsidian",
     ]
     proc = await asyncio.create_subprocess_exec(

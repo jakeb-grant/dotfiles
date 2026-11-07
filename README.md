@@ -16,7 +16,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 - **Desktop Shell**: [Strand](https://strand.jacobgrant.dev) (island bar, launcher, notifications, lock screen, polkit password prompt, wallpaper picker, screen recording; hyprlock is the fallback locker)
 - **Terminal**: Kitty (its drag-and-drop protocol lets Yazi drag files in and out)
 - **Editor**: Zed with hand-crafted themes per palette
-- **File Manager**: Yazi (terminal, themed), pane-fm (GUI, themed)
+- **File Manager**: Yazi, in Kitty (Super+Shift+F)
 - **System Monitor**: btop
 - **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color names for GTK4 apps, and the same for GTK3 apps through the adw-gtk3 theme
@@ -93,7 +93,6 @@ dot_config/
 ├── kitty/              # Terminal emulator + a colour theme per palette
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
-├── pane-fm/            # pane-fm file manager config + themes
 ├── btop/               # System monitor theme
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
@@ -131,14 +130,14 @@ Palette JSON              active.json                     Chezmoi Template      
 (everforest.json) --->   written by theme-switch --->   (style.css.tmpl reads  ---> (style.css)
                                                           active.json) chezmoi apply
 ```
-Used by: GTK3/4, Kitty, Yazi, Zed settings, Obsidian, hyprlock, btop, pane-fm. btop and pane-fm each get a single generated theme (`palette.theme` / `palette.css`) that always matches the active palette — their configs point at it statically.
+Used by: GTK3/4, Kitty, Yazi, Zed settings, Obsidian, hyprlock, btop. btop gets a single generated theme (`palette.theme`) that always matches the active palette — its config points at it statically.
 
 **Direct-write apps** (config written by theme-switch itself):
 ```
 Palette JSON              theme-switch                         Final Config
 (everforest.json) --->   reads _chromium_seed_color   --->    writes a managed policy JSON
 ```
-Used by: Chromium/Chrome (managed color policy) and GTK (gsettings). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch syncs Zed's settings and pane-fm's theme CSS in place before apply so their inode-level hot-reload watches survive.)
+Used by: Chromium/Chrome (managed color policy) and GTK (gsettings). (Zed theme selection is templated via `_zed_theme_dark`/`_zed_theme_light` meta keys; theme-switch syncs Zed's settings in place before apply so its inode-level hot-reload watch survives.)
 
 **Lua-required (Hyprland)**:
 ```
