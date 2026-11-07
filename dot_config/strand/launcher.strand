@@ -659,6 +659,7 @@ panel Launcher {
             if show_profile { ProfileSwitch {} }
             if show_battery { BatteryRow {} }
             for m in found_powers key m.item.id { PowerRow m }
+            if query == "" { AwakeSwitch {} }
           }
           if view == theme_list { for m in found_themes key m.item.slug { ThemeRow m } }
           if view == wall_list {
@@ -761,6 +762,7 @@ fn view_name() -> text { pages.find(p => p.view == view)?.name ?? "" }
 fn enter_does(ap: AccessPoint?, at: int) -> text {
   is_sum ? "copy" : view == home ? home_does(at) : view == wifi ? wifi_does(ap) : view == bt ? bt_does(at)
     : view == power ? (show_profile && at == 0 ? "next" : at < power_top ? ""
+        : at >= power_top + found_powers.len ? (island.awake ? "turn off" : "turn on")
         : armed == (found_powers.skip((at - power_top).round()).first?.item?.id ?? "") ? "confirm" : "run")
     : view == sound ? sound_does(at)
     : view == drives_list ? (drives.all.len == 0 ? "" : "use")
@@ -1462,6 +1464,16 @@ component Controls(p: Player) {
 component Ctl(glyph: text, size: float, on: bool = false, dim: bool = false) {
   text glyph { id: k; font: "Material Symbols Rounded" size; shrink: 0; cursor: pointer
     color: on ? $accent : dim ? $fg.alpha(0.25) : k.hover ? $fg : $fg.alpha(0.7) }
+}
+
+// keeps the session from locking or the screens going off by timeout (island.strand)
+component AwakeSwitch {
+  Row {
+    on activate { island.awake = !island.awake }
+    Glyph "coffee" { on: island.awake }
+    text "Keep awake" { color: $fg; grow: 1 }
+    Aside island.awake ? "on: no lock by timeout" : "off"
+  }
 }
 
 component DndSwitch {

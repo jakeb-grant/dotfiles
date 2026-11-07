@@ -94,6 +94,10 @@ on change next_key { skipped = 1; media.next() }
 on change prev_key { skipped = -1; media.previous() }
 on change skipped after 2s { skipped = 0 }
 
+// Keep awake (the launcher's Power page, or the island's cup): no lock or screens
+// off by timeout while it's on
+export state awake = false
+
 keyframes bump { 0%, 100% { scale: 1 }; 40% { scale: 1.18 }; duration: 420ms }
 
 // An admin password polkit asks for (pkexec, a settings page changing the system):
@@ -267,6 +271,7 @@ panel Island {
   screens: all; anchor: top; margin: gap_top, 0, 0
   size: auto
   exclusive: island_h + gap_low
+  inhibit_idle: awake
   enter { y: -14; opacity: 0 }
 
   // The first readings as the shell starts are not changes.
@@ -478,6 +483,12 @@ component Status {
         exit { opacity: 0 }
         on click { launcher.by_pointer = true; launcher.tray_key = !launcher.tray_key }
         image i.icon { size: 14; shrink: 0; opacity: 0.85 }
+      }
+    }
+    // kept awake: a click lets it sleep again
+    if awake {
+      row { cursor: pointer; on click { awake = false }
+        Sym "coffee" { tint: $accent; tip: "Keeping awake: click to let it sleep" }
       }
     }
     // recording the screen: a click stops it
