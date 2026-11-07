@@ -13,21 +13,14 @@ export state open_key = false
 export state clear_key = false
 export state clear_all_key = false
 
-// shape: the closed sizes match the island, so it swells out of it
-let closed_w = 640
-let closed_h = 34
-let note_w   = 640            // the island's width: it only grows down
+// shape: the island's (island.strand), so it swells out of it
+let note_w   = island.island_w  // the island's width: it only grows down
 let note_h   = 64
-let corner   = 12             // the island's corners
-let gap_top  = 6
-let island_zone = 42           // what the island keeps from windows: this sits over it
 let face     = 36
-let sans     = "IBM Plex Sans"
-let mono     = "JetBrainsMono Nerd Font"
+let sans     = island.sans
+let mono     = island.mono
 
-// time
-let swell  = spring(900, 0.82) // growing, with a little give
-let settle = spring(1400, 1)   // back into the island
+// time (the swell and settle are the island's Swell)
 let fill   = 140ms             // the box this far grown before what it says shows
 let fold   = 360ms             // going, from emptying to back in the island
 let wait   = 5s                // how long one shows, at most
@@ -66,24 +59,13 @@ on change launcher.open { if launcher.open { shown = false; grown = false; fille
 on change asked { if asked { shown = false; grown = false; filled = false } }
 
 panel Notify {
-  screens: focused; layer: overlay; anchor: top; margin: gap_top - island_zone, 0, 0
+  screens: focused; layer: overlay; anchor: top; margin: island.gap_top - island.island_zone, 0, 0
   keyboard: none; size: auto; hit: none
   open: shown
 
   // the surface keeps its size, with room for the swell's give, so only the box moves
   row { width: note_w + 24; height: note_h + 12; justify: center; align: start; hit: none
-    stack { clip: true
-      width: (grown ? note_w : closed_w) ~ (grown ? swell : settle)
-      height: (grown ? note_h : closed_h) ~ (grown ? swell : settle)
-      radius: corner
-      corners: squircle
-      bg: $surface_lowest; border: 1, $fg.alpha(0.09)
-      shadow: 0 3px 10px $shadow.alpha(0.3)
-      when grown { shadow: 0 8px 24px $shadow.alpha(0.32) }
-      font: sans 13px 600
-      enter { width: closed_w; height: closed_h }
-      when current?.urgency == critical { border: 1, $red.alpha(0.7) }
-
+    Swell grown { w: note_w; h: note_h; alert: current?.urgency == critical
       stack { opacity: (filled ? 1 : 0) ~ (filled ? 220ms : 90ms)
         // keyed, so a new one slides in over the one it replaces
         for n in notifications.popups.reverse().take(launcher.open || asked ? 0 : 1) { Note n }
@@ -112,7 +94,7 @@ component Note(n: Notification) {
     col { grow: 1; shrink: 1; gap: 2
       text n.summary { color: $fg; ellipsis: end }
       if n.body != "" {
-        text n.body.replace("\n", " ") { markup: basic; max_lines: 1; ellipsis: end; color: $fg.alpha(0.6)
+        text n.body.replace("\n", " ") { markup: basic; max_lines: 1; ellipsis: end; color: island.faint
           font: sans 12px 400 }
       }
     }

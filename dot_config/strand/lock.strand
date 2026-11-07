@@ -28,17 +28,17 @@ let lock_blur  = 36                           // how soft the desktop goes
 let lock_dim   = 0.6                          // how bright it stays (1 is as it was)
 
 // shape: the island as island.strand draws it, and what it grows into
-let lock_island_w = 640
-let lock_island_h = 34
-let lock_gap_top  = 6
-let lock_corner   = 12
+let lock_island_w = island.island_w
+let lock_island_h = island.island_h
+let lock_gap_top  = island.gap_top
+let lock_corner   = island.corner
 let card_w = 420
 let card_h = 268
 let rest_h = 150                              // resting: just the time and the date
 
 // what it says
-let lock_sans = "IBM Plex Sans"
-let lock_mono = "JetBrainsMono Nerd Font"
+let lock_sans = island.sans
+let lock_mono = island.mono
 let lock_date = "%A %-d %B"
 
 // time
@@ -118,7 +118,7 @@ lock {
             text ":" { color: $fg.alpha(resting ? 0.45 : 0.8) }
             text clock.format("%M") { roll: true }
           }
-          text clock.format(lock_date) { color: $fg.alpha(0.55); font: lock_sans 15px 500
+          text clock.format(lock_date) { color: island.faint; font: lock_sans 15px 500
             y: (resting ? -16 : 0) ~ lock_swell
             enter { y: 10; opacity: 0 }
           }
@@ -143,12 +143,13 @@ lock {
             if auth.busy { text "checking" { color: $fg.alpha(0.45); shrink: 0; font: lock_sans 12px 500 } }
           }
 
-          // what is going on: refused, what PAM says (a fingerprint reader), Caps Lock
+          // what is going on: what PAM says (a fingerprint reader, or faillock's "locked
+          // for 10 minutes", which a bare "Wrong password" would hide), refused, Caps Lock
           row { height: 26; gap: 12; align: end; font: lock_sans 12px 500
             opacity: (resting ? 0 : 1) ~ 220ms
-            if wrong { text "Wrong password" { color: $red } }
-            else if auth.message != "" { text auth.message { color: $fg.alpha(0.7); max_lines: 1; ellipsis: end } }
-            if keyboard.caps_lock { text "Caps Lock is on" { color: $orange; enter { y: 4; opacity: 0 } } }
+            if auth.message != "" { text auth.message { color: wrong ? $red : $fg.alpha(0.7); max_lines: 1; ellipsis: end } }
+            else if wrong { text "Wrong password" { color: $red } }
+            if keyboard.caps_lock { text "Caps Lock is on" { color: island.warn; enter { y: 4; opacity: 0 } } }
           }
         }
       }

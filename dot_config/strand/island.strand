@@ -11,11 +11,13 @@ service theme from file "~/.config/palette/active.json" {
   crust: color?; mantle: color?; base: color?; surface0: color?; surface1: color?; surface2: color?
   overlay0: color?; subtext0: color?; text: color?; _accent: color?; lavender: color?; mauve: color?
   red: color?; peach: color?; yellow: color?; green: color?; teal: color?; blue: color?; pink: color?
+  _variant: text?
 }
 // the launcher's theme preview while you move over its Themes page, else the theme in use
 let look = launcher.peek
+let is_dark = look?.dark ?? ((theme._variant ?? "dark") != "light")
 use palette palette(
-  from: material(seed: #89b4fa, dark: true),
+  from: material(seed: #89b4fa, dark: true), dark: is_dark,
   surface: look?.base ?? theme.base, surface_lowest: look?.crust ?? theme.crust, surface_low: look?.mantle ?? theme.mantle,
   surface_container: look?.surface0 ?? theme.surface0, surface_high: look?.surface1 ?? theme.surface1, surface_highest: look?.surface2 ?? theme.surface2,
   fg: look?.text ?? theme.text, fg_variant: look?.subtext0 ?? theme.subtext0, outline: look?.overlay0 ?? theme.overlay0, outline_variant: look?.surface1 ?? theme.surface1,
@@ -26,22 +28,26 @@ use palette palette(
 let ink    = $surface_lowest      // the island
 let lit    = $fg                  // the workspace on screen, the clock
 let edge   = $fg.alpha(0.09)      // its hairline
-let dim    = $fg.alpha(0.70)      // status symbols
-let used   = $fg.alpha(0.60)      // a workspace with windows
-let empty  = $fg.alpha(0.30)      // an empty one
+// the greys and the orange darker on a light palette, where the same alphas of a
+// dark text would fade to under 3:1 on the pale island
+let dim    = $fg.alpha(is_dark ? 0.70 : 0.90)  // status symbols
+let used   = $fg.alpha(is_dark ? 0.60 : 0.82)  // a workspace with windows
+export let faint = $fg.alpha(is_dark ? 0.55 : 0.82)  // the date, and what is said beside the main thing
+let empty  = $fg.alpha(is_dark ? 0.30 : 0.50)  // an empty one
 let track  = $fg.alpha(0.16)      // behind a volume or brightness bar
-let warn   = $orange              // attention: a workspace, a low battery, no network
+export let warn = is_dark ? $orange : $orange.mix($fg, 0.5)  // attention: a workspace, a low battery, no network, a live mic
 let danger = $red                 // a very low battery, a muted mic
 
-// shape
-let island_h = 34
-let island_w = 640               // the launcher's width: it only drops out of it
-let corner   = 12               // its corners (squircle): the launcher's and a notification's too
+// shape (exported: the launcher, a notification and the lock grow out of it, as `island.island_w` and so on)
+export let island_h = 34
+export let island_w = 640        // the launcher's width: it only drops out of it
+export let corner   = 12        // its corners (squircle): the launcher's and a notification's too
 let left_w   = 300              // room for five workspaces, a few apps on each
 let right_w  = 290              // room for every status symbol, the date and the clock
 let pad      = 12               // inside the island's ends
-let gap_top  = 4                // from the screen's edge to the island
+export let gap_top = 4          // from the screen's edge to the island
 let gap_low  = 2                // from the island to the windows
+export let island_zone = gap_top + island_h + gap_low  // what the island keeps from windows: what grows out of it sits over it
 let chip_h   = 24               // a workspace's chip
 let chip_gap = 3                // between chips
 let app_size = 12               // an app's icon on a chip
@@ -58,8 +64,9 @@ let level_side = 28             // the room either side of it: the symbol, and b
 // what it says
 let clock_format = "%H:%M"
 let date_format  = "%a %-d"
-let sans = "IBM Plex Sans"
-let mono = "JetBrainsMono Nerd Font"
+export let sans = "IBM Plex Sans"
+export let mono = "JetBrainsMono Nerd Font"
+let battery_show = 0.3          // the battery's figure shows below this
 let battery_low = 0.2
 let battery_out = 0.1
 
@@ -97,9 +104,8 @@ keyframes bump { 0%, 100% { scale: 1 }; 40% { scale: 1.18 }; duration: 420ms }
 // The password goes to polkit and nowhere else.
 let ask_w    = 640              // the island's width: it only grows down
 let ask_face = 36
-let island_zone = gap_top + island_h + gap_low  // what the island keeps from windows: this sits over it
-let swell  = spring(900, 0.82)  // growing, with a little give (a notification's)
-let settle = spring(1400, 1)    // back into the island
+export let swell  = spring(900, 0.82)  // growing, with a little give (a notification's)
+export let settle = spring(1400, 1)    // back into the island
 let ask_fill = 140ms            // the box this far grown before what it asks shows
 let ask_fold = 360ms            // going, from emptying to back in the island
 let shake  = spring(2200, 0.18) // a refused password
@@ -150,18 +156,7 @@ panel Polkit {
 
   // the surface keeps its size, with room for the swell's give, so only the box moves
   row { width: ask_w + 24; height: ask_h + 12; justify: center; align: start; hit: none
-    stack { clip: true
-      width: (ask_grown ? ask_w : island_w) ~ (ask_grown ? swell : settle)
-      height: (ask_grown ? ask_h : island_h) ~ (ask_grown ? swell : settle)
-      x: (nudge ? 10 : 0) ~ shake
-      radius: corner; corners: squircle
-      bg: ink; border: 1, edge
-      shadow: 0 3px 10px $shadow.alpha(0.3)
-      when ask_grown { shadow: 0 8px 24px $shadow.alpha(0.32) }
-      when wrong { border: 1, $red.alpha(0.7) }
-      font: sans 13px 600
-      enter { width: island_w; height: island_h }
-
+    Swell ask_grown { w: ask_w; h: ask_h; alert: wrong; shift: nudge ? 10 : 0
       col { width: ask_w; pad: 14, 18, 12, 14; gap: 12
         opacity: (ask_filled ? 1 : 0) ~ (ask_filled ? 220ms : 90ms)
         // what asks, and what for
@@ -217,6 +212,26 @@ panel Polkit {
         }
       }
     }
+  }
+}
+
+// The island swelling into a card on the focused monitor, as a notification
+// (notify.strand) and an admin password do: grown to w by h, or back at the
+// island's size, red-edged on `alert`, knocked `shift` aside; what it holds goes
+// in its block
+component Swell(grown: bool, w: float, h: float, alert: bool = false, shift: float = 0) {
+  stack { clip: true
+    width: (grown ? w : island_w) ~ (grown ? swell : settle)
+    height: (grown ? h : island_h) ~ (grown ? swell : settle)
+    x: shift ~ shake
+    radius: corner; corners: squircle
+    bg: ink; border: 1, edge
+    shadow: 0 3px 10px $shadow.alpha(0.3)
+    when grown { shadow: 0 8px 24px $shadow.alpha(0.32) }
+    when alert { border: 1, $red.alpha(0.7) }
+    font: sans 13px 600
+    enter { width: island_w; height: island_h }
+    slot
   }
 }
 
@@ -283,7 +298,8 @@ component Body(armed: bool) {
   on change audio.sink.volume, audio.sink.muted {
     if armed { moment = vol; ticks += 1 }
   }
-  on change audio.source.volume, audio.source.muted {
+  // only muting: a call's automatic gain moves the mic's volume all the time
+  on change audio.source.muted {
     if armed { moment = mic; ticks += 1 }
   }
   on change brightness.level {
@@ -320,19 +336,24 @@ component Body(armed: bool) {
     shadow: 0 3px 10px $shadow.alpha(0.3)
     font: mono 12px 600
 
-    row { height: island_h; pad: 0, pad; align: center
+    // what it shows at rest, fading for a moment's level
+    stack { width: island_w; height: island_h
       opacity: (moment == calm ? 1 : 0) ~ (moment == calm ? clear_back : clear_out)
       // the launcher, a notification or an admin password growing out of this island:
       // it is the island now, so nothing of this shows through it
       when (launcher.open || notify.shown || ask_shown) && screens.focused?.name == screen.name { opacity: 0 ~ 80ms }
+
+    row { height: island_h; pad: 0, pad; align: center
+      // more chips than room: the cut-off end fades, so it reads as more
       row { width: left_w; height: island_h; align: center; shrink: 0; clip: true
+        when chipbox.box.width > left_w { mask: fade(right, 18) }
         row { id: chipbox; height: island_h; align: center; shrink: 0; Chips (shown ?? now) }
       }
       spacer {}
       row { width: right_w; height: island_h; justify: end; align: center; shrink: 0
         row { id: statbox; height: island_h; align: center; shrink: 0
           Status
-          text clock.format(date_format) { color: $fg.alpha(0.55); margin: 0, 0, 0, 10; shrink: 0; font: sans 12px 500 }
+          text clock.format(date_format) { color: faint; margin: 0, 0, 0, 10; shrink: 0; font: sans 12px 500 }
           text clock.format(clock_format) { color: $fg.alpha(0.92); margin: 0, 0, 0, 7; shrink: 0; roll: true; font: mono 13px 600 }
         }
       }
@@ -340,11 +361,10 @@ component Body(armed: bool) {
 
     // what plays, live, in the middle
     row { height: island_h; justify: center; align: center; hit: none
-      opacity: (moment == calm ? 1 : 0) ~ (moment == calm ? clear_back : clear_out)
-      when (launcher.open || notify.shown || ask_shown) && screens.focused?.name == screen.name { opacity: 0 ~ 80ms }
       // mounted while it plays; the room, measured, only fades it (a mount that
       // waited on the boxes would move them)
       if waving { PlayWave { room: wave_room; at: chips_end + wave_gap - (chipbox.box.x - pad); len: max(wave_len, wave_min) } }
+    }
     }
 
     // one's fade laid over the other's
@@ -454,6 +474,11 @@ component Chip(ws: Workspace, lit: bool = false) {
 // The ones only there while they are true (a Bluetooth device connected, a drive,
 // a muted mic, …) sit to their left, so they never move them.
 component Status {
+  // the programs listening to the microphone, on the camera, casting the screen
+  let hearing = audio.streams.filter(s => s.direction == input).map(s => s.app).distinct()
+  let filming = video.streams.filter(s => s.source == camera).map(s => s.app).distinct()
+  let casting = video.streams.filter(s => s.source == screencast).map(s => s.app).distinct()
+  let connected = bluetooth.devices.filter(d => d.connected).map(d => d.name)
   row { align: center; shrink: 0
     // a tray app that wants you, by its own icon: a click opens the Tray page
     for i in tray.items.filter(i => i.status == "NeedsAttention").take(2) key i.id {
@@ -467,50 +492,57 @@ component Status {
     // recording the screen: a click stops it
     if record.recording {
       row { cursor: pointer; on click { record.key = !record.key }
-        Sym "radio_button_checked" { tint: danger }
+        Sym "radio_button_checked" { tint: danger; tip: "Recording the screen: click to stop" }
       }
     }
     // notifications not yet opened or cleared, or do not disturb: a click opens their page
     if notifications.dnd || notifications.count > 0 {
       row { cursor: pointer; on click { launcher.by_pointer = true; launcher.notes_key = !launcher.notes_key }
         Sym (notifications.dnd ? "notifications_off" : "notifications_unread") {
-          tint: notifications.dnd ? dim : $accent }
+          tint: notifications.dnd ? dim : $accent
+          tip: notifications.dnd ? "Do not disturb" : num(notifications.count, 0) + " notifications" }
       }
     }
-    // a muted microphone: a click opens the Sound page, where it unmutes
-    if audio.source.muted {
+    // the screen cast, the camera on: whoever is doing it on hover
+    if casting.len > 0 { Sym "screen_share" { tint: warn; tip: "Sharing the screen: " + casting.join(", ") } }
+    if filming.len > 0 { Sym "videocam" { tint: warn; tip: "Camera: " + filming.join(", ") } }
+    // a muted microphone (red: an app may be talking to it in vain), or one an app
+    // is listening to: a click opens the Sound page
+    if audio.source.muted || hearing.len > 0 {
       row { cursor: pointer; on click { launcher.by_pointer = true; launcher.sound_key = !launcher.sound_key }
-        Sym "mic_off" { tint: danger }
+        Sym (audio.source.muted ? "mic_off" : "mic") { tint: audio.source.muted ? danger : warn
+          tip: (audio.source.muted ? "Microphone muted" : "Microphone") + (hearing.len > 0 ? ": " + hearing.join(", ") : "") }
       }
     }
     // a drive plugged in: a click opens its page, to mount it or eject it
     if drives.all.len > 0 {
       row { cursor: pointer; on click { launcher.by_pointer = true; launcher.drives_key = !launcher.drives_key }
-        Sym "usb"
+        Sym "usb" { tip: "Drives" }
       }
     }
     // a Bluetooth device connected: a click opens its page
     if bluetooth.devices.any(d => d.connected) {
       row { cursor: pointer; on click { launcher.by_pointer = true; launcher.bt_key = !launcher.bt_key }
-        Sym "bluetooth_connected"
+        Sym "bluetooth_connected" { tip: connected.join(", ") }
       }
     }
     // a click opens its page of the launcher; a scroll on the volume sets it
     if network.available {
       row { cursor: pointer; on click { launcher.by_pointer = true; launcher.wifi_key = !launcher.wifi_key }
-        Sym net_glyph() { tint: network.connected ? dim : warn }
+        Sym net_glyph() { tint: network.connected ? dim : warn
+          tip: !network.connected ? "Offline" : network.ssid != null ? (network.ssid ?? "") + " · " + num(network.strength * 100, 0) + "%" : "Wired" }
       }
     }
     row { cursor: pointer
       on click { launcher.by_pointer = true; launcher.sound_key = !launcher.sound_key }
       on scroll(dy) { audio.sink.volume = clamp(audio.sink.volume - dy * 0.05, 0, 1) }
-      Sym volume_glyph()
+      Sym volume_glyph() { tip: audio.sink.muted ? "Muted" : num(audio.sink.volume * 100, 0) + "%" }
     }
-    // the battery's figure while it runs low or charges
-    if battery.present && (battery.percent < 0.3 || battery.charging) {
+    // the battery's figure while it runs low or fills (not while held at its charge limit)
+    if battery.present && (battery.percent < battery_show || filling()) {
       text num(battery.percent * 100, 0) { color: battery_color(); shrink: 0; margin: 0, 0, 0, 4; font: mono 11px 600 }
     }
-    if battery.present { Sym battery_glyph() { tint: battery_color() } }
+    if battery.present { Sym battery_glyph() { tint: battery_color(); tip: battery_tip() } }
   }
 }
 
@@ -555,9 +587,10 @@ component Song(dir: int) {
   }
 }
 
-component Sym(name: text, tint: color = dim) {
+component Sym(name: text, tint: color = dim, tip: text = "") {
   // the name stays in its cell even with the font missing
   row { width: sym_cell; height: island_h; justify: center; align: center; shrink: 0; clip: true
+    tooltip: tip
     enter { opacity: 0 }
     exit { opacity: 0 }
     text name { width: sym_size; shrink: 0; font: "Material Symbols Rounded" sym_size; color: tint ~ soft }
@@ -580,16 +613,25 @@ fn volume_glyph() -> text {
     : "volume_mute"
 }
 
+// charging and power going in: plugged in at the charge limit it "charges" at ~0 W
+fn filling() -> bool { battery.charging && battery.power > 1 }
+
 fn battery_glyph() -> text {
-  battery.charging ? "battery_charging_full"
+  filling() ? "battery_charging_full"
+    : battery.charging ? "power"
     : battery.percent > 0.9 ? "battery_full"
     : battery.percent > 0.75 ? "battery_6_bar"
     : battery.percent > 0.6 ? "battery_5_bar"
     : battery.percent > 0.45 ? "battery_4_bar"
-    : battery.percent > 0.3 ? "battery_3_bar"
+    : battery.percent > battery_show ? "battery_3_bar"
     : battery.percent > battery_low ? "battery_2_bar"
     : battery.percent > battery_out ? "battery_1_bar"
     : "battery_alert"
+}
+
+fn battery_tip() -> text {
+  join(" · ", num(battery.percent * 100, 0) + "%" + (filling() ? ", charging" : battery.charging ? ", plugged in" : ""),
+    filling() || !battery.charging ? dur(battery.time_left) : null)
 }
 
 fn battery_color() -> color {

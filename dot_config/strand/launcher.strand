@@ -102,12 +102,12 @@ state tray_sub: int? = null      // and the entry of it whose submenu is open
 state tray_leave = ""           // a tray item just activated: the launcher goes unless its menu opens
 
 // shape: the closed sizes match the island, so it opens out of it
-let closed_w = 640
-let closed_h = 34
-let corner   = 12             // the island's corners, kept as it grows: only its size changes
-let sans = "IBM Plex Sans"         // names and prose
-let mono = "JetBrainsMono Nerd Font"  // numbers, times, sizes, code, keys
-let box_w    = 640
+let closed_w = island.island_w
+let closed_h = island.island_h
+let corner   = island.corner   // the island's corners, kept as it grows: only its size changes
+let sans = island.sans         // names and prose
+let mono = island.mono         // numbers, times, sizes, code, keys
+let box_w    = island.island_w
 let pane_box_w = 960           // the box on a page with a preview beside its list
 let list_w   = 380             // and that list
 let row_h    = 36
@@ -115,8 +115,6 @@ let rows     = 8
 let hint_h   = 28
 let hint_fade = 140ms          // the page's keys and the pages' letters, crossfading on Alt
 let box_h    = closed_h + rows * row_h + hint_h
-let gap_top  = 6
-let island_zone = 42           // what the island keeps from windows: this sits over it
 let away_close = 1s            // the pointer gone from the box this long closes it
 
 // time: it opens as the island widening, then dropping down; it closes the other
@@ -342,7 +340,7 @@ on change drives.all.len {
 on clipboard.failed(action, error) { problem = error }
 
 panel Launcher {
-  screens: focused; layer: overlay; anchor: top; margin: gap_top - island_zone, 0, 0
+  screens: focused; layer: overlay; anchor: top; margin: island.gap_top - island.island_zone, 0, 0
   keyboard: exclusive; open: <-> shown; size: auto; hit: none
   exit { opacity: 0 }
   // reset once gone, unless something opened it again meanwhile
@@ -855,8 +853,8 @@ fn part_letter(id: text) -> text {
     : id == "media" ? "M" : id == "drives" ? "D" : id == "keys" ? "K" : id == "power" ? "P" : ""
 }
 
-// starts or stops a recording of the focused monitor (record.strand); it folds
-// away first, so the recording opens on what is under it
+// starts or stops a recording of the focused monitor (record.strand), which
+// waits for the launcher to fold away, so the recording opens on what is under it
 component RecordRow {
   Row {
     on activate { record.key = !record.key; open = false }

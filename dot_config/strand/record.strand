@@ -1,8 +1,9 @@
 // record.strand: a recording of the focused monitor, every frame Hyprland draws,
 // into ~/Videos. Start and stop it from the launcher, the island's red dot, or a
-// key bound to: strand toggle record.key
+// key bound to: strand toggle record.key. A notification says where it went, or
+// why it failed.
 
-permit exec "mkdir", "wf-recorder"
+permit exec "mkdir", "wf-recorder", "notify-send"
 
 // the folder made first, if it isn't there; stopping wf-recorder finishes the
 // file. -y: never stop to ask about a file; x264 at its fastest, so frames
@@ -10,15 +11,27 @@ permit exec "mkdir", "wf-recorder"
 action videos(dir: path) -> text? ["mkdir", "-p", dir]
 action rec(output: text, file: path) ["wf-recorder", "-y", "-o", output, "-c", "libx264",
   "-p", "preset=ultrafast", "-p", "crf=18", "-f", file]
+action tell(urgency: text, what: text, body: text) ["notify-send", "-u", urgency, "-a", "Screen recording", "-i", "media-record", what, body]
 
 export state key = false            // flipped by whatever starts or stops it
 export let recording = rec.running
 export let failed = rec.error       // why the last one didn't start or ended badly
 
+state starting = false
+state file = ""                     // the one recording, or last recorded
+
 on change key {
-  if rec.running { rec.stop() }
-  else {
+  if rec.running { rec.stop() } else { starting = true }
+}
+// a moment later, once the launcher has folded away (300 ms), so the video
+// opens on what is under it rather than on the launcher closing
+on change starting after 350ms {
+  if starting {
+    starting = false
     await videos("~/Videos")
-    rec(screens.focused?.name ?? "", "~/Videos/strand-" + clock.format("%Y-%m-%d-%H%M%S") + ".mp4")
+    file = "~/Videos/strand-" + clock.format("%Y-%m-%d-%H%M%S") + ".mp4"
+    rec(screens.focused?.name ?? "", file)
   }
 }
+on change rec.running { if !rec.running && rec.error == null && file != "" { tell("normal", "Recording saved", file) } }
+on change rec.error { if rec.error != null { tell("critical", "Recording failed", rec.error ?? "") } }
