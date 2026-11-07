@@ -3,13 +3,24 @@
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-# Add ~/.local/bin to PATH
-export PATH="$HOME/.local/bin:$PATH"
+# Add ~/.local/bin to PATH (Hyprland's session already has it)
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
 
-# Editor
+# Editor. EDITOR stays non-blocking for Yazi's opener; everything that edits a
+# temp copy and reads it back (git, sudoedit, crontab -e, systemctl edit) waits.
 export EDITOR="zeditor"
-export VISUAL="zeditor"
+export VISUAL="zeditor --wait"
 export GIT_EDITOR="zeditor --wait"
+export SUDO_EDITOR="zeditor --wait"
+export SYSTEMD_EDITOR="zeditor --wait"
+
+# History: large, and appended after each command rather than overwritten by
+# whichever Kitty window exits last
+HISTSIZE=100000
+HISTFILESIZE=200000
+HISTCONTROL=ignoreboth
+shopt -s histappend
+PROMPT_COMMAND+=('history -a')
 
 # Basic prompt
 PS1='[\u@\h \W]\$ '
@@ -17,6 +28,19 @@ PS1='[\u@\h \W]\$ '
 # Aliases
 alias ls='ls --color=auto'
 alias grep='grep --color=auto'
+
+# fzf: Ctrl-R history, Ctrl-T files, Alt-C directories
+command -v fzf >/dev/null && eval "$(fzf --bash)"
+
+# y: Yazi that leaves the shell in the directory it quit in
+y() {
+    local tmp cwd
+    tmp=$(mktemp -t yazi-cwd.XXXXXX)
+    yazi "$@" --cwd-file="$tmp"
+    IFS= read -r -d '' cwd < "$tmp"
+    [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+    rm -f -- "$tmp"
+}
 
 # fnm (Fast Node Manager)
 command -v fnm >/dev/null && eval "$(fnm env)"

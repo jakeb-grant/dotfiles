@@ -1,7 +1,9 @@
 #!/bin/bash
 # Windows VM management script
 
-set -euo pipefail
+# -E: the ERR trap below also fires inside functions (a cancelled pkexec in
+# ensure_docker), so a launch from the app list never fails silently
+set -Eeuo pipefail
 
 COMPOSE_DIR="$HOME/.config/windows-vm"
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yaml"
@@ -12,6 +14,8 @@ notify() {
     # || true: no notification daemon (headless/SSH) shouldn't kill the script
     notify-send -a "Windows VM" -u "$urgency" "Windows VM" "$1" || true
 }
+
+trap 'notify "win-vm failed at line $LINENO (docker compose -f $COMPOSE_FILE logs)" critical' ERR
 
 ensure_docker() {
     # Check if user is in docker group

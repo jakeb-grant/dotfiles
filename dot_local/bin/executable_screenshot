@@ -17,12 +17,15 @@ mkdir -p "$dir" || fail "Could not create $dir."
 
 # Stamp after slurp settles, not at launch — a second invocation queued
 # behind an open selection would otherwise reuse the same second.
-stamp() { file="$dir/$(date +%Y%m%d_%H%M%S).png"; }
+# Milliseconds, so two captures in one second don't overwrite each other.
+stamp() { file="$dir/$(date +%Y%m%d_%H%M%S_%3N).png"; }
 
 case "${1:-region}" in
     region)
-        # Cancelled selection (Escape, exit 1) is deliberate — stay silent
-        geom=$(slurp) || { [ $? -eq 1 ] && exit 0 || fail "slurp could not start a selection."; }
+        # -o: each monitor is a predefined box, so a click grabs that monitor and a
+        # drag still selects an area. Cancelled selection (Escape, exit 1) is
+        # deliberate — stay silent
+        geom=$(slurp -o) || { [ $? -eq 1 ] && exit 0 || fail "slurp could not start a selection."; }
         stamp
         grim -g "$geom" "$file" || fail "grim could not capture the selection."
         ;;
@@ -41,9 +44,10 @@ if ! wl-copy < "$file"; then
     exit 1
 fi
 
-# image-path hint renders the capture as the card's thumbnail; -A implies
-# --wait, so the action id comes back on stdout when the button is pressed
-action=$(notify-send -a Screenshot -h "string:image-path:$file" -A open=Open \
+# image-path hint renders the capture as the card's thumbnail. The default
+# action is what a click on the card runs (Strand only closes a card that has
+# none); -A implies --wait, so the action id comes back on stdout
+action=$(notify-send -a Screenshot -h "string:image-path:$file" -A default=Open \
     "Screenshot captured" "Copied to clipboard · $(basename "$file")") || true
-[ "${action:-}" = "open" ] && exec xdg-open "$file"
+[ "${action:-}" = "default" ] && exec xdg-open "$file"
 exit 0

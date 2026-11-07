@@ -22,11 +22,21 @@ fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; failures=$((failures + 1)); }
 info() { printf '       %s\n' "$1"; }
 
 echo "Hardware"
-if [ -d /sys/bus/pci/drivers/intel-ipu7 ] && grep -qs '^ov08x40 ' /sys/class/video4linux/v4l-subdev*/name; then
-    pass "IPU7 with OV08X40 sensor"
+# Gate on the firmware-described hardware, like the setup script: a driver that
+# failed to probe (the case this check exists for) is a FAIL below, not "no camera"
+if ! grep -qsx 0xb05d /sys/bus/pci/devices/*/device || ! compgen -G '/sys/bus/acpi/devices/OVTI08F4:*' >/dev/null; then
+    echo "  No IPU7 / OV08X40 camera here; this machine doesn't need the relay"
+    exit 0
+fi
+if compgen -G '/sys/bus/pci/drivers/intel-ipu7/0000:*' >/dev/null; then
+    pass "intel-ipu7 bound"
 else
-    fail "IPU7 / OV08X40 not found — this machine doesn't need the relay"
-    exit 1
+    fail "intel-ipu7 not bound (journalctl -k | grep -i ipu7)"
+fi
+if grep -qs '^ov08x40 ' /sys/class/video4linux/v4l-subdev*/name; then
+    pass "ov08x40 sensor probed"
+else
+    fail "ov08x40 sensor not probed (journalctl -k | grep -i ov08x40)"
 fi
 
 echo "Packages"

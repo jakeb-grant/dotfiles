@@ -1545,7 +1545,7 @@ fn wall_name(w: Wall) -> text {
 component ThemeRow(m: Match<Theme>) {
   let on = m.item.slug == theme_slug
   Row {
-    on activate { if !on { problem = ""; switching = m.item.slug; put_theme(m.item.slug) } }
+    on activate { if !on && switching == "" { problem = ""; switching = m.item.slug; put_theme(m.item.slug) } }
     if on { Glyph "check" { on: true } } else {
       row { width: 20; shrink: 0; justify: center
         row { width: 14; height: 14; radius: full; clip: true; border: 1, $fg.alpha(0.2)

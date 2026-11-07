@@ -44,10 +44,12 @@ OUTPUT_DIR="$WALLPAPER_DIR"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        -o|--output|-p|--palettes|-n|--monitors|-q|--quality|--format)
+            [[ $# -ge 2 ]] || usage 1 ;;&
         -o|--output)    OUTPUT_DIR="$2"; shift 2 ;;
         -p|--palettes)
-            # Convert comma-separated to JSON array
-            PALETTES=$(echo "$2" | tr ',' '\n' | sed 's/.*/"&"/' | paste -sd',' | sed 's/^/[/;s/$/]/')
+            # Comma-separated to a JSON array, each name trimmed
+            PALETTES=$(jq -cn --arg s "$2" '$s | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(. != ""))')
             shift 2 ;;
         -n|--monitors)  NUM_MONITORS="$2"; shift 2 ;;
         -q|--quality)   QUALITY="$2"; shift 2 ;;
@@ -83,7 +85,7 @@ trap 'rm -f "$CROPPED"' EXIT
 mkdir -p "$OUTPUT_DIR"
 
 # Sets are registered (and slices mirrored into the chezmoi source) only when
-# writing into the real wallpaper dir — Quickshell resolves registered images
+# writing into the real wallpaper dir — the launcher resolves registered images
 # relative to ~/.config/wallpapers, so entries for files elsewhere render
 # nothing.
 REGISTER=true

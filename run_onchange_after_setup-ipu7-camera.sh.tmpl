@@ -8,11 +8,12 @@
 # udev rule hides the raw nodes so apps can't pick them.
 #
 # The /etc files are rendered from .chezmoitemplates/ipu7-camera/, so editing
-# any of them changes this script and re-runs it. Packages come from
-# arch-quickstart's package lists; this script only wires them up. "after" so
-# the WirePlumber rules and check script are already deployed.
+# any of them changes this script and re-runs it, as do the WirePlumber rules
+# (they need its restart). The check script deliberately doesn't: an edit to a
+# diagnostic shouldn't cost sudo prompts and an audio blip, so run it by hand.
+# Packages come from arch-quickstart's package lists; this script only wires
+# them up. "after" so the WirePlumber rules and check script are already deployed.
 #
-# check script: {{ include "dot_local/bin/executable_ipu7-camera-check" | sha256sum }}
 # wireplumber rules: {{ include "dot_config/wireplumber/wireplumber.conf.d/50-ipu7-camera.conf" | sha256sum }}
 
 set -e

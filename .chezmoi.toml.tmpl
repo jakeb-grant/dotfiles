@@ -15,3 +15,9 @@
 [git]
     autoCommit = true
     autoPush = false
+
+# zeditor returns at once without --wait, and chezmoi edit reads the file back
+# when the editor exits
+[edit]
+    command = "zeditor"
+    args = ["--wait"]

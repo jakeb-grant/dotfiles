@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Windows VM
+Comment=Start the Windows VM and connect to it
+Exec=win-vm
+Icon=computer
+Terminal=false
+Keywords=vm;windows;virtual;machine;
+Categories=System;Emulator;

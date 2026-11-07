@@ -7,6 +7,21 @@
 #     "torch",
 #     "torchvision",
 # ]
+#
+# # CPU-only wheels (the PyPI ones pull GBs of CUDA), both torch and torchvision
+# # from the same index so their builds match; exclude-newer keeps the resolution
+# # reproducible, since super-image is unmaintained
+# [tool.uv]
+# exclude-newer = "2026-11-01T00:00:00Z"
+#
+# [[tool.uv.index]]
+# name = "pytorch-cpu"
+# url = "https://download.pytorch.org/whl/cpu"
+# explicit = true
+#
+# [tool.uv.sources]
+# torch = { index = "pytorch-cpu" }
+# torchvision = { index = "pytorch-cpu" }
 # ///
 """Upscale images using EDSR 4x with tiled processing (CPU)."""
 

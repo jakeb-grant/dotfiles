@@ -17,8 +17,10 @@ local mod          = "SUPER"
 -- ------------------------------------------------------------------------------
 hl.env("TERMINAL",                     "term")   -- ~/.local/bin/term, Kitty's single instance: Strand runs Terminal=true apps with it
 hl.env("EDITOR",                       "zeditor")
-hl.env("VISUAL",                       "zeditor")
+hl.env("VISUAL",                       "zeditor --wait")  -- waits: sudoedit, crontab -e, systemctl edit
 hl.env("GIT_EDITOR",                   "zeditor --wait")
+hl.env("SUDO_EDITOR",                  "zeditor --wait")
+hl.env("SYSTEMD_EDITOR",               "zeditor --wait")
 hl.env("GDK_BACKEND",                  "wayland,x11")
 hl.env("XCURSOR_THEME",                "phinger-cursors-light")  -- cursor.sync_gsettings_theme hands it to GTK
 hl.env("XCURSOR_SIZE",                 "24")

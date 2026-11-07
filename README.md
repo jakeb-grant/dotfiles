@@ -6,6 +6,8 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 
 ## Preview
 
+These predate the move to Strand and Kitty (they show the old Quickshell bar).
+
 | Everforest | Catppuccin Mocha |
 |:---:|:---:|
 | ![Everforest](screenshots/everforest.png) | ![Catppuccin Mocha](screenshots/mocha.png) |
@@ -21,7 +23,6 @@ Chezmoi-managed dotfiles for my Hyprland desktop environment. A palette-driven t
 - **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color names for GTK4 apps, and the same for GTK3 apps through the adw-gtk3 theme
 - **Login Manager**: greetd + tuigreet
-- **Boot Theming**: GRUB bootloader theme
 
 ## Getting Started
 
@@ -70,13 +71,13 @@ On any other base system, the configs and scripts additionally assume:
 - `jq` and ImageMagick (`magick`) — `wallpaper-split`
 - `fnm` — sourced in `.bashrc` (guarded; skipped if absent)
 - `setfacl` (acl package) — the Chromium policy setup script
-- `tuigreet`, a `greeter` user, and `start-hyprland` — the greetd setup script writes `/etc/greetd/config.toml` pointing at all three (`start-hyprland` is a system binary installed by arch-quickstart)
+- `tuigreet`, a `greeter` user, and `start-hyprland` — the greetd setup script writes `/etc/greetd/config.toml` pointing at all three (`start-hyprland` ships with the hyprland package)
 
 Install notes:
 
-- The `run_once` setup scripts (greetd, Chromium policies) and the `run_onchange` GPU-symlinks script (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt.
+- The `run_once` setup scripts (greetd, Chromium policies) and the `run_onchange` scripts for the IPU7 camera relay (on machines with that camera; it also needs `v4l2-relayd` from the AUR) and GPU symlinks (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt.
 - The greetd script heredocs its config straight into `/etc`, so later out-of-band edits there are invisible to `chezmoi diff` — accepted trade-off for a personal repo; the script is the source of truth.
-- Clone the `~/knowledge` Obsidian vault before expecting the Obsidian theme to work — chezmoi only manages the `.obsidian` theme files inside it, so applying without the vault just creates a bare `.obsidian` skeleton in an empty directory.
+- chezmoi only manages the `.obsidian` theme files inside the `~/knowledge` Obsidian vault, so an install that applies before the vault is cloned (arch-quickstart does, in the chroot) leaves a bare `~/knowledge/.obsidian`, and `git clone` then refuses the non-empty directory. Clone into it instead: `git -C ~/knowledge init && git -C ~/knowledge remote add origin https://github.com/jakeb-grant/knowledge.git && git -C ~/knowledge fetch && git -C ~/knowledge checkout -f main`, then `chezmoi apply` to put the theme back.
 
 ## What's Included
 
@@ -90,33 +91,38 @@ dot_config/
 │   ├── notify.strand       # Notification server
 │   └── record.strand       # Screen recording (wf-recorder)
 ├── quickshell/         # Previous shell, not started; kept as a rollback until ~2026-11-11
-├── kitty/              # Terminal emulator + a colour theme per palette
+├── kitty/              # Terminal emulator + a colour theme per palette; launch-actions
+│                       #   opens folders handed to it (the system folder handler) in Yazi
 ├── zed/                # Zed editor settings + hand-crafted themes
 ├── yazi/               # Yazi file manager theme
 ├── btop/               # System monitor theme
 ├── gtk-3.0/            # GTK3 color overrides
 ├── gtk-4.0/            # GTK4/libadwaita color overrides
-├── grub/               # GRUB bootloader theme
 ├── age/                # age recipients (public key) — ~/knowledge's git clean
 │                       #   filter encrypts personal/finance/** to this key
 │                       #   (decrypt side reads the private key from 1Password)
 ├── private_1Password/  # 1Password SSH agent config (serves keys from the Developer vault)
 ├── windows-vm/         # Windows VM (docker-compose)
+├── wireplumber/        # Hides the IPU7 raw camera nodes (see run_onchange_after_setup-ipu7-camera)
 ├── palette/            # Theme palette definitions (JSON)
 └── wallpapers/         # Flat image pool + wallpapers.json config
 knowledge/
 └── dot_obsidian/           # Obsidian vault theme (~/knowledge/ must be the vault)
     ├── appearance.json     # Selects "Palette" theme
     └── themes/Palette/     # Theme CSS template + manifest
+dot_local/share/applications/
+├── win-vm.desktop      # "Windows VM" in the launcher
+└── com.mitchellh.ghostty.desktop  # Hides Ghostty from the launcher (goes with Quickshell)
 dot_local/bin/
 ├── ipu7-camera-check   # Check the IPU7 camera relay end to end
 ├── screenshot          # Capture (region/full) + clipboard + notification
+├── term                # Kitty's single instance; Strand's launcher runs terminal apps through it
 ├── theme-switch        # Theme switching utility
 ├── toggle-bar-mode     # Quickshell's sidebar/topbar switch (goes with Quickshell)
 ├── wallpaper-split     # Split wide/panoramic images into per-monitor sets
 ├── wallpaper-upscale   # AI upscale images using EDSR 4x (CPU)
 └── win-vm              # Windows VM management
-dot_bashrc              # Shell config (PATH, Zed as $EDITOR, fnm)
+dot_bashrc              # Shell config (PATH, Zed as $EDITOR, history, fzf, y for Yazi, fnm)
 dot_claude/             # Claude Code config (writing skills)
 ```
 
