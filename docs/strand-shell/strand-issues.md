@@ -34,6 +34,31 @@ None.
 
 ## Fixed
 
+### On 4K monitors the lock shows Hyprland's "lockscreen app died" screen
+
+Found 2026-11-06 on Strand `073cce42` (edge), on the desk: two 3840x2160 monitors at scale 1.5 next
+to two 1920-class ones.
+
+**What happens:** Hyprland shows its dead-lock screen on any monitor that has no lock frame a second
+after the lock request (`misc:lockdead_screen_delay`). Each lock got there for about 1.9 s, and after a
+first fix the first lock after `strand run` still flashed it briefly. The opening also paused up to half
+a second on each monitor while the lock moved to the GPU.
+- Strand copied each 4K screen still pixel by pixel, twice per monitor, on the main thread after the
+  lock request, and held a lock's first frame up to 500 ms for its text (up to 1 s with other monitors'
+  paints).
+- A main thread busy painting was read as a stalled GPU, so every lock surface was destroyed and
+  recreated, which is exactly what shows the dead screen.
+
+**Worked around:** nothing in this config.
+
+**Fixed** in Strand `3187e4d3` (decisions.md lock-4k). A still that needs no resizing is shared, not
+copied; a lock's first frame waits at most 100 ms for its text; a GPU stall and the logic watchdog are
+judged only after the replies are read; the GPU safety net waits 2 s and renews at once only on a real
+failure. On the desk every monitor's first frame came 36 to 99 ms after the request and the hand-off
+took 42 to 178 ms (three 1920-class monitors; recheck on the 4K desk). Left: the opening's hand-off
+still rebuilds the blurred still on the main thread for each monitor (tens of ms per 4K monitor in a
+release build), the next thing to move off it. Done on 2026-11-06.
+
 ### `grain:` replaces a thumbnail's or image's own pixels, and never stops moving
 
 Found 2026-11-06 on Strand `48ae06c4` (branch `laptop/lock-int`), in the lock VM (owner_lock scratch
