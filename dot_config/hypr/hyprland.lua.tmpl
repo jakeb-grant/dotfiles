@@ -8,7 +8,7 @@
 -- Programs
 -- ------------------------------------------------------------------------------
 local terminal     = "kitty -1"
-local editor       = "zeditor --wait"
+local editor       = "zeditor"
 local file_manager = terminal .. " yazi"
 local mod          = "SUPER"
 
@@ -20,7 +20,7 @@ hl.env("EDITOR",                       "zeditor")
 hl.env("VISUAL",                       "zeditor")
 hl.env("GIT_EDITOR",                   "zeditor --wait")
 hl.env("GDK_BACKEND",                  "wayland,x11")
-hl.env("XCURSOR_THEME",                "Bibata-Modern-Classic")
+hl.env("XCURSOR_THEME",                "phinger-cursors-light")  -- cursor.sync_gsettings_theme hands it to GTK
 hl.env("XCURSOR_SIZE",                 "24")
 hl.env("HYPRCURSOR_SIZE",              "24")
 hl.env("PATH",                         os.getenv("HOME") .. "/.local/bin:" .. (os.getenv("PATH") or ""))
@@ -37,7 +37,7 @@ hl.env("__GLX_VENDOR_LIBRARY_NAME",     "nvidia")
 hl.env("NVD_BACKEND",                   "direct")
 {{ if eq .graphics "prime" -}}
 -- Multi-monitor support for hybrid graphics
-hl.env("AQ_DRM_DEVICES", "/dev/dri/card1:/dev/dri/card0")
+hl.env("AQ_DRM_DEVICES", "/dev/dri/igpu:/dev/dri/dgpu")  -- stable names from run_onchange_setup-gpu-symlinks
 {{ end -}}
 {{ end -}}
 
@@ -51,12 +51,13 @@ local p = require("palette")
 -- ------------------------------------------------------------------------------
 -- Loaded from external file to persist across theme changes. A load failure
 -- (usually a syntax error in a hand-edited monitors.lua) would otherwise
--- silently fall back to Hyprland's default auto-detection — surface it.
+-- silently fall back to Hyprland's default auto-detection — surface it, in
+-- Hyprland's own overlay, since at login no notification daemon is up yet.
 local mon_ok, mon_err = pcall(require, "monitors")
 if not mon_ok then
   local msg = "monitors.lua failed to load: " .. tostring(mon_err)
   print(msg)
-  hl.exec_cmd("notify-send -u critical Hyprland '" .. msg:gsub("'", "'\\''") .. "'")
+  hl.notification.create({ text = msg, duration = 15000, icon = 3 })
 end
 
 -- ------------------------------------------------------------------------------
@@ -64,9 +65,9 @@ end
 -- ------------------------------------------------------------------------------
 local autostart = {
   "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_ID XDG_SESSION_TYPE",
-  "hyprctl setcursor Bibata-Modern-Classic 24",
   "awww-daemon",
-  "wl-paste --watch cliphist store",
+  -- The power key opens Strand's power page (bound below) instead of logind powering off
+  "systemd-inhibit --what=handle-power-key --who=Hyprland --why='The power key opens the power page' sleep infinity",
   "strand run",
   "hypridle",
   "hyprpier daemon",
@@ -84,6 +85,8 @@ end)
 
 -- Applications
 hl.bind(mod .. " + Space",         hl.dsp.exec_cmd("strand toggle launcher.open"), { description = "Shell: Launcher" })
+hl.bind(mod .. " + V",             hl.dsp.exec_cmd("strand toggle launcher.clipboard_key"), { description = "Shell: Clipboard" })
+hl.bind("XF86PowerOff",            hl.dsp.exec_cmd("strand toggle launcher.power_key"), { description = "Shell: Power" })
 hl.bind(mod .. " + Return",        hl.dsp.exec_cmd(terminal), { description = "Apps: Terminal" })
 hl.bind(mod .. " + SHIFT + B",     hl.dsp.exec_cmd("xdg-open https://"), { description = "Apps: Browser" })
 hl.bind(mod .. " + SHIFT + F",     hl.dsp.exec_cmd(file_manager), { description = "Apps: Files" })
@@ -96,17 +99,20 @@ hl.bind(mod .. " + O", hl.dsp.window.pin(), { description = "Windows: Pin to eve
 hl.bind(mod .. " + P", hl.dsp.window.pseudo(), { description = "Windows: Pseudo-tile" })
 hl.bind(mod .. " + J", hl.dsp.layout("togglesplit"), { description = "Windows: Turn the split" })
 hl.bind(mod .. " + F", hl.dsp.window.fullscreen(), { description = "Windows: Fullscreen" })
+hl.bind(mod .. " + U", hl.dsp.focus({ urgent_or_last = true }), { description = "Windows: Go to the one asking for attention" })
 hl.bind(mod .. " + L", hl.dsp.exec_cmd("loginctl lock-session"), { description = "Shell: Lock" })
 
 -- Notifications (Strand: the one showing, or every one waiting)
 hl.bind(mod .. " + comma",         hl.dsp.exec_cmd("strand toggle notify.clear_key"), { description = "Shell: Clear the notification" })
 hl.bind(mod .. " + SHIFT + comma", hl.dsp.exec_cmd("strand toggle notify.clear_all_key"), { description = "Shell: Clear every notification" })
 
--- Move focus + swap windows with arrow keys
+-- Focus, move and swap windows with arrow keys. Move carries a window past the
+-- last tile onto the next monitor, even an empty one; swap needs a window there.
 local dirs = { left = "l", right = "r", up = "u", down = "d" }
 for key, d in pairs(dirs) do
   hl.bind(mod .. " + " .. key,         hl.dsp.focus({ direction = d }), { description = "Arrange: Focus" })
-  hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = d }), { description = "Arrange: Swap" })
+  hl.bind(mod .. " + SHIFT + " .. key, hl.dsp.window.move({ direction = d }), { description = "Arrange: Move" })
+  hl.bind(mod .. " + CTRL + " .. key,  hl.dsp.window.swap({ direction = d }), { description = "Arrange: Swap" })
 end
 
 -- Resize windows (relative = true for delta-style resize, matching the legacy
@@ -149,8 +155,8 @@ hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("brightnessctl set +5%"),      
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("brightnessctl set 5%-"),                       { description = "Screen: Brightness", repeating = true, locked = true })
 hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 5%+"), { description = "Sound: Volume", repeating = true, locked = true })
 hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),    { description = "Sound: Volume", repeating = true, locked = true })
-hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),   { description = "Sound: Mute", repeating = true, locked = true })
-hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { description = "Sound: Mute the microphone", repeating = true, locked = true })
+hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),   { description = "Sound: Mute", locked = true })
+hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { description = "Sound: Mute the microphone", locked = true })
 hl.bind("XF86AudioPlay",         hl.dsp.exec_cmd("strand toggle island.play_key"), { description = "Sound: Play or pause", locked = true })
 hl.bind("XF86AudioPause",        hl.dsp.exec_cmd("strand toggle island.play_key"), { description = "Sound: Play or pause", locked = true })
 hl.bind("XF86AudioNext",         hl.dsp.exec_cmd("strand toggle island.next_key"), { description = "Sound: Next track", locked = true })
@@ -170,9 +176,7 @@ hl.config({
       active_border   = p.accent_rgba(1.0),
       inactive_border = p.surface1_rgba(0.8),
     },
-    resize_on_border = false,
-    allow_tearing    = false,
-    layout           = "dwindle",
+    layout = "dwindle",
   },
 })
 
@@ -181,9 +185,7 @@ hl.config({
 -- ------------------------------------------------------------------------------
 hl.config({
   decoration = {
-    rounding         = 5,
-    active_opacity   = 1.0,
-    inactive_opacity = 1.0,
+    rounding = 5,
     blur = {
       enabled  = true,
       size     = 3,
@@ -205,12 +207,9 @@ hl.config({
 -- Spaces inside `{ {` are intentional: chezmoi parses paired braces as Go template
 -- delimiters, so Lua's nested-table syntax must keep them visually separated.
 hl.curve("easeOutQuint",   { type = "bezier", points = { {0.23, 1},    {0.32, 1} } })
-hl.curve("easeInOutCubic", { type = "bezier", points = { {0.65, 0.05}, {0.36, 1} } })
 hl.curve("linear",         { type = "bezier", points = { {0, 0},       {1, 1} } })
 hl.curve("almostLinear",   { type = "bezier", points = { {0.5, 0.5},   {0.75, 1.0} } })
 hl.curve("quick",          { type = "bezier", points = { {0.15, 0},    {0.1, 1} } })
-
-hl.config({ animations = { enabled = true } })
 
 local anim = {
   { "global",        speed = 10,   bezier = "default" },
@@ -221,6 +220,8 @@ local anim = {
   { "fadeIn",        speed = 1.73, bezier = "almostLinear" },
   { "fadeOut",       speed = 1.46, bezier = "almostLinear" },
   { "fade",          speed = 3.03, bezier = "quick" },
+  -- Layer animations reach only awww and slurp/hyprpicker: Strand animates its
+  -- own surfaces and is exempt (the strand-no-anim rule below)
   { "layers",        speed = 3.81, bezier = "easeOutQuint" },
   { "layersIn",      speed = 4,    bezier = "easeOutQuint", style = "fade" },
   { "layersOut",     speed = 1.5,  bezier = "linear",       style = "fade" },
@@ -237,20 +238,14 @@ end
 -- ------------------------------------------------------------------------------
 -- Layouts
 -- ------------------------------------------------------------------------------
-hl.config({
-  dwindle = { preserve_split = true },
-  master  = { new_status     = "master" },
-})
+hl.config({ dwindle = { preserve_split = true } })
 
 -- ------------------------------------------------------------------------------
 -- Input
 -- ------------------------------------------------------------------------------
 hl.config({
   input = {
-    kb_layout    = "us",
-    follow_mouse = 1,
-    sensitivity  = 0,
-    touchpad     = { natural_scroll = true },
+    touchpad = { natural_scroll = true },
   },
 })
 
@@ -259,6 +254,7 @@ hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 -- ------------------------------------------------------------------------------
 -- Cursor
 -- ------------------------------------------------------------------------------
+hl.config({ cursor = { hide_on_key_press = true } })
 {{ if or (eq .graphics "nvidia") (eq .graphics "prime") -}}
 hl.config({ cursor = { no_hardware_cursors = 1 } })
 {{ end -}}
@@ -271,10 +267,14 @@ hl.config({
     disable_hyprland_logo    = true,
     disable_splash_rendering = true,
     force_default_wallpaper  = -1,
-    -- a lock screen that dies (Strand's, while it is tried) can be taken over by
+    -- a lock screen that dies (Strand's, or hyprlock as the fallback) can be taken over by
     -- another locker, from a text console, without ever unlocking the session:
     -- Ctrl+Alt+F2, log in, hyprctl -i 0 dispatch 'hl.dsp.exec_cmd("hyprlock")', Ctrl+Alt+F1
     allow_session_lock_restore = true,
+  },
+  ecosystem = {
+    no_update_news  = true,
+    no_donation_nag = true,
   },
   debug = {
     vfr = true,
@@ -294,4 +294,23 @@ hl.window_rule({
   match    = { class = "^$", title = "^$", xwayland = true,
                float = true, fullscreen = false, pin = false },
   no_focus = true,
+})
+hl.window_rule({
+  name  = "picture-in-picture",
+  match = { title = "^Picture.in.[Pp]icture$" },
+  float = true,
+  pin   = true,
+  size  = { 480, 270 },
+  move  = { "monitor_w-500", "monitor_h-290" },
+})
+
+-- ------------------------------------------------------------------------------
+-- Layer Rules
+-- ------------------------------------------------------------------------------
+-- From `strand compositor-rules`: Strand animates its own surfaces (enter, exit,
+-- morph), so Hyprland's layer fade would play over them
+hl.layer_rule({
+  name    = "strand-no-anim",
+  match   = { namespace = "^strand-.*$" },
+  no_anim = true,
 })
