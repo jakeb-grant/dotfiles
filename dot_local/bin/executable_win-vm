@@ -8,6 +8,10 @@ set -Eeuo pipefail
 COMPOSE_DIR="$HOME/.config/windows-vm"
 COMPOSE_FILE="$COMPOSE_DIR/docker-compose.yaml"
 
+# Started from the launcher there's no terminal: keep what it says in a log
+LOG="${XDG_RUNTIME_DIR:-/tmp}/win-vm.log"
+[[ -t 1 ]] || exec >>"$LOG" 2>&1
+
 notify() {
     local urgency="${2:-normal}"
     echo "$1"
@@ -15,7 +19,17 @@ notify() {
     notify-send -a "Windows VM" -u "$urgency" "Windows VM" "$1" || true
 }
 
-trap 'notify "win-vm failed at line $LINENO (docker compose -f $COMPOSE_FILE logs)" critical' ERR
+# Each step on the way up shows in Strand's island with the time so far
+# (strand/vm.strand); "" clears it. || true: with no Strand running (SSH) the
+# script goes on without it.
+step() {
+    echo "$(date +%T) step: ${1:-(done)}"
+    strand set vm.step "$1" >/dev/null 2>&1 || true
+}
+
+trap 'step ""; notify "win-vm failed at line $LINENO (docker compose -f $COMPOSE_FILE logs)" critical' ERR
+# killed or interrupted mid-way: the island shouldn't keep counting
+trap 'step ""; exit 130' INT TERM HUP
 
 ensure_docker() {
     # Check if user is in docker group
@@ -28,7 +42,7 @@ ensure_docker() {
 
     # Check if docker daemon is running
     if ! systemctl is-active --quiet docker; then
-        notify "Starting docker daemon..."
+        step "Starting Docker"
         pkexec systemctl start docker
     fi
 
@@ -62,13 +76,18 @@ rdp_ready() {
     # when nothing answers) — the reliable success marker is in the log output.
     local out
     out=$(timeout 15 sdl-freerdp3 +auth-only "${RDP_OPTS[@]}" 2>&1) || true
-    [[ "$out" == *"Authentication only, exit status SUCCESS"* ]]
+    if [[ "$out" == *"Authentication only, exit status SUCCESS"* ]]; then
+        echo "$(date +%T) probe: ready"
+    else
+        echo "$(date +%T) probe: not yet"
+        return 1
+    fi
 }
 
 wait_for_rdp() {
-    # $1: max seconds to wait. Progress goes to stdout only — terminal users
-    # see it, and launcher/keybind invocations already have better feedback
-    # (the live console on first boot, a single notification otherwise).
+    # $1: max seconds to wait. Progress goes to stdout for terminal users;
+    # launcher/keybind invocations see the step and its time in the island
+    # (and the live console on first boot).
     local start=$SECONDS deadline=$((SECONDS + $1))
     while (( SECONDS < deadline )); do
         if rdp_ready; then
@@ -80,22 +99,51 @@ wait_for_rdp() {
     return 1
 }
 
+rdp_window() {
+    # FreeRDP maps its window only once the session is up
+    hyprctl clients -j 2>/dev/null | jq -e --argjson pid "$1" 'any(.[]; .pid == $pid)' >/dev/null
+}
+
+tile_rdp() {
+    # FreeRDP's window maps floating, and re-floats a tile asked for in its
+    # first half second or so (a tile window rule doesn't hold it either).
+    # Asking again until it has stayed tiled a moment, for 5 s at most, does.
+    local tries=0 settled=0
+    while (( tries++ < 20 && settled < 3 )); do
+        if hyprctl clients -j 2>/dev/null | jq -e --argjson pid "$1" 'any(.[]; .pid == $pid and .floating)' >/dev/null; then
+            settled=0
+            hyprctl dispatch "hl.dsp.window.float({ action = \"unset\", window = \"pid:$1\" })" >/dev/null || true
+        else
+            settled=$((settled + 1))
+        fi
+        sleep 0.25
+    done
+}
+
 connect() {
+    # $1: the island's step meanwhile. The probe can pass well before Windows
+    # takes a session (8 s into a 70 s boot), and FreeRDP retries on its own
+    # until it does, so a boot keeps its step until the window is up.
     if ! command -v sdl-freerdp3 >/dev/null; then
         notify "sdl-freerdp3 is not installed." critical
         exit 1
     fi
-    notify "Connecting to VM..."
+    step "${1:-Connecting}"
     sdl-freerdp3 "${RDP_OPTS[@]}" /clipboard /sound +dynamic-resolution +geometry /gdi:hw -grab-keyboard -decorations &
     local rdp_pid=$!
-    # The port probe only proves docker-proxy accepts — Windows' RDP stack may
-    # not be up yet (worst on first boot). A session that dies within seconds
-    # never connected; surface that instead of exiting silently.
+    # The step stays until the window maps; FreeRDP exiting first never
+    # connected, so say so rather than exit silently.
     (
-        sleep 5
-        if ! kill -0 "$rdp_pid" 2>/dev/null; then
-            notify "RDP connection failed — Windows may still be booting. Retry 'win-vm open' or use http://localhost:8006" critical
-        fi
+        until rdp_window "$rdp_pid"; do
+            if ! kill -0 "$rdp_pid" 2>/dev/null; then
+                step ""
+                notify "RDP connection failed — Windows may still be booting. Retry 'win-vm open' or use http://localhost:8006" critical
+                exit 0
+            fi
+            sleep 0.2
+        done
+        step ""
+        tile_rdp "$rdp_pid"
     ) &
 }
 
@@ -136,7 +184,9 @@ case "${1:-start-and-open}" in
             notify "VM is not running."
             exit 0
         fi
+        step "Shutting down"
         docker compose -f "$COMPOSE_FILE" down
+        step ""
         notify "VM stopped."
         ;;
     restart)
@@ -144,7 +194,9 @@ case "${1:-start-and-open}" in
             notify "VM is not running."
             exit 0
         fi
+        step "Restarting"
         docker compose -f "$COMPOSE_FILE" restart
+        step ""
         notify "VM restarted."
         ;;
     status)
@@ -165,7 +217,9 @@ case "${1:-start-and-open}" in
             notify "VM is not running. Start it with 'win-vm start'."
             exit 1
         fi
+        step "Connecting"
         if ! rdp_ready; then
+            step ""
             notify "VM is running but Windows isn't accepting RDP yet — it may still be booting. Watch it at http://localhost:8006" critical
             exit 1
         fi
@@ -179,25 +233,28 @@ case "${1:-start-and-open}" in
         fi
         FIRST_BOOT=false
         first_boot && FIRST_BOOT=true
+        step "Starting VM"
         docker compose -f "$COMPOSE_FILE" up -d
         if [[ "$FIRST_BOOT" == true ]]; then
+            step "Installing Windows"
             notify "First boot — Windows is downloading + installing (20-45 min). Opening the live console so you can watch."
             # dockurr's noVNC console shows the actual install screen — this IS
             # the progress feedback, so no notifications until it's done.
             (sleep 3 && xdg-open "http://localhost:8006") &
             if wait_for_rdp 3600; then
-                notify "Windows install finished — connecting..."
-                connect
+                connect "Installing Windows"
             else
+                step ""
                 notify "Windows still isn't up after an hour — check the console at http://localhost:8006" critical
             fi
         else
-            notify "Starting VM... Waiting for Windows to boot"
+            step "Booting Windows"
             # Warm boots have been observed to take 3-5 min after a container
             # recreate / cold page cache — 6 min keeps the timeout honest.
             if wait_for_rdp 360; then
-                connect
+                connect "Booting Windows"
             else
+                step ""
                 notify "VM didn't come up within 6 minutes. Watch it at http://localhost:8006 or retry 'win-vm open'" critical
             fi
         fi

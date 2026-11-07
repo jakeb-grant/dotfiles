@@ -1,0 +1,18 @@
+// vm.strand: the Windows VM on its way up, as win-vm tells it, step by step:
+// strand set vm.step "Booting Windows", and strand set vm.step "" once its
+// window is up or it has failed. The island shows the step and the time so far
+// in its middle; a click there opens the VM's console in the browser.
+
+permit exec "xdg-open"
+action console() ["xdg-open", "http://localhost:8006"]
+
+export state step = ""
+export state console_key = false    // flipped by the island's click
+on change console_key { console() }
+export let busy = step != ""
+
+// seconds since it set out, counted only while it is on its way
+state secs = 0
+on change busy { if busy { secs = 0 } }
+every 1s while busy { secs += 1 }
+export let elapsed = dur(secs * 1s, clock: true)

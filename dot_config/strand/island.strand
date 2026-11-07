@@ -57,6 +57,7 @@ let sym_cell = 22               // the room each has
 let wave_gap = 14               // the wave of what plays fills the middle, this short of either side
 let wave_min = 48               // and shows while it has at least this
 let wave_fade = 18              // its ends fading out over this
+let vm_min   = 70               // the Windows VM's symbol and time, with its step dropped, in less room
 let level_w  = 260              // a volume or brightness bar, centred on the island
 let level_h  = 4                // and its thickness
 let level_side = 28             // the room either side of it: the symbol, and balance
@@ -316,7 +317,7 @@ component Body(armed: bool) {
   let chips_end = chipbox.box.x + chipbox.box.width
   let wave_len = statbox.box.x - chips_end - 2 * wave_gap
   let wave_room = wave_len >= wave_min
-  let waving = wave_wanted || wave_hold
+  let waving = (wave_wanted || wave_hold) && !vm.busy
 
   on change ticks after level_hold { if moment != song { moment = calm } }
   on change ticks after song_hold { if moment == song { moment = calm } }
@@ -360,6 +361,10 @@ component Body(armed: bool) {
       // mounted while it plays; the room, measured, only fades it (a mount that
       // waited on the boxes would move them)
       if waving { PlayWave { room: wave_room; at: chips_end + wave_gap - (chipbox.box.x - pad); len: max(wave_len, wave_min) } }
+    }
+    // the Windows VM on its way up, in the same room (vm.strand)
+    row { height: island_h; align: center; hit: none
+      if vm.busy { VmBusy { at: chips_end + wave_gap - (chipbox.box.x - pad); len: max(wave_len, vm_min) } }
     }
     }
 
@@ -565,6 +570,29 @@ component PlayWave(room: bool, at: float, len: float) {
         spectrum audio.sink { bars: 40; style: line; smooth: 0.75; grow: 1; height: 18; color: $accent }
       }
     }
+  }
+}
+
+// the Windows VM on its way up, between the workspaces and the symbols as the
+// wave is: a pulsing symbol, the step it is on (each sliding in over the last)
+// and the time so far. A click opens its console in the browser.
+component VmBusy(at: float, len: float) {
+  row { place: absolute; x: at; y: 0; width: len; height: island_h; justify: center; align: center; gap: 7
+    cursor: pointer; tooltip: "Windows VM: click to watch it in the browser"
+    on click { vm.console_key = !vm.console_key }
+    enter { opacity: 0; scale: 0.92 }
+    exit { opacity: 0; scale: 0.92 }
+    text "desktop_windows" { width: sym_size; shrink: 0; font: "Material Symbols Rounded" sym_size
+      color: $accent; opacity: 0.7 + 0.3 * wave(1600ms) }
+    stack { shrink: 1; align: center; hit: none
+      for s in [vm.step] key s {
+        text s { color: lit; font: sans 12px 500; shrink: 1; ellipsis: end
+          enter { opacity: 0; y: 8 }
+          exit { opacity: 0; y: -8 }
+        }
+      }
+    }
+    text vm.elapsed { color: faint; shrink: 0; roll: true; font: mono 11px 600 }
   }
 }
 
