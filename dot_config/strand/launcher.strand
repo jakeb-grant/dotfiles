@@ -300,6 +300,14 @@ let mon_order = monitors.base.sort_by(m => m.x).map(m => m.id)
 let shown_mons = monitors.plan.sort_by(m => mon_order.index_of(i => i == m.id) ?? 99)
 state mon_pick = ""
 state tile_tick = 0             // counts clicks on the pane's tiles, so the list follows
+// a tile or workspace chip held or just let go: a drag let go over the list
+// isn't a click on its row
+state tile_held = false
+state tile_let = 0
+on change tile_let after 300ms { tile_held = false }
+// the list starts on the monitor picked, so a surface brought back on another
+// monitor (the one it was on turned off) keeps it
+let mon_at: int? = mon_pick == "" ? null : (shown_mons.index_of(m => m.id == mon_pick) ?? -1) + 1
 let picked_mon: Mon? = view == displays && !is_sum && mon_pick != "" ? shown_mons.find(m => m.id == mon_pick) : null
 let ten_ws: [int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
@@ -417,7 +425,7 @@ on network.failed(ssid, error) {
 }
 // a page left: its search, its question and what it said go; a tray menu open on it closes
 on change view {
-  query = ""; armed = ""; problem = ""; notice = ""
+  query = ""; armed = ""; problem = ""; notice = ""; mon_pick = ""
   asking = ""; secret = ""; naming = false; hidden_name = ""; naming_what = ""; new_name = ""
   if view != tray_list && tray_open != "" {
     tray.items.find(i => i.id == tray_open)?.menu?.close(); tray_open = ""; tray_sub = null
@@ -454,7 +462,9 @@ panel Launcher {
   // the preview beside the list follows the selection
   on change results.selected_index {
     results_at = results.selected_index ?? 0
-    mon_pick = view == displays && results_at >= 1 ? shown_mons.skip(results_at - 1).first?.id ?? "" : ""
+    // a tile or chip let go over a row leaves the selection on its monitor
+    if view == displays && tile_held { tile_tick += 1 }
+    else { mon_pick = view == displays && results_at >= 1 ? shown_mons.skip(results_at - 1).first?.id ?? "" : "" }
   }
   // the monitor picked stays selected when a save reorders the rows, and a click
   // on its tile selects its row
@@ -740,7 +750,7 @@ panel Launcher {
       // the island follows
       list { id: results; height: rows * row_h; shrink: 0; wrap: true
         width: has_pane ? list_w : box_w
-        selected_index: view == theme_list ? theme_at : view == media_list ? media_at : null
+        selected_index: view == theme_list ? theme_at : view == media_list ? media_at : view == displays ? mon_at : null
         if is_sum { SumRow {} }
         else {
           if view == home && query == "" {
@@ -879,9 +889,13 @@ panel Launcher {
           if picked_bt != null { Hint "Del" { what: "forget" } }
           if view == displays && sel == 0 && monitors.profile != null && naming_what == "" && !is_sum { Hint "Del" { what: "forget" } }
           if view == displays && monitors.draft.len > 0 && naming_what == "" && !is_sum { Hint "Ctrl S" { what: "save" } }
+          // the arrange keys on a monitor lit (off, or under a shut lid, only its workspaces)
           if picked_mon != null && naming_what == "" {
-            Hint "← →" { what: "move" }; Hint "⇧ ↑ ↓" { what: "stack" }; Hint "Ctrl R" { what: "turn" }
-            Hint "Ctrl = −" { what: "scale" }; Hint "Ctrl M" { what: "mode" }; Hint "Alt 1–0" { what: "workspace" }
+            if monitors.plan.any(m => m.id == mon_pick && on_now(m)) {
+              Hint "← →" { what: "move" }; Hint "⇧ ↑ ↓" { what: "stack" }; Hint "Ctrl R" { what: "turn" }
+              Hint "Ctrl = −" { what: "scale" }; Hint "Ctrl M" { what: "mode" }
+            }
+            Hint "Alt 1–0" { what: "workspace" }
           }
           if picked_dock?.status == "connected" && !(picked_dock?.stored ?? false) { Hint "⇧ Enter" { what: "once" } }
           if (picked_dock?.stored ?? false) && naming_what == "" { Hint "Del" { what: "forget" }; Hint "F2" { what: "name" } }
@@ -921,7 +935,7 @@ fn enter_does(ap: AccessPoint?, at: int) -> text {
     : view == clips ? "copy" : view == spaces ? "go"
     : view == keys_list ? ""
     : view == displays ? (naming_what != "" || at == 0 ? "save" : !(picked_mon?.on ?? false) ? "turn on"
-        : monitors.plan.count(p => p.on) > 1 ? "turn off" : "")
+        : !last_lit(monitors.plan, mon_pick) ? "turn off" : "")
     : view == bolt_list ? (naming_what != "" ? "save" : picked_dock == null ? ""
         : !(picked_dock?.stored ?? true) ? "allow always"
         : picked_dock?.status == "connected" ? "allow" : "")
@@ -2071,7 +2085,7 @@ fn kind_glyph(icon: text) -> text {
 component SetupRow {
   let p = monitors.profile
   Row {
-    on activate { problem = ""; naming_what = "profile"; new_name = p?.name ?? "" }
+    on activate { if !tile_held { problem = ""; naming_what = "profile"; new_name = p?.name ?? "" } }
     Glyph p == null ? "auto_awesome_mosaic" : "bookmark" { on: p != null }
     text setup_name() { color: $fg; grow: 1; ellipsis: end }
     if monitors.failed != "" { text monitors.failed { color: $red; shrink: 1; ellipsis: end } }
@@ -2091,7 +2105,8 @@ component MonRow(m: Mon) {
   Row {
     on activate {
       problem = ""
-      if m.on && monitors.plan.count(p => p.on) <= 1 { problem = "One monitor stays on" }
+      if tile_held {}
+      else if last_lit(monitors.plan, m.id) { problem = "One monitor stays on" }
       else { monitors.draft = switched(monitors.plan, m.id) }
     }
     Glyph lidded(m) ? "laptop" : "desktop_windows" { on: o?.enabled ?? false }
@@ -2099,7 +2114,7 @@ component MonRow(m: Mon) {
     text lidded(m) ? "Laptop screen" : (o?.model ?? "") != "" ? o?.model ?? "" : m.id { color: $fg; grow: 1; ellipsis: end }
     Aside !m.on ? "off" : monitors.shut && lidded(m) ? "lid shut"
       : join(" · ", m.width > 0 ? join("×", m.width, m.height) : null, m.scale != 1 ? join("", "×", m.scale) : null,
-        turn_name(m.transform), monitors.profile != null || monitors.draft.len > 0 ? spread(m.workspaces) : null)
+        turn_name(m.transform), spread(m.workspaces))
   }
 }
 fn turn_name(t: OutputTransform) -> text? {
@@ -2123,17 +2138,17 @@ fn spread(ws: [int]) -> text? {
 }
 
 // the monitors on as they are laid out (as edited, while they are), in
-// proportion, each with its name and workspaces, the selected one ringed. A
-// click selects one; a drag places it, let go beside the others (into the row
-// it is level with, or a row of its own above or below); under them workspaces
-// 1 to 10, the selected monitor's lit: a click gives it one or takes it back, a
-// drag gives one to the monitor it is let go on
+// proportion, each with its name and workspaces (a guess's: what saving gives
+// them), the selected one ringed, the panel under a shut lid dim. A click
+// selects one; a drag places it, let go beside the others (into the row it is
+// level with, or a row of its own above, between or below), held to the pane;
+// under them workspaces 1 to 10, the selected monitor's lit: a click gives it
+// one or takes it back, a drag gives one to the monitor it is let go on
 component SetupPane {
-  let tiles = monitors.plan.filter(m => on_now(m))
+  let tiles = monitors.plan.filter(m => m.on)
   let wide_all = max(tiles.reduce(1, (a, m) => max(a, m.x + mon_w(m))), 1)
   let tall_all = max(tiles.reduce(1, (a, m) => max(a, m.y + mon_h(m))), 1)
   let k = min((pane_box_w - list_w - 1 - 16 - 40) / wide_all, 130 / tall_all)
-  let ws_shown = monitors.profile != null || monitors.draft.len > 0
   Pane {
     row { gap: 10; align: center
       Title setup_name()
@@ -2145,24 +2160,27 @@ component SetupPane {
       for m in tiles key m.id {
         state held_at: Point? = null   // where a press on it went down, and where the pointer is since
         state now: Point? = null
-        let dx = held_at == null ? 0 : (now?.x ?? 0) - (held_at?.x ?? 0)
-        let dy = held_at == null ? 0 : (now?.y ?? 0) - (held_at?.y ?? 0)
+        // how far it is dragged, its middle held to 8 px round the pane's monitors
+        let dx = held_at == null ? 0 : clamp((now?.x ?? 0) - (held_at?.x ?? 0),
+          -(m.x + mon_w(m) / 2) * k - 8, (wide_all - m.x - mon_w(m) / 2) * k + 8)
+        let dy = held_at == null ? 0 : clamp((now?.y ?? 0) - (held_at?.y ?? 0),
+          -(m.y + mon_h(m) / 2) * k - 8, (tall_all - m.y - mon_h(m) / 2) * k + 8)
         col { x: m.x * k + dx; y: m.y * k + dy; width: mon_w(m) * k - 4; height: mon_h(m) * k - 4; radius: 6; shrink: 0
-          justify: center; align: center; gap: 2; cursor: grab
+          justify: center; align: center; gap: 2; cursor: grab; opacity: on_now(m) ? 1 : 0.45
           bg: $fg.alpha(held_at != null ? 0.14 : 0.06); border: 1, m.id == mon_pick ? $accent : $fg.alpha(0.14)
           when pressed { cursor: grabbing }
           on click { mon_pick = m.id; tile_tick += 1 }
           on change self.pressed {
-            if self.pressed { held_at = self.pointer; now = self.pointer; mon_pick = m.id; tile_tick += 1 }
+            if self.pressed { held_at = self.pointer; now = self.pointer; mon_pick = m.id; tile_tick += 1; tile_held = true }
             else {
               if dx.abs() + dy.abs() > 6 { monitors.draft = dragged_to(monitors.plan, m.id, (m.x + dx / k).round(), (m.y + dy / k).round()) }
-              held_at = null; now = null
+              held_at = null; now = null; tile_let += 1
             }
           }
           on change self.pointer { if held_at != null && self.pointer != null { now = self.pointer } }
           on drop(n: int, at: int) { monitors.draft = handed(monitors.plan, m.id, n, false) }
           text out(m)?.name ?? "" { color: $fg.alpha(0.8); font: mono 11px 600 }
-          if ws_shown { text spread(m.workspaces) ?? "" { color: $accent; font: mono 11px 500 } }
+          text on_now(m) ? spread(m.workspaces) ?? "" : "lid shut" { color: on_now(m) ? $accent : $fg.alpha(0.6); font: mono 11px 500 }
         }
       }
     }
@@ -2176,6 +2194,7 @@ component SetupPane {
             bg: mine ? $accent : chip.hover ? $fg.alpha(0.12) : $fg.alpha(0.06)
             tooltip: owner == null ? "No monitor" : monitors.plan.filter(x => x.workspaces.contains(n)).map(x => out(x)?.name ?? "").join("")
             on click { monitors.draft = handed(monitors.plan, mon_pick, n, true) }
+            on change self.pressed { if self.pressed { tile_held = true } else { tile_let += 1 } }
           }
         }
       }

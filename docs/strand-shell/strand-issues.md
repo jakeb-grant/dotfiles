@@ -34,6 +34,20 @@ nested Hyprland 0.57 (Strand's `target/try/mon`: headless outputs, a fake UPower
 private system bus). No repro folders yet: the harness needs nested Hyprland, which `verify.sh`'s
 headless sway can't stand in for.
 
+### A release on a node fires its click though the press was on another
+
+**What happens:** on the Displays page a tile in the pane is dragged (`self.pressed`, `self.pointer`)
+and let go over a list row beside the pane: the row's `on activate` runs as if it had been clicked,
+though the press went down on the tile. Before the guard below, a drag let go over the "Laptop
+screen" row turned the panel off. A workspace chip (`drag: n`) let go over a row does the same.
+
+**What it should do:** a click is a press and a release on the same node; a release that ends a press
+elsewhere (a drag) is not a click on the node under it.
+
+**Worked around:** the tiles and chips set `launcher.tile_held` while pressed and for 300 ms after the
+release; the profile and monitor rows ignore `on activate` meanwhile, and the selection a release
+moves is put back on the dragged monitor's row.
+
 ### A whole number reads as float through `reduce` and `distinct`
 
 **What happens:** `strand check` types these as `float`, so an `int` let or return refuses them:
@@ -131,7 +145,9 @@ what wouldn't load, as the running shell would.
 **What happens:** the monitor editor changes one or two fields of a `Mon` at a time (its place, on or
 off, mode and scale and turn, workspaces), and each change is a function rebuilding it with every
 field written out (`moved_to`, `lit_as`, `shown_as`, `holding` in `monitors.strand`; a `Seat` the
-same in `slid`), so a field added to the type must be added to each.
+same in `slid`), so a field added to the type must be added to each. Record fields take no defaults
+either (`check::misplaced`), so `Seat`'s `free` flag is written into every one of its sixteen
+constructions, `free: s.free` where a seat is copied and `free: false` where one is made.
 
 **What it should do:** something like `m with { on: false }`.
 
