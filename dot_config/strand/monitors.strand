@@ -81,7 +81,9 @@ on change setup {
   if draft.len > 0 { shown_note("The monitors changed, so the edit not saved was put back") }
   draft.clear(); docking = true
 }
-on change draft { if draft.len > 0 && draft == base { draft.clear() } }
+// (an edit lists its monitors row by row, so they are compared in any order)
+fn by_id(ms: [Mon]) -> [Mon] { ms.sort_by(m => m.id) }
+on change draft { if draft.len > 0 && by_id(draft) == by_id(base) { draft.clear() } }
 // what is applied, and what saving writes: the edit, else the profile, else the guess
 export let plan: [Mon] = draft.len > 0 ? draft : base
 
@@ -94,7 +96,7 @@ fn placed(m: Mon) -> OutputChange {
     mode: on_now(m) && m.width > 0 ? OutputMode(width: m.width, height: m.height, refresh: m.refresh) : null,
     x: m.x, y: m.y, scale: m.scale, transform: m.transform)
 }
-let chosen = plan.map(m => placed(m))
+let chosen = by_id(plan).map(m => placed(m))
 
 // at start, when the set changes, a profile is saved, edited or forgotten, and
 // when Hyprland or UPower comes back, after a dock has settled; an edit and
@@ -403,11 +405,28 @@ fn ordered(ss: [Seat], ids: [text]) -> [Seat] {
   ss.map(s => ids.contains(s.m.id)
     ? slid(s, from + ids.take(ids.index_of(i => i == s.m.id) ?? 0).sum(i => mon_w(ss.find(o => o.m.id == i)?.m ?? s.m))) : s)
 }
-// m (not in ss) joining row r where it stands along it, before one level with
-// it, at `off` down the row; the row keeps its left end
-fn joining(ss: [Seat], m: Mon, r: int, off: int) -> [Seat] {
+// the layout's monitors listed row by row: each row of several in the places
+// its monitors hold in the list, in the order they sit, one alone in its row
+// keeping its own place. The list is the order hyprpier kept, so a monitor
+// taken out of its row goes back to its place, before or after one it sits
+// level with.
+fn rowed(ms: [Mon]) -> [Mon] {
+  let ss = seated(ms)
+  let ids = ms.map(m => m.id)
+  ms.map(m => {
+    let row = mates(ss, ss.find(s => s.m.id == m.id)?.row ?? -1)
+    let at = ids.index_of(i => i == m.id) ?? 0
+    let k = row.map(s => ids.index_of(i => i == s.m.id) ?? 0).sort_by(i => i).index_of(i => i == at) ?? 0
+    row.skip(k).first?.m ?? m
+  })
+}
+// where a monitor goes in a row: by its middle, else by its place in the list
+fn rank(m: Mon, ids: [text]) -> int { mid(m) * 100 + (ids.index_of(i => i == m.id) ?? 0) }
+// m (not in ss) joining row r where it stands along it, at `off` down the row;
+// the row keeps its left end
+fn joining(ss: [Seat], m: Mon, r: int, off: int, ids: [text]) -> [Seat] {
   let row = mates(ss, r)
-  let order = (row + [Seat(m: m, row: r, off: off, free: false)]).sort_by(s => mid(s.m) * 2 - (s.m.id == m.id ? 1 : 0)).map(s => s.m.id)
+  let order = (row + [Seat(m: m, row: r, off: off, free: false)]).sort_by(s => rank(s.m, ids)).map(s => s.m.id)
   ordered(ss + [Seat(m: moved_to(m, lo(row), m.y), row: r, off: off, free: false)], order)
 }
 
@@ -431,7 +450,10 @@ fn shifted(ms: [Mon], id: text, dir: int) -> [Mon] {
 // past the end (or alone, or all one height), up or down a row: into the row
 // above or below (where it stands along it), else a row of its own over or
 // under them all, at the nearest stop sharing an edge with the row it leaves
-fn stacked(ms: [Mon], id: text, dir: int) -> [Mon] {
+// that keeps its place in it, so the way back puts it where it was
+fn stacked(given: [Mon], id: text, dir: int) -> [Mon] {
+  let ms = rowed(given)
+  let ids = ms.map(x => x.id)
   let ss = seated(ms)
   let me = ss.find(s => s.m.id == id)
   let m = me?.m ?? blank_mon
@@ -447,10 +469,14 @@ fn stacked(ms: [Mon], id: text, dir: int) -> [Mon] {
   let ends = rows_of(rest)
   let own = Seat(m: m, row: dir < 0 ? (ends.first ?? 0) - 1 : (ends.last ?? 0) + 1, off: 0, free: false)
   let near = mates(rest, dir < 0 ? ends.first ?? 0 : ends.last ?? 0)
-  me == null ? ms
+  let fits = sharing(stops(rest, own), mon_w(m), near)
+  let was = mates(ss, r).index_of(s => s.m.id == id) ?? 0
+  let keeps = mates(ss, r).len < 2 ? []
+    : fits.filter(x => near.count(o => rank(o.m, ids) < rank(moved_to(m, x, m.y), ids)) == was)
+  me == null ? given
     : to != null ? laid(ms, ss.map(s => s.m.id == id ? Seat(m: s.m, row: r, off: to ?? 0, free: false) : s))
-    : into != null ? laid(ms, joining(rest, m, into ?? 0, 0))
-    : laid(ms, rest + [slid(own, nearest(sharing(stops(rest, own), mon_w(m), near), m.x))])
+    : into != null ? laid(ms, joining(rest, m, into ?? 0, 0, ids))
+    : laid(ms, rest + [slid(own, nearest(keeps.len > 0 ? keeps : fits, m.x))])
 }
 
 // Ctrl+R: the next quarter turn, as Hyprland numbers them (normal, 90°, 180°,
@@ -554,6 +580,6 @@ fn dragged_to(ms: [Mon], id: text, x: int, y: int) -> [Mon] {
   let me = Seat(m: moved_to(m, x, y), row: dest, off: 0, free: false)
   let near = ss.filter(s => s.row == dest - 1 || s.row == dest + 1)
   !on_now(m) ? ms
-    : into != null ? laid(ms, joining(ss, moved_to(m, x, y), dest, off))
+    : into != null ? laid(ms, joining(ss, moved_to(m, x, y), dest, off, ms.map(o => o.id)))
     : laid(ms, ss + [slid(me, nearest(sharing(stops(ss, me), mon_w(m), near), x))])
 }

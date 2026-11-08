@@ -76,10 +76,16 @@ asks again at its next plug. Check with `boltctl list`: each dock should show `s
   Thunderbolt prompt, now that the dock is enrolled.
 - **At work:** the work profile's monitor ids come from hyprpier's profile, and Strand hasn't seen
   those monitors yet. If Alt+Y says "Best guess" and the guess is right (left to right by port, panel
-  last), save it with Enter on the profile row and name it "work". If the guess is wrong, fix the
-  monitors' places in `state/monitors.toml`. chezmoi's autoCommit commits a save at the next
-  `chezmoi` write, or you can commit it by hand. Enroll a work dock
-  the same way as in step 3.
+  last), save it with Enter on the profile row and name it "work". If the guess is wrong, arrange
+  it on Alt+Y: select a monitor (↑ ↓ or a click on its tile), move it with ← → and ⇧↑ ⇧↓ or drag
+  its tile, give it its workspaces with Alt+1 to Alt+0, then Ctrl+S and name it "work". Each
+  change goes up at once and Esc puts back what was there. chezmoi's autoCommit commits a save at
+  the next `chezmoi` write, or you can commit it by hand. Enroll a work dock the same way as in
+  step 3.
+- **Monitor modes, once:** on a U2720Q (several modes), Ctrl+M and Ctrl+Shift+M on the Displays
+  page should step its mode down and up (`hyprctl monitors` shows each), the scale falling back to
+  one the mode takes, and Esc should put the saved mode back. The test monitors offer one mode
+  each, so this is the one part of the editor not yet seen working.
 - **After a suspend with the dock attached**, which is still the open docked-suspend re-test in
   `dot_config/hypr/README.md`: the dock's USB devices should be back within a few seconds, and
   `journalctl -b -u thunderbolt-resume` shouldn't say "not let back in". The service waits up to
