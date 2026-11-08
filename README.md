@@ -41,7 +41,7 @@ These dotfiles are built for [arch-quickstart](https://github.com/jakeb-grant/ar
 
 Install notes:
 
-- The `run_once` setup scripts (greetd, Chromium policies, retiring hyprpier) and the `run_onchange` scripts for the Thunderbolt resume service, the IPU7 camera relay (on machines with that camera; it also needs `v4l2-relayd` from the AUR) and GPU symlinks (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt.
+- The `run_once` setup scripts (greetd, Chromium policies) and the `run_onchange` scripts for the Thunderbolt resume service, the IPU7 camera relay (on machines with that camera; it also needs `v4l2-relayd` from the AUR) and GPU symlinks (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt.
 - The greetd script heredocs its config straight into `/etc`, so later out-of-band edits there are invisible to `chezmoi diff` — accepted trade-off for a personal repo; the script is the source of truth.
 - chezmoi only manages the `.obsidian` theme files inside the `~/knowledge` Obsidian vault, so an install that applies before the vault is cloned (arch-quickstart does, in the chroot) leaves a bare `~/knowledge/.obsidian`, and `git clone` then refuses the non-empty directory. Clone into it instead: `git -C ~/knowledge init && git -C ~/knowledge remote add origin https://github.com/jakeb-grant/knowledge.git && git -C ~/knowledge fetch && git -C ~/knowledge checkout -f main`, then `chezmoi apply` to put the theme back.
 
