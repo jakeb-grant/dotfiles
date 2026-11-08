@@ -525,15 +525,22 @@ fn remoded(ms: [Mon], id: text, dir: int) -> [Mon] {
   remoded_in(ms, id, dir, modes_of(ms.find(x => x.id == id) ?? blank_mon))
 }
 // the same over the modes given, largest first; from its own mode in the
-// list (else one of its size), so one the monitor doesn't list stays
+// list (else one of its size), so one the monitor doesn't list stays. Modes
+// within half a hertz are one (a monitor lists 60.00 twice and 59.94; Strand
+// applies them alike), so a step goes past them, to the first of the next.
+fn alike(o: OutputMode, w: int, h: int, r: float) -> bool {
+  o.width == w && o.height == h && (r == 0 || (o.refresh - r).abs() < 0.5)
+}
 fn remoded_in(ms: [Mon], id: text, dir: int, modes: [OutputMode]) -> [Mon] {
   let m = ms.find(x => x.id == id) ?? blank_mon
   let sized = modes.index_of(o => o.width == mode_w(m) && o.height == mode_h(m))
-  let i = modes.index_of(o => o.width == mode_w(m) && o.height == mode_h(m) && (m.refresh == 0 || (o.refresh - m.refresh).abs() < 0.5)) ?? sized
-  let o = modes.skip((i ?? 0) + dir).first
+  let i = modes.index_of(o => alike(o, mode_w(m), mode_h(m), m.refresh)) ?? sized
+  let next = dir > 0 ? modes.skip((i ?? 0) + 1).find(o => !alike(o, mode_w(m), mode_h(m), m.refresh))
+    : modes.take(i ?? 0).filter(o => !alike(o, mode_w(m), mode_h(m), m.refresh)).last
+  let o = modes.find(x => alike(x, next?.width ?? 0, next?.height ?? 0, next?.refresh ?? -1))
   let s = fits(o?.width ?? 0, o?.height ?? 0, m.scale) ? m.scale
     : scales.filter(x => x <= m.scale && fits(o?.width ?? 0, o?.height ?? 0, x)).last ?? 1
-  !on_now(m) || i == null || o == null || (i ?? 0) + dir < 0 ? ms
+  !on_now(m) || i == null || next == null || o == null ? ms
     : scaled_to(ms, id, s, o?.width ?? 0, o?.height ?? 0, o?.refresh ?? 0)
 }
 
