@@ -85,47 +85,67 @@ let chosen = plan.map(m => placed(m))
 on change chosen, places, outputs.ready, upower.ready after 1500ms {
   if outputs.ready { outputs.apply(chosen) }
 }
-on change upower.lid_closed { if outputs.ready { outputs.apply(chosen) } }
+// what the monitors showed when the lid moved: Hyprland switches a monitor that
+// stays lit to another of its workspaces when the panel comes and goes
+state seen: [int] = []
+on change upower.lid_closed {
+  seen = workspaces.all.filter(w => w.active).map(w => wsn(w))
+  if outputs.ready { outputs.apply(chosen) }
+}
 export state failed = ""      // why the last layout did not apply, for the Displays page
 state applied = 0             // counts layouts that took, so the workspaces follow
 state booted = ""             // monitors.lua for the last layout that took
 on outputs.succeeded(action) { if action == "apply" { failed = ""; applied += 1; booted = boot_lua } }
-on outputs.failed(action, error) { if action == "apply" { failed = error } }
+on outputs.failed(action, error) { if action == "apply" { failed = error; seen = [] } }
 
 // a saved profile's workspaces moved onto its lit monitors once its layout took;
-// again only when the set, the monitors on or the profile change, never at a
-// restart (a workspace not made yet is placed by monitors.lua's rules, and
-// Hyprland itself puts one moved by hand back when it reloads or a monitor comes
-// and goes)
+// again whenever the set, the monitors on or the profile change (a set not saved
+// in between counts), never at a restart (a workspace not made yet is placed by
+// monitors.lua's rules, and Hyprland itself puts one moved by hand back when it
+// reloads or a monitor comes and goes). A move can leave Hyprland making a new
+// workspace on the monitor it left, so they move until none is astray, for 5s
+// at most.
 let places = profile == null ? "" : plan.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
 state placed_for = "" persist
 let lit: [Mon] = profile == null ? [] : plan.filter(m => on_now(m) && m.workspaces.len > 0)
 fn mine(m: Mon, w: Workspace) -> bool { m.workspaces.contains(wsn(w)) && w.screen == (out(m)?.name ?? "") }
+let astray = workspaces.all.filter(w => lit.any(m => m.workspaces.contains(wsn(w)) && !mine(m, w)))
+state placing = false
 on change applied, workspaces.ready after 300ms {
-  if workspaces.ready && places != "" && places != placed_for {
-    placed_for = places
-    for m in lit {
-      for s in screens.all.filter(s => s.name == (out(m)?.name ?? "")) {
-        for ws in workspaces.all.filter(w => m.workspaces.contains(wsn(w))) { ws.move_to(s) }
-      }
+  if workspaces.ready && places != placed_for { placed_for = places; placing = places != "" }
+}
+on change placing, astray after 300ms {
+  if placing && astray.len == 0 { placing = false }
+  for m in placing ? lit : [] {
+    for s in screens.all.filter(s => s.name == (out(m)?.name ?? "")) {
+      for ws in astray.filter(w => m.workspaces.contains(wsn(w))) { ws.move_to(s) }
     }
   }
 }
-// then each lit monitor shows one of its own workspaces, not an empty one
-// Hyprland made for it when it lit or the lid opened, and the focus goes back
-// where it was. Two read as shown on one monitor is not trusted: Strand still
-// reads a workspace moved off a monitor turned off as shown.
+on change placed_for after 5s { placing = false }
+// then each lit monitor shows one of its own workspaces (the one it showed
+// before the lid moved), not an empty one Hyprland made for it when it lit or
+// the lid opened, and the focus goes back to the monitor that had it. Two read
+// as shown on one monitor is not trusted: Strand still reads a workspace moved
+// off a monitor turned off as shown.
+fn was(m: Mon, w: Workspace) -> bool { mine(m, w) && seen.contains(wsn(w)) }
 fn shows_own(m: Mon) -> bool {
   let shown = workspaces.all.filter(w => w.active && w.screen == (out(m)?.name ?? ""))
-  shown.len == 1 && shown.any(w => mine(m, w))
+  shown.len == 1 && shown.any(w => mine(m, w) && (was(m, w) || !workspaces.all.any(x => was(m, x))))
 }
-on change applied, placed_for, workspaces.ready after 800ms {
-  let back = lit.any(m => workspaces.all.any(w => w.focused && mine(m, w)))
-  for m in lit.filter(m => !shows_own(m)) {
-    (workspaces.all.find(w => w.active && mine(m, w)) ?? workspaces.all.find(w => mine(m, w) && wsn(w) == m.workspaces.first)
-      ?? workspaces.configured.find(w => mine(m, w) && wsn(w) == m.workspaces.first))?.focus()
+fn put(m: Mon) -> Workspace? {
+  workspaces.all.find(w => was(m, w)) ?? workspaces.all.find(w => w.active && mine(m, w))
+    ?? workspaces.all.find(w => mine(m, w) && wsn(w) == m.workspaces.first)
+    ?? workspaces.configured.find(w => mine(m, w) && wsn(w) == m.workspaces.first)
+}
+on change applied, placing, workspaces.ready after 800ms {
+  let fix = placing ? [] : lit.filter(m => !shows_own(m))
+  let f = workspaces.focused
+  for m in fix { put(m)?.focus() }
+  for m in fix.len == 0 ? [] : lit.filter(m => (f?.screen ?? "") == (out(m)?.name ?? "")) {
+    (fix.any(x => x.id == m.id) ? put(m) : f)?.focus()
   }
-  if back { workspaces.focused?.focus() }
+  if !placing { seen = [] }
 }
 
 // monitors.lua for Hyprland's next start (hyprland.lua requires it): a line for

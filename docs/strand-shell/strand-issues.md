@@ -45,16 +45,33 @@ monitor that stays on, which already shows its own. `workspaces.all` then has tw
 **Worked around:** `monitors.strand` doesn't trust a screen that reads as showing two
 (`shows_own`), and focuses one of the monitor's own there.
 
-### Output.id ends in a space when there is no serial
+### Output.id ends in a space when the description is empty
 
-**What happens:** `Output.id` (and `Screen.id`) is `make | model | serial` (or the description) with
-the last part empty and its space kept: this laptop's panel reads `… | ` with a trailing space, and
-Hyprland's headless outputs `Unknown | Unknown | `. A profile written by hand, or read back from a
-TOML file an editor trimmed, no longer matches.
+**What happens:** `Output.id` (and `Screen.id`) is `make | model | description` (the description
+without its connector, `output_id` in strand-services' `outputs.rs`), joined by `" | "` even when a
+part is empty. Hyprland's headless outputs have no description, so their id is
+`Unknown | Unknown | ` with a trailing space, and a description that itself ends in a space would
+do the same. A profile written by hand, or read back from a TOML file an editor trimmed, no longer
+matches. Not seen on this laptop's monitors: `hyprctl` gives the panel's description as
+`LG Display 0x07C7`, but what its `wl_output` sends wasn't checked.
 
 **What it should do:** no trailing separator when a part is empty, or the id trimmed.
 
 **Worked around:** `monitors.strand` compares `o.id.trim()`.
+
+### Identical monitors swap ids across a restart
+
+**What happens:** monitors with the same make, model and description are numbered `#2`, `#3`.
+Plugged in while Strand runs, they're numbered in the order they came; after a Strand restart, in
+the order of their names. Three of Hyprland's headless outputs (all `Unknown | Unknown | `) made
+as eDP-1, then DP-2, then DP-6 had eDP-1 as the bare id, and after a restart DP-2. A profile
+keyed by those ids then puts each one where another was, and its workspaces with it.
+
+**What it should do:** the same id for the same output for as long as it's connected, or numbering
+that doesn't depend on history (by connector name, say).
+
+**Worked around:** nothing: this laptop's monitors all have serial numbers, so no two ids are alike.
+Only the nested-Hyprland test harness has identical heads.
 
 ### Nothing says which output is the laptop's own panel
 
