@@ -39,7 +39,7 @@ Catppuccin-style JSON files with named color roles:
 
 ### Chezmoi Templates
 
-All `.tmpl` files are hand-edited sources (nothing generates them). Themed ones read `active.json` as described above; others use standard chezmoi variables for machine-specific config (GPU drivers). No theme file is generated: `active.json` is the only thing theme-switch writes into the source.
+All `.tmpl` files are hand-edited sources (nothing generates them). Themed ones read `active.json` as described above; others use standard chezmoi variables for machine-specific config (GPU drivers). No theme file is generated: `active.json` is the only thing theme-switch writes into the source. Strand's Displays page writes `state/monitors.toml` there too (below).
 
 ## Important: Editing Themed Files
 
@@ -63,6 +63,8 @@ chezmoi diff
 Strand (https://strand.jacobgrant.dev) provides the island bar, launcher, notifications, lock screen and polkit password prompt: `dot_config/strand/*.strand`, started by `strand run` in Hyprland's autostart and bound with `strand toggle <file>.<key>`. A saved `.strand` file hot-reloads the running shell, so test a change on a copy (`strand check <dir>`) before `chezmoi apply`. Its feature list and parked Strand problems are in `docs/strand-shell/`.
 
 Locking is Strand's (`lock.strand`): everything locks through `loginctl lock-session`, and Strand answers logind's request. hypridle starts hyprlock only while no `strand` process is running. Recovering from a lock screen that died is in `dot_config/hypr/README.md`.
+
+Monitors are Strand's too (`monitors.strand`): it writes `~/.config/hypr/monitors.lua`, and its profiles are `state/monitors.toml` in the source, linked to `~/.config/strand/monitors.toml`, so the Displays page's Save and Del write into the source tree (the one file Strand writes there; `.chezmoiignore` keeps `state/` from being applied as a target). Test monitor changes in nested Hyprland, never on the live session.
 
 Quickshell, the shell before Strand, was retired on 2026-11-07 with Ghostty and pane-fm; its config and docs are in git history.
 
