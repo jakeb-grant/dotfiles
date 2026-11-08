@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# bolt-devices: bolt's Thunderbolt devices as one JSON line, again on every change.
+set -u
+B=(busctl --system --json=short)
+snapshot() {
+  local sec devs=()
+  sec=$("${B[@]}" get-property org.freedesktop.bolt /org/freedesktop/bolt org.freedesktop.bolt1.Manager SecurityLevel | jq -r .data)
+  for p in $("${B[@]}" call org.freedesktop.bolt /org/freedesktop/bolt org.freedesktop.bolt1.Manager ListDevices | jq -r '.data[0][]'); do
+    devs+=("$("${B[@]}" call org.freedesktop.bolt "$p" org.freedesktop.DBus.Properties GetAll s org.freedesktop.bolt1.Device |
+      jq -c '.data[0] | {uid: .Uid.data, name: .Name.data, vendor: .Vendor.data, type: .Type.data,
+        status: .Status.data, stored: .Stored.data, policy: .Policy.data, label: .Label.data}')")
+  done
+  jq -cn --arg s "$sec" '{security: $s, devices: $ARGS.positional | map(fromjson)}' --args "${devs[@]}"
+}
+snapshot
+[ "${1:-}" = --once ] && exit 0
+gdbus monitor --system --dest org.freedesktop.bolt | while read -r _; do
+  while read -r -t 0.2 _; do :; done   # a plug sends a burst: answer it once
+  snapshot
+done
