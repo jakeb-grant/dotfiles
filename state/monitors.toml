@@ -1,0 +1,117 @@
+# Monitor profiles, one per set of monitors (dot_config/strand/monitors.strand).
+# A set's key is its monitors' ids (make | model | description, trimmed), sorted
+# and joined by " + "; each monitor's workspaces go to it. Edits apply live. The
+# launcher's Displays page (Alt+Y) saves the setup on screen under a name (Enter)
+# and forgets it (Del); Strand keeps these comments.
+#
+# ~/.config/strand/monitors.toml is a link to this file in the chezmoi source,
+# so a save lands here: commit it (git.autoCommit sweeps it into the next
+# chezmoi add or edit). Made from hyprpier's profiles on 2026-11-08.
+
+# Undocked: the laptop alone.
+[profiles."LG Display | 0x07C7 | LG Display 0x07C7"]
+name = "default"
+
+[[profiles."LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "LG Display | 0x07C7 | LG Display 0x07C7"
+on = true
+width = 1920
+height = 1200
+refresh = 120.043
+x = 0
+y = 0
+scale = 1.0
+transform = "normal"
+workspaces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+# Home: the two ASUS VS239s on the WD19TB dock, the panel left of them.
+[profiles."Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263862 + Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263883 + LG Display | 0x07C7 | LG Display 0x07C7"]
+name = "home"
+
+[[profiles."Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263862 + Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263883 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "LG Display | 0x07C7 | LG Display 0x07C7"
+on = true
+width = 1920
+height = 1200
+refresh = 120.043
+x = 0
+y = 0
+scale = 1.0
+transform = "normal"
+workspaces = []
+
+[[profiles."Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263862 + Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263883 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263862"
+on = true
+width = 1920
+height = 1080
+refresh = 60.0
+x = 1920
+y = 0
+scale = 1.0
+transform = "normal"
+workspaces = [1, 2, 3, 4, 5]
+
+[[profiles."Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263862 + Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263883 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "Ancor Communications Inc | ASUS VS239 | Ancor Communications Inc ASUS VS239 L3LMTF263883"
+on = true
+width = 1920
+height = 1080
+refresh = 60.0
+x = 3840
+y = 0
+scale = 1.0
+transform = "normal"
+workspaces = [6, 7, 8, 9, 10]
+
+# Work: two U2720Qs and the P2419H, the panel on the right.
+[profiles."Dell Inc. | DELL P2419H | Dell Inc. DELL P2419H 4JXWHC3 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q 2V1MTS2 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q HQ1MTS2 + LG Display | 0x07C7 | LG Display 0x07C7"]
+name = "work"
+
+[[profiles."Dell Inc. | DELL P2419H | Dell Inc. DELL P2419H 4JXWHC3 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q 2V1MTS2 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q HQ1MTS2 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q 2V1MTS2"
+on = true
+width = 3840
+height = 2160
+refresh = 60.0
+x = 0
+y = 0
+scale = 1.5
+transform = "normal"
+workspaces = [1, 2, 3, 4]
+
+[[profiles."Dell Inc. | DELL P2419H | Dell Inc. DELL P2419H 4JXWHC3 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q 2V1MTS2 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q HQ1MTS2 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q HQ1MTS2"
+on = true
+width = 3840
+height = 2160
+refresh = 59.996
+x = 2560
+y = 0
+scale = 1.5
+transform = "normal"
+workspaces = [5, 6, 7, 8]
+
+[[profiles."Dell Inc. | DELL P2419H | Dell Inc. DELL P2419H 4JXWHC3 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q 2V1MTS2 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q HQ1MTS2 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "Dell Inc. | DELL P2419H | Dell Inc. DELL P2419H 4JXWHC3"
+on = true
+width = 1920
+height = 1080
+refresh = 60.0
+x = 5120
+y = 360
+scale = 1.0
+transform = "normal"
+workspaces = [9, 10]
+
+[[profiles."Dell Inc. | DELL P2419H | Dell Inc. DELL P2419H 4JXWHC3 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q 2V1MTS2 + Dell Inc. | DELL U2720Q | Dell Inc. DELL U2720Q HQ1MTS2 + LG Display | 0x07C7 | LG Display 0x07C7".mons]]
+id = "LG Display | 0x07C7 | LG Display 0x07C7"
+on = true
+width = 1920
+height = 1200
+refresh = 120.043
+x = 7040
+y = 0
+scale = 1.0
+transform = "normal"
+workspaces = []

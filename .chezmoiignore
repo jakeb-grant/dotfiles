@@ -3,6 +3,8 @@ CLAUDE.md
 README.md
 LICENSE
 docs/
+# monitors.toml, which ~/.config/strand/monitors.toml links to (Strand saves into it)
+state/
 screenshots/
 
 

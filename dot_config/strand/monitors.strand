@@ -1,0 +1,171 @@
+// monitors.strand: the monitors arranged for each set of them. A set saved in
+// monitors.toml gets its profile and its workspaces, any other a best guess
+// (left to right, the laptop's panel last); the panel is off while its lid is
+// shut on a desk; and monitors.lua is written for Hyprland's next start. The
+// launcher's Displays page (Alt+Y) shows it, saves it under a name and forgets
+// it. Strand's monitor-profiles recipe, with workspaces and names added.
+
+permit exec "hyprctl"
+
+// one monitor of a profile, as monitors.toml holds it
+type Mon {
+  id: text; on: bool; width: int; height: int; refresh: float
+  x: int; y: int; scale: float; transform: OutputTransform; workspaces: [int]
+}
+type Profile { name: text; mons: [Mon] }
+// one section per set of monitors, keyed by their ids (a link into chezmoi)
+export state saved from "monitors.toml" { profiles: [text: Profile] = [] }
+
+service upower from dbus system "org.freedesktop.UPower" { lid_closed: bool = LidIsClosed }
+
+// what a monitor is, whatever port it is on (trimmed: one without a serial
+// number ends its id in a space)
+fn ident(o: Output) -> text { o.id.trim() }
+fn inside(o: Output) -> bool { o.name.starts_with("eDP") }
+fn out(m: Mon) -> Output? { outputs.all.find(o => ident(o) == m.id) }
+fn lidded(m: Mon) -> bool { (out(m)?.name ?? "").starts_with("eDP") }
+fn wsn(w: Workspace) -> int { (number(w.name) ?? 0).round() }
+
+// the set connected now, and the profile saved for it
+export let setup = outputs.all.map(o => ident(o)).sort_by(i => i).join(" + ")
+export let profile = saved.profiles[setup]
+
+// monitors turned off or on from the Displays page, by id, until the set
+// changes; saving keeps them
+export state held: [text: bool] = []
+on change setup { held.clear() }
+
+// the best guess: monitors left to right by connector, the panel last, each at
+// its preferred mode; its workspaces, 1 to 10 shared out left to right over all
+// but the panel (which has them only alone), are placed once it is saved
+let row = outputs.all.filter(o => held[ident(o)] ?? true).sort_by(o => inside(o))
+let desk = row.filter(o => !inside(o) || row.len == 1)
+fn span(o: Output) -> int {
+  let m = o.preferred ?? o.mode
+  let w = match o.transform {
+    rotate_90 => m?.height ?? 0
+    rotate_270 => m?.height ?? 0
+    flipped_90 => m?.height ?? 0
+    flipped_270 => m?.height ?? 0
+    _ => m?.width ?? 0
+  }
+  (w / o.scale).round()
+}
+let tens: [int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+fn guessed(o: Output) -> Mon {
+  let i = row.index_of(p => p.name == o.name)
+  let d = desk.index_of(p => p.name == o.name) ?? -1
+  let m = o.preferred ?? o.mode
+  Mon(id: ident(o), on: i != null, width: m?.width ?? 0, height: m?.height ?? 0,
+    refresh: m?.refresh ?? 0, x: row.take(i ?? 0).sum(p => span(p)), y: 0,
+    scale: o.scale, transform: o.transform,
+    workspaces: tens.filter(n => ((n - 1) * desk.len / 10).floor() == d))
+}
+fn as_held(m: Mon) -> Mon {
+  Mon(id: m.id, on: held[m.id] ?? m.on, width: m.width, height: m.height, refresh: m.refresh,
+    x: m.x, y: m.y, scale: m.scale, transform: m.transform, workspaces: m.workspaces)
+}
+// what is applied, and what saving writes: the profile, else the guess
+export let plan: [Mon] = profile == null ? outputs.all.map(o => guessed(o)) : (profile?.mons ?? []).map(m => as_held(m))
+
+// the panel is off while the lid is shut and another monitor is on, whatever
+// the profile says (UPower gone: the lid reads open)
+export let shut = upower.lid_closed && plan.any(m => m.on && !lidded(m))
+fn on_now(m: Mon) -> bool { m.on && !(shut && lidded(m)) }
+fn placed(m: Mon) -> OutputChange {
+  OutputChange(name: out(m)?.name ?? "", enabled: on_now(m),
+    mode: on_now(m) && m.width > 0 ? OutputMode(width: m.width, height: m.height, refresh: m.refresh) : null,
+    x: m.x, y: m.y, scale: m.scale, transform: m.transform)
+}
+let chosen = plan.map(m => placed(m))
+
+// at start, when the set changes, a profile is saved, edited or forgotten, a
+// monitor is turned on or off, and when Hyprland or UPower comes back, after a
+// dock has settled; the lid at once
+on change chosen, places, outputs.ready, upower.ready after 1500ms {
+  if outputs.ready { outputs.apply(chosen) }
+}
+on change upower.lid_closed { if outputs.ready { outputs.apply(chosen) } }
+export state failed = ""      // why the last layout did not apply, for the Displays page
+state applied = 0             // counts layouts that took, so the workspaces follow
+state booted = ""             // monitors.lua for the last layout that took
+on outputs.succeeded(action) { if action == "apply" { failed = ""; applied += 1; booted = boot_lua } }
+on outputs.failed(action, error) { if action == "apply" { failed = error } }
+
+// a saved profile's workspaces moved onto its lit monitors once its layout took;
+// again only when the set, the monitors on or the profile change, never at a
+// restart (a workspace not made yet is placed by monitors.lua's rules, and
+// Hyprland itself puts one moved by hand back when it reloads or a monitor comes
+// and goes)
+let places = profile == null ? "" : plan.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
+state placed_for = "" persist
+let lit: [Mon] = profile == null ? [] : plan.filter(m => on_now(m) && m.workspaces.len > 0)
+fn mine(m: Mon, w: Workspace) -> bool { m.workspaces.contains(wsn(w)) && w.screen == (out(m)?.name ?? "") }
+on change applied, workspaces.ready after 300ms {
+  if workspaces.ready && places != "" && places != placed_for {
+    placed_for = places
+    for m in lit {
+      for s in screens.all.filter(s => s.name == (out(m)?.name ?? "")) {
+        for ws in workspaces.all.filter(w => m.workspaces.contains(wsn(w))) { ws.move_to(s) }
+      }
+    }
+  }
+}
+// then each lit monitor shows one of its own workspaces, not an empty one
+// Hyprland made for it when it lit or the lid opened, and the focus goes back
+// where it was. Two read as shown on one monitor is not trusted: Strand still
+// reads a workspace moved off a monitor turned off as shown.
+fn shows_own(m: Mon) -> bool {
+  let shown = workspaces.all.filter(w => w.active && w.screen == (out(m)?.name ?? ""))
+  shown.len == 1 && shown.any(w => mine(m, w))
+}
+on change applied, placed_for, workspaces.ready after 800ms {
+  let back = lit.any(m => workspaces.all.any(w => w.focused && mine(m, w)))
+  for m in lit.filter(m => !shows_own(m)) {
+    (workspaces.all.find(w => w.active && mine(m, w)) ?? workspaces.all.find(w => mine(m, w) && wsn(w) == m.workspaces.first)
+      ?? workspaces.configured.find(w => mine(m, w) && wsn(w) == m.workspaces.first))?.focus()
+  }
+  if back { workspaces.focused?.focus() }
+}
+
+// monitors.lua for Hyprland's next start (hyprland.lua requires it): a line for
+// a monitor not listed, each monitor of the layout, and a saved profile's
+// workspace rules; written when a layout takes, so the lid and a failed
+// layout never reach it. Hyprland reloads it so a new workspace lands where the
+// profile says, and the island's empty slots follow.
+fn lua(s: text) -> text { "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\"" }
+fn turned(t: OutputTransform) -> int {
+  let n = match t {
+    normal => 0
+    rotate_90 => 1
+    rotate_180 => 2
+    rotate_270 => 3
+    flipped => 4
+    flipped_90 => 5
+    flipped_180 => 6
+    flipped_270 => 7
+  }
+  n
+}
+// the panel lit whatever the plan says: a laptop must never start dark
+fn line(m: Mon) -> text {
+  let name = lua(out(m)?.name ?? "")
+  let mode = m.width == 0 ? "preferred" : join("@", join("x", m.width, m.height), m.refresh)
+  let fields = m.on || lidded(m)
+    ? join(", ", "output = " + name, "mode = " + lua(mode), "position = " + lua(join("x", m.x, m.y)),
+      join(" = ", "scale", m.scale), join(" = ", "transform", turned(m.transform)))
+    : "output = " + name + ", disabled = true"
+  "hl.monitor({ " + fields + " })"
+}
+fn rules(m: Mon) -> text {
+  m.workspaces.map(n => "hl.workspace_rule({ workspace = " + num(n) + ", monitor = " + lua(out(m)?.name ?? "")
+    + (n == m.workspaces.first ? ", default = true })\n" : " })\n")).join("")
+}
+let boot_lua = "-- Written by Strand (monitors.strand) from monitors.toml\n"
+  + "hl.monitor({ output = \"\", mode = \"preferred\", position = \"auto\", scale = \"auto\" })\n"
+  + plan.map(m => line(m)).join("\n") + "\n"
+  + (profile == null ? "" : plan.filter(m => m.on).map(m => rules(m)).join(""))
+file "~/.config/hypr/monitors.lua" {
+  text: booted == "" ? null : booted
+  run: ["hyprctl", "reload"]
+}

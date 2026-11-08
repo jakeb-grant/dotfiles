@@ -54,12 +54,13 @@ local p = require("palette")
 -- ------------------------------------------------------------------------------
 -- Monitor Configuration
 -- ------------------------------------------------------------------------------
--- Loaded from external file to persist across theme changes. A load failure
--- (usually a syntax error in a hand-edited monitors.lua) would otherwise
--- silently fall back to Hyprland's default auto-detection — surface it, in
+-- Written by Strand (strand/monitors.strand) from monitors.toml each time a
+-- layout takes, for the next start; until Strand first writes it, Hyprland's
+-- own auto-detection. A load failure (usually a syntax error in a hand-edited
+-- monitors.lua) would otherwise silently fall back to that too — surface it, in
 -- Hyprland's own overlay, since at login no notification daemon is up yet.
 local mon_ok, mon_err = pcall(require, "monitors")
-if not mon_ok then
+if not mon_ok and not tostring(mon_err):find("module 'monitors' not found", 1, true) then
   local msg = "monitors.lua failed to load: " .. tostring(mon_err)
   print(msg)
   hl.notification.create({ text = msg, duration = 15000, icon = 3 })
@@ -75,7 +76,6 @@ local autostart = {
   "systemd-inhibit --what=handle-power-key --who=Hyprland --why='The power key opens the power page' sleep infinity",
   "strand run",
   "hypridle",
-  "hyprpier daemon",
 }
 hl.on("hyprland.start", function()
   for _, cmd in ipairs(autostart) do hl.exec_cmd(cmd) end
