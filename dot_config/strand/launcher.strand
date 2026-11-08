@@ -2113,10 +2113,12 @@ component MonRow(m: Mon) {
     text o?.name ?? "" { color: $fg.alpha(0.6); shrink: 0; font: mono 12px 500 }
     text lidded(m) ? "Laptop screen" : (o?.model ?? "") != "" ? o?.model ?? "" : m.id { color: $fg; grow: 1; ellipsis: end }
     Aside !m.on ? "off" : monitors.shut && lidded(m) ? "lid shut"
-      : join(" · ", m.width > 0 ? join("×", m.width, m.height) : null, m.scale != 1 ? join("", "×", m.scale) : null,
-        turn_name(m.transform), spread(m.workspaces))
+      : join(" · ", m.width > 0 ? join("", join("×", m.width, m.height), hz(m.refresh)) : null,
+        m.scale != 1 ? join("", "×", m.scale) : null, turn_name(m.transform), spread(m.workspaces))
   }
 }
+// a refresh rate as the mode's end, to two places: @60, @59.94, @120.04
+fn hz(r: float) -> text { r > 0 ? join("", "@", (r * 100).round() / 100) : "" }
 fn turn_name(t: OutputTransform) -> text? {
   let n: text? = match t {
     normal => null
