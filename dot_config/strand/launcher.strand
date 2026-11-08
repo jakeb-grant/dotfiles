@@ -293,9 +293,15 @@ let peek_wall = peek_up ?? peek_walls.find(w => w.file == peek_default) ?? peek_
 let found_docks = docks.sort_by(d => d.uid == newest_tb && waiting.contains(d.uid) ? 0 : waiting.contains(d.uid) ? 1 : 2)
   .fuzzy(query, d => d.label)
 let picked_dock: Bolt? = view == bolt_list && !is_sum ? found_docks.skip(sel).first?.item : null
-// the Displays page's monitors left to right, after the profile's row
-let shown_mons = monitors.plan.sort_by(m => m.x)
-let picked_mon: Mon? = view == displays && !is_sum && sel >= 1 ? shown_mons.skip(sel - 1).first : null
+// the Displays page's monitors left to right as saved (an edit doesn't reorder
+// them under the selection), after the profile's row; the one selected, by id,
+// which a click on its tile in the pane selects too
+let mon_order = monitors.base.sort_by(m => m.x).map(m => m.id)
+let shown_mons = monitors.plan.sort_by(m => mon_order.index_of(i => i == m.id) ?? 99)
+state mon_pick = ""
+state tile_tick = 0             // counts clicks on the pane's tiles, so the list follows
+let picked_mon: Mon? = view == displays && !is_sum && mon_pick != "" ? shown_mons.find(m => m.id == mon_pick) : null
+let ten_ws: [int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 let found_rec = [Command(id: "rec", name: "Record screen", glyph: "screen_record")].fuzzy(query, c => c.name)
 // the Bluetooth device selected (the switch is row 0, then paired, then nearby)
@@ -446,7 +452,16 @@ panel Launcher {
   // on the Sound page's output or microphone row, the arrows set its level
   let at_level = view == sound && !is_sum ? results.selected_index ?? -1 : -1
   // the preview beside the list follows the selection
-  on change results.selected_index { results_at = results.selected_index ?? 0 }
+  on change results.selected_index {
+    results_at = results.selected_index ?? 0
+    mon_pick = view == displays && results_at >= 1 ? shown_mons.skip(results_at - 1).first?.id ?? "" : ""
+  }
+  // the monitor picked stays selected when a save reorders the rows, and a click
+  // on its tile selects its row
+  on change tile_tick, mon_order.join(" ") {
+    let i = shown_mons.index_of(m => m.id == mon_pick)
+    if view == displays && i != null { results.select((i ?? 0) + 1) }
+  }
   when at_level == 0 {
     on key "left" { audio.sink.volume = clamp(audio.sink.volume - level_step, 0, 1) }
     on key "right" { audio.sink.volume = clamp(audio.sink.volume + level_step, 0, 1) }
@@ -543,6 +558,34 @@ panel Launcher {
   when view == displays && sel == 0 && monitors.profile != null && naming_what == "" && !is_sum {
     on key "delete" { monitors.saved.profiles.remove(monitors.setup); notice = "Forgotten" }
   }
+  // and hyprpier's arrange keys on the monitor selected, each change on the
+  // monitors at once: the arrows move it along, Shift and ↑ ↓ stack it, Ctrl
+  // turns it (R), scales it (= −) and changes its mode (M), Alt and a number
+  // gives it that workspace (again: takes it back); Ctrl+S saves, Esc puts back
+  when picked_mon != null && naming_what == "" {
+    on key "left" { monitors.draft = shifted(monitors.plan, mon_pick, -1) }
+    on key "right" { monitors.draft = shifted(monitors.plan, mon_pick, 1) }
+    on key "shift+up" { monitors.draft = stacked(monitors.plan, mon_pick, -1) }
+    on key "shift+down" { monitors.draft = stacked(monitors.plan, mon_pick, 1) }
+    on key "ctrl+r" { monitors.draft = rotated(monitors.plan, mon_pick) }
+    on key "ctrl+=" { monitors.draft = rescaled(monitors.plan, mon_pick, 1) }
+    on key "ctrl+-" { monitors.draft = rescaled(monitors.plan, mon_pick, -1) }
+    on key "ctrl+m" { monitors.draft = remoded(monitors.plan, mon_pick, 1) }
+    on key "ctrl+shift+m" { monitors.draft = remoded(monitors.plan, mon_pick, -1) }
+    on key "alt+1" { monitors.draft = handed(monitors.plan, mon_pick, 1, true) }
+    on key "alt+2" { monitors.draft = handed(monitors.plan, mon_pick, 2, true) }
+    on key "alt+3" { monitors.draft = handed(monitors.plan, mon_pick, 3, true) }
+    on key "alt+4" { monitors.draft = handed(monitors.plan, mon_pick, 4, true) }
+    on key "alt+5" { monitors.draft = handed(monitors.plan, mon_pick, 5, true) }
+    on key "alt+6" { monitors.draft = handed(monitors.plan, mon_pick, 6, true) }
+    on key "alt+7" { monitors.draft = handed(monitors.plan, mon_pick, 7, true) }
+    on key "alt+8" { monitors.draft = handed(monitors.plan, mon_pick, 8, true) }
+    on key "alt+9" { monitors.draft = handed(monitors.plan, mon_pick, 9, true) }
+    on key "alt+0" { monitors.draft = handed(monitors.plan, mon_pick, 10, true) }
+  }
+  when view == displays && naming_what == "" && !is_sum {
+    on key "ctrl+s" { problem = ""; naming_what = "profile"; new_name = monitors.profile?.name ?? "" }
+  }
   // on the Thunderbolt page: Shift+Enter allows a waiting device this once;
   // Delete forgets a remembered one, F2 names it
   when picked_dock?.status == "connected" && !(picked_dock?.stored ?? false) {
@@ -568,7 +611,9 @@ panel Launcher {
     else if naming { naming = false; hidden_name = "" }
     else if naming_what != "" { naming_what = ""; new_name = "" }
     else if asking != "" { asking = ""; secret = "" }
-    else if query != "" { query = "" } else if tray_item != null { if tray_sub != null { tray_sub = null; query = "" } else { tray_item?.menu?.close(); tray_open = ""; query = "" } }
+    else if query != "" { query = "" }
+    else if view == displays && monitors.draft.len > 0 { monitors.draft = []; notice = "Put back" }
+    else if tray_item != null { if tray_sub != null { tray_sub = null; query = "" } else { tray_item?.menu?.close(); tray_open = ""; query = "" } }
     else if picked_dock?.status == "connected" { open = false }
     else if view != home { view = home } else { open = false }
   }
@@ -623,6 +668,7 @@ panel Launcher {
               if new_name != "" {
                 if naming_what == "profile" {
                   monitors.saved.profiles[monitors.setup] = Profile(name: new_name, mons: monitors.plan)
+                  monitors.draft = []
                   notice = "Saved as " + new_name
                 } else { relabel(naming_what, new_name) }
                 naming_what = ""; new_name = ""
@@ -825,12 +871,18 @@ panel Launcher {
           let enter_what = asked ? asked_does(kind) : on_hidden ? "name it" : enter_does(picked_ap, results.selected_index ?? 0)
           if enter_what != "" { Hint "Enter" { what: enter_what } }
           Hint "Esc" { what: (asked ? "refuse" : asking != "" || naming || naming_what != "" ? "cancel"
-            : query != "" ? "clear" : picked_dock?.status == "connected" ? "leave blocked" : view != home ? "back" : "close") }
+            : query != "" ? "clear" : picked_dock?.status == "connected" ? "leave blocked"
+            : view == displays && monitors.draft.len > 0 ? "put back" : view != home ? "back" : "close") }
           // the page's own keys
           if picked_win != null { Hint "⇧ Enter" { what: "go to it" } }
           if picked_ap?.known ?? false { Hint "Del" { what: "forget" } }
           if picked_bt != null { Hint "Del" { what: "forget" } }
           if view == displays && sel == 0 && monitors.profile != null && naming_what == "" && !is_sum { Hint "Del" { what: "forget" } }
+          if view == displays && monitors.draft.len > 0 && naming_what == "" && !is_sum { Hint "Ctrl S" { what: "save" } }
+          if picked_mon != null && naming_what == "" {
+            Hint "← →" { what: "move" }; Hint "⇧ ↑ ↓" { what: "stack" }; Hint "Ctrl R" { what: "turn" }
+            Hint "Ctrl = −" { what: "scale" }; Hint "Ctrl M" { what: "mode" }; Hint "Alt 1–0" { what: "workspace" }
+          }
           if picked_dock?.status == "connected" && !(picked_dock?.stored ?? false) { Hint "⇧ Enter" { what: "once" } }
           if (picked_dock?.stored ?? false) && naming_what == "" { Hint "Del" { what: "forget" }; Hint "F2" { what: "name" } }
           if picked_volume?.mounted ?? false { Hint "→" { what: "open" } }
@@ -2012,8 +2064,10 @@ fn kind_glyph(icon: text) -> text {
 }
 
 // the Displays page: the setup, its profile's name or the best guess; Enter saves
-// it under a name, Delete forgets it. Then each monitor, left to right: Enter
-// turns it off or on until the set changes (saving keeps that)
+// it under a name, Delete forgets it. Then each monitor, left to right as saved:
+// Enter turns it off or on, the arrange keys move, turn, scale and give it
+// workspaces; every change is an edit, on the monitors at once, until it is
+// saved or put back (Esc), or the set changes
 component SetupRow {
   let p = monitors.profile
   Row {
@@ -2021,6 +2075,7 @@ component SetupRow {
     Glyph p == null ? "auto_awesome_mosaic" : "bookmark" { on: p != null }
     text setup_name() { color: $fg; grow: 1; ellipsis: end }
     if monitors.failed != "" { text monitors.failed { color: $red; shrink: 1; ellipsis: end } }
+    else if monitors.draft.len > 0 { text "edited, not saved" { color: $accent; shrink: 0 } }
     else { Aside p == null ? "not saved" : "saved" }
   }
 }
@@ -2029,22 +2084,36 @@ fn setup_name() -> text {
 }
 
 // a monitor: its connector, model (the laptop's own: "Laptop screen"), mode,
-// scale and, once saved, its workspaces; the panel says when its lid has it off
+// scale, turn and, once saved or edited, its workspaces; the panel says when its
+// lid has it off
 component MonRow(m: Mon) {
   let o = out(m)
   Row {
     on activate {
       problem = ""
       if m.on && monitors.plan.count(p => p.on) <= 1 { problem = "One monitor stays on" }
-      else { monitors.held[m.id] = !m.on }
+      else { monitors.draft = switched(monitors.plan, m.id) }
     }
     Glyph lidded(m) ? "laptop" : "desktop_windows" { on: o?.enabled ?? false }
     text o?.name ?? "" { color: $fg.alpha(0.6); shrink: 0; font: mono 12px 500 }
     text lidded(m) ? "Laptop screen" : (o?.model ?? "") != "" ? o?.model ?? "" : m.id { color: $fg; grow: 1; ellipsis: end }
     Aside !m.on ? "off" : monitors.shut && lidded(m) ? "lid shut"
       : join(" · ", m.width > 0 ? join("×", m.width, m.height) : null, m.scale != 1 ? join("", "×", m.scale) : null,
-        monitors.profile != null ? spread(m.workspaces) : null)
+        turn_name(m.transform), monitors.profile != null || monitors.draft.len > 0 ? spread(m.workspaces) : null)
   }
+}
+fn turn_name(t: OutputTransform) -> text? {
+  let n: text? = match t {
+    normal => null
+    rotate_90 => "90°"
+    rotate_180 => "180°"
+    rotate_270 => "270°"
+    flipped => "flipped"
+    flipped_90 => "flipped 90°"
+    flipped_180 => "flipped 180°"
+    flipped_270 => "flipped 270°"
+  }
+  n
 }
 
 // workspaces as a range, 1–5
@@ -2053,25 +2122,61 @@ fn spread(ws: [int]) -> text? {
     ? num(ws.first ?? 0) + "–" + num(ws.last ?? 0) : ws.map(n => num(n)).join(" ")
 }
 
-// the monitors as they are laid out, in proportion, each with its workspaces once
-// saved, the selected one ringed
+// the monitors on as they are laid out (as edited, while they are), in
+// proportion, each with its name and workspaces, the selected one ringed. A
+// click selects one; a drag places it, let go beside the others (into the row
+// it is level with, or a row of its own above or below); under them workspaces
+// 1 to 10, the selected monitor's lit: a click gives it one or takes it back, a
+// drag gives one to the monitor it is let go on
 component SetupPane {
-  let all = screens.all
-  let wide_all = max(all.reduce(1, (a, s) => max(a, s.x + s.width)), 1)
-  let tall_all = max(all.reduce(1, (a, s) => max(a, s.y + s.height)), 1)
-  let k = min((pane_box_w - list_w - 1 - 16 - 40) / wide_all, 180 / tall_all)
+  let tiles = monitors.plan.filter(m => on_now(m))
+  let wide_all = max(tiles.reduce(1, (a, m) => max(a, m.x + mon_w(m))), 1)
+  let tall_all = max(tiles.reduce(1, (a, m) => max(a, m.y + mon_h(m))), 1)
+  let k = min((pane_box_w - list_w - 1 - 16 - 40) / wide_all, 130 / tall_all)
+  let ws_shown = monitors.profile != null || monitors.draft.len > 0
   Pane {
-    Title setup_name()
-    Detail join(" · ", monitors.profile == null ? "Not saved: Enter saves it" : "Saved in monitors.toml",
-      monitors.shut ? "lid shut" : null)
+    row { gap: 10; align: center
+      Title setup_name()
+      Detail monitors.draft.len > 0 ? "Edited: Ctrl+S saves, Esc puts back"
+        : join(" · ", monitors.profile == null ? "Not saved: Enter saves it" : "Saved in monitors.toml",
+          monitors.shut ? "lid shut" : null)
+    }
     stack { width: wide_all * k; height: tall_all * k; shrink: 0
-      for s in all key s.name {
-        let ws: [int] = monitors.profile == null ? [] : monitors.plan.find(m => m.id == s.id.trim())?.workspaces ?? []
-        col { x: s.x * k; y: s.y * k; width: s.width * k - 4; height: s.height * k - 4; radius: 6; shrink: 0
-          justify: center; align: center; gap: 2
-          bg: $fg.alpha(0.06); border: 1, s.id.trim() == picked_mon?.id ? $accent : $fg.alpha(0.14)
-          text s.name { color: $fg.alpha(0.8); font: mono 11px 600 }
-          text spread(ws) ?? "" { color: $accent; font: mono 11px 500 }
+      for m in tiles key m.id {
+        state held_at: Point? = null   // where a press on it went down, and where the pointer is since
+        state now: Point? = null
+        let dx = held_at == null ? 0 : (now?.x ?? 0) - (held_at?.x ?? 0)
+        let dy = held_at == null ? 0 : (now?.y ?? 0) - (held_at?.y ?? 0)
+        col { x: m.x * k + dx; y: m.y * k + dy; width: mon_w(m) * k - 4; height: mon_h(m) * k - 4; radius: 6; shrink: 0
+          justify: center; align: center; gap: 2; cursor: grab
+          bg: $fg.alpha(held_at != null ? 0.14 : 0.06); border: 1, m.id == mon_pick ? $accent : $fg.alpha(0.14)
+          when pressed { cursor: grabbing }
+          on click { mon_pick = m.id; tile_tick += 1 }
+          on change self.pressed {
+            if self.pressed { held_at = self.pointer; now = self.pointer; mon_pick = m.id; tile_tick += 1 }
+            else {
+              if dx.abs() + dy.abs() > 6 { monitors.draft = dragged_to(monitors.plan, m.id, (m.x + dx / k).round(), (m.y + dy / k).round()) }
+              held_at = null; now = null
+            }
+          }
+          on change self.pointer { if held_at != null && self.pointer != null { now = self.pointer } }
+          on drop(n: int, at: int) { monitors.draft = handed(monitors.plan, m.id, n, false) }
+          text out(m)?.name ?? "" { color: $fg.alpha(0.8); font: mono 11px 600 }
+          if ws_shown { text spread(m.workspaces) ?? "" { color: $accent; font: mono 11px 500 } }
+        }
+      }
+    }
+    if picked_mon != null {
+      row { gap: 4; align: center
+        for n in ten_ws key n {
+          let mine = picked_mon?.workspaces?.contains(n) ?? false
+          let owner = monitors.plan.find(x => x.workspaces.contains(n))
+          text num(n) { id: chip; drag: n; width: 26; height: 22; radius: 6; align: center; shrink: 0; cursor: pointer
+            font: mono 11px 600; color: mine ? $on_accent : owner != null ? $fg.alpha(0.75) : $fg.alpha(0.35)
+            bg: mine ? $accent : chip.hover ? $fg.alpha(0.12) : $fg.alpha(0.06)
+            tooltip: owner == null ? "No monitor" : monitors.plan.filter(x => x.workspaces.contains(n)).map(x => out(x)?.name ?? "").join("")
+            on click { monitors.draft = handed(monitors.plan, mon_pick, n, true) }
+          }
         }
       }
     }

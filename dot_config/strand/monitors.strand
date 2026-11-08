@@ -2,8 +2,10 @@
 // monitors.toml gets its profile and its workspaces, any other a best guess
 // (left to right, the laptop's panel last); the panel is off while its lid is
 // shut on a desk; and monitors.lua is written for Hyprland's next start. The
-// launcher's Displays page (Alt+Y) shows it, saves it under a name and forgets
-// it. Strand's monitor-profiles recipe, with workspaces and names added.
+// launcher's Displays page (Alt+Y) shows it, edits it live (the arrangement,
+// each monitor's turn, scale, mode and workspaces, and which are on), saves it
+// under a name and forgets it. Strand's monitor-profiles recipe, with
+// workspaces, names and hyprpier's arrange screen added.
 
 permit exec "hyprctl"
 
@@ -30,15 +32,10 @@ fn wsn(w: Workspace) -> int { (number(w.name) ?? 0).round() }
 export let setup = outputs.all.map(o => ident(o)).sort_by(i => i).join(" + ")
 export let profile = saved.profiles[setup]
 
-// monitors turned off or on from the Displays page, by id, until the set
-// changes; saving keeps them
-export state held: [text: bool] = []
-on change setup { held.clear() }
-
 // the best guess: monitors left to right by connector, the panel last, each at
 // its preferred mode; its workspaces, 1 to 10 shared out left to right over all
 // but the panel (which has them only alone), are placed once it is saved
-let row = outputs.all.filter(o => held[ident(o)] ?? true).sort_by(o => inside(o))
+let row = outputs.all.sort_by(o => inside(o))
 let desk = row.filter(o => !inside(o) || row.len == 1)
 fn span(o: Output) -> int {
   let m = o.preferred ?? o.mode
@@ -53,20 +50,25 @@ fn span(o: Output) -> int {
 }
 let tens: [int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 fn guessed(o: Output) -> Mon {
-  let i = row.index_of(p => p.name == o.name)
+  let i = row.index_of(p => p.name == o.name) ?? 0
   let d = desk.index_of(p => p.name == o.name) ?? -1
   let m = o.preferred ?? o.mode
-  Mon(id: ident(o), on: i != null, width: m?.width ?? 0, height: m?.height ?? 0,
-    refresh: m?.refresh ?? 0, x: row.take(i ?? 0).sum(p => span(p)), y: 0,
+  Mon(id: ident(o), on: true, width: m?.width ?? 0, height: m?.height ?? 0,
+    refresh: m?.refresh ?? 0, x: row.take(i).sum(p => span(p)), y: 0,
     scale: o.scale, transform: o.transform,
     workspaces: tens.filter(n => ((n - 1) * desk.len / 10).floor() == d))
 }
-fn as_held(m: Mon) -> Mon {
-  Mon(id: m.id, on: held[m.id] ?? m.on, width: m.width, height: m.height, refresh: m.refresh,
-    x: m.x, y: m.y, scale: m.scale, transform: m.transform, workspaces: m.workspaces)
-}
-// what is applied, and what saving writes: the profile, else the guess
-export let plan: [Mon] = profile == null ? outputs.all.map(o => guessed(o)) : (profile?.mons ?? []).map(m => as_held(m))
+// the layout being edited on the Displays page, applied as it changes (the
+// monitors themselves are the preview): empty while nothing is edited. Saving
+// writes it and ends it, Esc there puts back what was before; it outlives the
+// launcher (a monitor turned off stays off) until the set changes. Back to what
+// is saved, it ends by itself.
+export state draft: [Mon] = []
+export let base: [Mon] = profile == null ? outputs.all.map(o => guessed(o)) : profile?.mons ?? []
+on change setup { draft.clear(); docking = true }
+on change draft { if draft.len > 0 && draft == base { draft.clear() } }
+// what is applied, and what saving writes: the edit, else the profile, else the guess
+export let plan: [Mon] = draft.len > 0 ? draft : base
 
 // the panel is off while the lid is shut and another monitor is on, whatever
 // the profile says (UPower gone: the lid reads open)
@@ -79,12 +81,21 @@ fn placed(m: Mon) -> OutputChange {
 }
 let chosen = plan.map(m => placed(m))
 
-// at start, when the set changes, a profile is saved, edited or forgotten, a
-// monitor is turned on or off, and when Hyprland or UPower comes back, after a
-// dock has settled; the lid at once
+// at start, when the set changes, a profile is saved, edited or forgotten, and
+// when Hyprland or UPower comes back, after a dock has settled; an edit and
+// putting it back at once (a dock's monitors coming clear it, so they wait);
+// the lid at once. A layout already asked for is not asked again, except to
+// place a saved profile's workspaces.
+state sent: [OutputChange] = []
+state docking = false
 on change chosen, places, outputs.ready, upower.ready after 1500ms {
-  if outputs.ready { outputs.apply(chosen) }
+  docking = false
+  if outputs.ready && (chosen != sent || places != placed_for) { sent = chosen; outputs.apply(chosen) }
 }
+on change draft after 100ms {
+  if outputs.ready && !docking && chosen != sent { sent = chosen; outputs.apply(chosen) }
+}
+on change outputs.ready { if !outputs.ready { sent = [] } }
 // what the monitors showed when the lid moved, and the workspace focused:
 // Hyprland switches a monitor that stays lit to another of its workspaces, and
 // moves the focus, when the panel comes and goes
@@ -93,13 +104,16 @@ state had: [int] = []
 on change upower.lid_closed {
   seen = workspaces.all.filter(w => w.active).map(w => wsn(w))
   had = workspaces.all.filter(w => w.focused).map(w => w.id)
-  if outputs.ready { outputs.apply(chosen) }
+  if outputs.ready { sent = chosen; outputs.apply(chosen) }
 }
 export state failed = ""      // why the last layout did not apply, for the Displays page
 state applied = 0             // counts layouts that took, so the workspaces follow
 state booted = ""             // monitors.lua for the last layout that took
-on outputs.succeeded(action) { if action == "apply" { failed = ""; applied += 1; booted = boot_lua } }
-on outputs.failed(action, error) { if action == "apply" { failed = error; seen = []; had = [] } }
+// an edit not saved moves no workspace and never reaches monitors.lua
+on outputs.succeeded(action) {
+  if action == "apply" { failed = ""; if draft.len == 0 { applied += 1; booted = boot_lua } }
+}
+on outputs.failed(action, error) { if action == "apply" { failed = error; sent = []; seen = []; had = [] } }
 
 // a saved profile's workspaces moved onto its lit monitors once its layout took;
 // again whenever the set, the monitors on or the profile change (a set not saved
@@ -108,7 +122,7 @@ on outputs.failed(action, error) { if action == "apply" { failed = error; seen =
 // reloads or a monitor comes and goes). A move can leave Hyprland making a new
 // workspace on the monitor it left, so they move until none is astray, for 5s
 // at most.
-let places = profile == null ? "" : plan.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
+let places = profile == null ? "" : base.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
 state placed_for = "" persist
 let lit: [Mon] = profile == null ? [] : plan.filter(m => on_now(m) && m.workspaces.len > 0)
 fn mine(m: Mon, w: Workspace) -> bool { m.workspaces.contains(wsn(w)) && w.screen == (out(m)?.name ?? "") }
@@ -196,4 +210,270 @@ let boot_lua = "-- Written by Strand (monitors.strand) from monitors.toml\n"
 file "~/.config/hypr/monitors.lua" {
   text: booted == "" ? null : booted
   run: ["hyprctl", "reload"]
+}
+
+// Editing, hyprpier's arrange screen: each fn takes a layout and gives it back
+// changed, for the Displays page to put in `draft`. A layout is read as rows,
+// top to bottom: a row's monitors side by side, edge to edge, left to right,
+// each at the top, middle or bottom of the row (or where it was put); a monitor
+// alone in its row anywhere along the row next to it. Every fn lays it out
+// again: the monitors on touch, none overlap, the top-left is 0,0.
+
+// a monitor's size in the layout, turned and scaled; one saved without a mode
+// (a mirror) by the mode it shows
+fn sideways(t: OutputTransform) -> bool {
+  t == rotate_90 || t == rotate_270 || t == flipped_90 || t == flipped_270
+}
+fn mode_w(m: Mon) -> int { m.width > 0 ? m.width : out(m)?.mode?.width ?? 0 }
+fn mode_h(m: Mon) -> int { m.width > 0 ? m.height : out(m)?.mode?.height ?? 0 }
+fn mon_w(m: Mon) -> int { ((sideways(m.transform) ? mode_h(m) : mode_w(m)) / m.scale).round() }
+fn mon_h(m: Mon) -> int { ((sideways(m.transform) ? mode_w(m) : mode_h(m)) / m.scale).round() }
+fn right(m: Mon) -> int { m.x + mon_w(m) }
+fn bottom(m: Mon) -> int { m.y + mon_h(m) }
+fn mid(m: Mon) -> int { m.x * 2 + mon_w(m) }    // twice its centre, to order a row by
+// one Mon with a field changed (Strand has no copy-with-change: strand-issues.md)
+fn moved_to(m: Mon, x: int, y: int) -> Mon {
+  Mon(id: m.id, on: m.on, width: m.width, height: m.height, refresh: m.refresh,
+    x: x, y: y, scale: m.scale, transform: m.transform, workspaces: m.workspaces)
+}
+fn lit_as(m: Mon, on: bool) -> Mon {
+  Mon(id: m.id, on: on, width: m.width, height: m.height, refresh: m.refresh,
+    x: m.x, y: m.y, scale: m.scale, transform: m.transform, workspaces: m.workspaces)
+}
+fn shown_as(m: Mon, w: int, h: int, r: float, s: float, t: OutputTransform) -> Mon {
+  Mon(id: m.id, on: m.on, width: w, height: h, refresh: r,
+    x: m.x, y: m.y, scale: s, transform: t, workspaces: m.workspaces)
+}
+fn holding(m: Mon, ws: [int]) -> Mon {
+  Mon(id: m.id, on: m.on, width: m.width, height: m.height, refresh: m.refresh,
+    x: m.x, y: m.y, scale: m.scale, transform: m.transform, workspaces: ws)
+}
+
+// a monitor on, its row (a number, rows top first) and how far down the row it sits
+type Seat { m: Mon; row: int; off: int }
+// a is above m: its bottom at or over m's top, sharing some of m's width (a corner counts)
+fn over(a: Mon, m: Mon) -> bool { bottom(a) <= m.y && a.x <= right(m) && m.x <= right(a) }
+fn level(a: Mon, m: Mon) -> bool { a.y < bottom(m) && m.y < bottom(a) }
+// the rows of a layout: going down it, each monitor joins the first row it is
+// level with that has nothing above it, else starts a row under them
+fn row_for(ss: [Seat], m: Mon) -> int {
+  ss.find(s => ss.any(o => o.row == s.row && level(o.m, m)) && !ss.any(o => o.row == s.row && over(o.m, m)))?.row
+    ?? ss.len
+}
+fn seated(ms: [Mon]) -> [Seat] {
+  let none: [Seat] = []
+  let ss = ms.filter(m => m.on).sort_by(m => m.y * 100000 + m.x)
+    .reduce(none, (acc, m) => acc + [Seat(m: m, row: row_for(acc, m), off: 0)])
+  ss.map(s => Seat(m: s.m, row: s.row, off: s.m.y - ss.filter(o => o.row == s.row).reduce(s.m.y, (a, o) => o.m.y < a ? o.m.y : a)))
+}
+fn mates(ss: [Seat], r: int) -> [Seat] { ss.filter(s => s.row == r).sort_by(s => mid(s.m)) }
+fn rows_of(ss: [Seat]) -> [int] { ss.map(s => s.row).distinct().sort_by(r => r) }
+fn high(ss: [Seat], r: int) -> int { mates(ss, r).reduce(0, (a, s) => mon_h(s.m) > a ? mon_h(s.m) : a) }
+// the row next to row r that it hangs from: the one above, else the one below
+fn next_to(ss: [Seat], r: int) -> [Seat] {
+  let rs = rows_of(ss)
+  let k = rs.index_of(x => x == r) ?? 0
+  mates(ss, k > 0 ? rs[k - 1] ?? r : rs[k + 1] ?? r)
+}
+fn lo(ss: [Seat]) -> int { ss.reduce(ss.first?.m?.x ?? 0, (a, s) => s.m.x < a ? s.m.x : a) }
+fn hi(ss: [Seat]) -> int { ss.reduce(ss.first?.m?.x ?? 0, (a, s) => right(s.m) > a ? right(s.m) : a) }
+// across: a row of several edge to edge from its left end (kept, unless it
+// would no longer share any width with a row of several next to it); one alone
+// where it is, held within reach of the row next to it (touching at least a
+// corner)
+fn row_x(ss: [Seat], s: Seat) -> int {
+  let row = mates(ss, s.row)
+  let near = next_to(ss, s.row).filter(o => o.row != s.row)
+  let start = lo(row)
+  let width = row.sum(o => mon_w(o.m))
+  let from = near.len < 2 || (start < hi(near) && lo(near) < start + width) ? start : lo(near)
+  row.len > 1 ? from + row.take(row.index_of(o => o.m.id == s.m.id) ?? 0).sum(o => mon_w(o.m))
+    : near.len == 0 ? s.m.x : clamp(s.m.x, lo(near) - mon_w(s.m), hi(near)).round()
+}
+// down: a row's top is the lowest bottom above it sharing its width (else
+// touching it at a corner, else anywhere), so it touches what it hangs from and
+// overlaps nothing; a row's monitor sits off its top by as much as the row's
+// tallest leaves room for
+fn off_in(ss: [Seat], s: Seat) -> int {
+  mates(ss, s.row).len > 1 ? clamp(s.off, 0, high(ss, s.row) - mon_h(s.m)).round() : 0
+}
+fn top(ss: [Seat], r: int) -> int {
+  let row = mates(ss, r)
+  let ups = ss.filter(a => a.row < r)
+  let under = ups.filter(a => row.any(s => a.m.x < right(s.m) && s.m.x < right(a.m)))
+  let corner = ups.filter(a => row.any(s => a.m.x <= right(s.m) && s.m.x <= right(a.m)))
+  (under.len > 0 ? under : corner.len > 0 ? corner : ups).reduce(0, (y, a) => {
+    let b = top(ss, a.row) + off_in(ss, a) + mon_h(a.m)
+    b > y ? b : y
+  })
+}
+fn laid(ms: [Mon], seats: [Seat]) -> [Mon] {
+  let xs = seats.map(s => Seat(m: moved_to(s.m, row_x(seats, s), s.m.y), row: s.row, off: s.off))
+  let ys = xs.map(s => moved_to(s.m, s.m.x, top(xs, s.row) + off_in(xs, s)))
+  let x0 = ys.reduce(ys.first?.x ?? 0, (a, m) => m.x < a ? m.x : a)
+  let y0 = ys.reduce(ys.first?.y ?? 0, (a, m) => m.y < a ? m.y : a)
+  ms.map(m => {
+    let p = ys.find(n => n.id == m.id)
+    p == null ? m : moved_to(p ?? m, (p?.x ?? 0) - x0, (p?.y ?? 0) - y0)
+  })
+}
+// a monitor leaving its row: the one after it takes its place at the row's left end
+fn leaving(ss: [Seat], id: text) -> [Seat] {
+  let me = ss.find(s => s.m.id == id)
+  let row = mates(ss, me?.row ?? 0)
+  let after = row.first?.m?.id == id ? row.skip(1).first?.m?.id ?? "" : ""
+  ss.map(s => s.m.id == after ? Seat(m: moved_to(s.m, lo(row), s.m.y), row: s.row, off: s.off) : s)
+}
+// where a monitor alone in its row stops, going along the rows beside it: left
+// of, left-aligned with, centred on, right-aligned with and right of each
+fn stops(ss: [Seat], me: Seat?) -> [int] {
+  let w = mon_w(me?.m ?? Mon(id: "", on: false, width: 0, height: 0, refresh: 0, x: 0, y: 0, scale: 1, transform: normal))
+  let none: [int] = [0]
+  ss.filter(o => o.row != (me?.row ?? -1)).reduce(none, (a, o) =>
+    a + [o.m.x - w, o.m.x, o.m.x + ((mon_w(o.m) - w) / 2).round(), right(o.m) - w, right(o.m)])
+    .distinct().sort_by(x => x)
+}
+// a seat with its monitor moved along, or to another row and place in it
+fn slid(s: Seat, x: int) -> Seat { Seat(m: moved_to(s.m, x, s.m.y), row: s.row, off: s.off) }
+
+// a row put in the order given, edge to edge from its left end
+fn ordered(ss: [Seat], ids: [text]) -> [Seat] {
+  let row = ids.map(i => ss.find(s => s.m.id == i)?.m?.x ?? 0)
+  let from = row.reduce(row.first ?? 0, (a, x) => x < a ? x : a)
+  ss.map(s => ids.contains(s.m.id)
+    ? slid(s, from + ids.take(ids.index_of(i => i == s.m.id) ?? 0).sum(i => mon_w(ss.find(o => o.m.id == i)?.m ?? s.m))) : s)
+}
+
+// ← →: a monitor swaps with its neighbour in its row; alone, it steps along the stops
+fn shifted(ms: [Mon], id: text, dir: int) -> [Mon] {
+  let ss = seated(ms)
+  let me = ss.find(s => s.m.id == id)
+  let row = mates(ss, me?.row ?? 0).map(s => s.m.id)
+  let i = row.index_of(r => r == id) ?? 0
+  let j = i + dir
+  let swapped = row.map(r => r == id ? row.skip(j).first ?? r : r == (row.skip(j).first ?? "") ? id : r)
+  let x = me?.m?.x ?? 0
+  let to = dir < 0 ? stops(ss, me).filter(p => p < x).last : stops(ss, me).filter(p => p > x).first
+  me == null ? ms
+    : row.len > 1 ? (j < 0 || j >= row.len ? ms : laid(ms, ordered(ss, swapped)))
+    : to == null ? ms : laid(ms, ss.map(s => s.m.id == id ? slid(s, to ?? 0) : s))
+}
+
+// Shift ↑ ↓: in a row of several, to the row's top, middle and bottom in turn;
+// past the end (or alone, or all one height), up or down a row: into the row
+// above or below (where it stands along it), else a row of its own over or
+// under them all
+fn stacked(ms: [Mon], id: text, dir: int) -> [Mon] {
+  let ss = seated(ms)
+  let me = ss.find(s => s.m.id == id)
+  let r = me?.row ?? 0
+  let room = high(ss, r) - mon_h(me?.m ?? ms.first ?? blank_mon)
+  let cur = clamp(me?.off ?? 0, 0, room).round()
+  let pts: [int] = [0, (room / 2).round(), room]
+  let to: int? = mates(ss, r).len > 1 && room > 0 ? (dir < 0 ? pts.filter(p => p < cur).last : pts.filter(p => p > cur).first) : null
+  let rs = rows_of(ss)
+  let k = rs.index_of(x => x == r) ?? 0
+  let dest = dir < 0 ? (k > 0 ? rs.skip(k - 1).first ?? r : r - 1) : (k + 1 < rs.len ? rs.skip(k + 1).first ?? r : r + 1)
+  me == null ? ms
+    : to != null ? laid(ms, ss.map(s => s.m.id == id ? Seat(m: s.m, row: r, off: to ?? 0) : s))
+    : laid(ms, leaving(ss, id).map(s => s.m.id == id ? Seat(m: s.m, row: dest, off: 0) : s))
+}
+let blank_mon = Mon(id: "", on: false, width: 0, height: 0, refresh: 0, x: 0, y: 0, scale: 1, transform: normal)
+
+// Ctrl+R: a quarter turn (counter-clockwise, as wl_output counts), a flip kept
+fn quarter(t: OutputTransform) -> OutputTransform {
+  let n: OutputTransform = match t {
+    normal => rotate_90
+    rotate_90 => rotate_180
+    rotate_180 => rotate_270
+    rotate_270 => normal
+    flipped => flipped_90
+    flipped_90 => flipped_180
+    flipped_180 => flipped_270
+    flipped_270 => flipped
+  }
+  n
+}
+fn rotated(ms: [Mon], id: text) -> [Mon] {
+  laid(ms, seated(ms).map(s => s.m.id != id ? s : Seat(m: shown_as(s.m, s.m.width, s.m.height, s.m.refresh,
+    s.m.scale, quarter(s.m.transform)), row: s.row, off: s.off)))
+}
+
+// Ctrl+= and Ctrl+−: the next scale up or down of 1, 1.25, 1.5, 1.75 and 2
+// that leaves the monitor a whole number of pixels each way (Hyprland refuses
+// one that does not)
+let scales: [float] = [1, 1.25, 1.5, 1.75, 2]
+fn whole(px: int, s: float) -> bool { (px / s - (px / s).round()).abs() < 0.01 }
+fn fits(w: int, h: int, s: float) -> bool { whole(w, s) && whole(h, s) }
+fn scaled_to(ms: [Mon], id: text, s: float, w: int, h: int, r: float) -> [Mon] {
+  laid(ms, seated(ms).map(x => x.m.id != id ? x : Seat(m: shown_as(x.m, w, h, r, s, x.m.transform),
+    row: x.row, off: x.off)))
+}
+fn rescaled(ms: [Mon], id: text, dir: int) -> [Mon] {
+  let m = ms.find(x => x.id == id) ?? blank_mon
+  let ok = scales.filter(s => fits(mode_w(m), mode_h(m), s))
+  let to = dir < 0 ? ok.filter(s => s < m.scale - 0.001).last : ok.filter(s => s > m.scale + 0.001).first
+  !m.on || to == null ? ms : scaled_to(ms, id, to ?? 1, m.width, m.height, m.refresh)
+}
+
+// Ctrl+M and Ctrl+Shift+M: the monitor's next mode down or up, largest first;
+// a scale the new mode can't take gives way to the largest below it that it can
+fn modes_of(m: Mon) -> [OutputMode] {
+  (out(m)?.modes ?? []).sort_by(o => -(o.width * o.height) * 1000 - o.refresh)
+}
+fn remoded(ms: [Mon], id: text, dir: int) -> [Mon] {
+  remoded_in(ms, id, dir, modes_of(ms.find(x => x.id == id) ?? blank_mon))
+}
+// the same over the modes given, largest first
+fn remoded_in(ms: [Mon], id: text, dir: int, modes: [OutputMode]) -> [Mon] {
+  let m = ms.find(x => x.id == id) ?? blank_mon
+  let i = modes.index_of(o => o.width == mode_w(m) && o.height == mode_h(m) && (m.refresh == 0 || (o.refresh - m.refresh).abs() < 0.5))
+  let o = modes.skip(i == null ? 0 : (i ?? 0) + dir).first
+  let s = fits(o?.width ?? 0, o?.height ?? 0, m.scale) ? m.scale
+    : scales.filter(x => x <= m.scale && fits(o?.width ?? 0, o?.height ?? 0, x)).last ?? 1
+  !m.on || o == null || (i ?? 0) + dir < 0 ? ms : scaled_to(ms, id, s, o?.width ?? 0, o?.height ?? 0, o?.refresh ?? 0)
+}
+
+// Enter: off, the rest closing up; on, at the right end of the top row. One stays on.
+fn switched(ms: [Mon], id: text) -> [Mon] {
+  let m = ms.find(x => x.id == id) ?? blank_mon
+  let ss = seated(ms)
+  let all = ms.map(x => x.id == id ? lit_as(x, !m.on) : x)
+  let end = ss.reduce(0, (a, s) => right(s.m) > a ? right(s.m) : a)
+  let top_y = ss.reduce(ss.first?.m?.y ?? 0, (a, s) => s.m.y < a ? s.m.y : a)
+  m.id == "" || (m.on && ms.count(x => x.on) <= 1) ? ms
+    : m.on ? laid(all, leaving(ss, id).filter(s => s.m.id != id))
+    : laid(all, ss + [Seat(m: moved_to(lit_as(m, true), end, top_y), row: rows_of(ss).first ?? 0, off: 0)])
+}
+
+// Alt+1 to Alt+0: workspace n to the monitor, taken from whichever had it (again:
+// back off it); a monitor's lowest is its own default. Dropped on one: to it.
+fn handed(ms: [Mon], id: text, n: int, toggle: bool) -> [Mon] {
+  let had = ms.any(m => m.id == id && m.workspaces.contains(n))
+  ms.map(m => holding(m, m.id == id && !(toggle && had) ? (m.workspaces.filter(w => w != n) + [n]).sort_by(w => w)
+    : m.workspaces.filter(w => w != n)))
+}
+
+// a monitor dragged in the pane and let go with its top-left at x, y (the rest
+// closing up where they are drawn): into the row its middle is level with, where it stands along it and at the row's top,
+// middle or bottom (whichever is nearest); above or below them all, a row of
+// its own at the nearest stop along the row next to it
+fn band_top(ss: [Seat], r: int) -> int { mates(ss, r).reduce(100000, (a, s) => s.m.y < a ? s.m.y : a) }
+fn band_end(ss: [Seat], r: int) -> int { mates(ss, r).reduce(0, (a, s) => bottom(s.m) > a ? bottom(s.m) : a) }
+fn nearest(xs: [int], v: int) -> int { xs.sort_by(x => (x - v).abs()).first ?? v }
+fn dragged_to(ms: [Mon], id: text, x: int, y: int) -> [Mon] {
+  let m = ms.find(o => o.id == id) ?? blank_mon
+  let ss = seated(ms).filter(s => s.m.id != id)
+  let cy = y + (mon_h(m) / 2).round()
+  let rs = rows_of(ss)
+  let into = rs.find(r => cy >= band_top(ss, r) && cy < band_end(ss, r))
+  let dest = into ?? (rs.len == 0 || cy < band_top(ss, rs.first ?? 0) ? (rs.first ?? 0) - 1 : (rs.last ?? 0) + 1)
+  let room = max(high(ss, dest), mon_h(m)).round() - mon_h(m)
+  let me = Seat(m: moved_to(m, x, y), row: dest, off: 0)
+  let off = nearest([0, (room / 2).round(), room], y - band_top(ss, dest))
+  let along = nearest(stops(ss, me), x)
+  // joining: in the row where its middle falls, the row keeping its left end
+  let order = (mates(ss, dest) + [me]).sort_by(s => mid(s.m)).map(s => s.m.id)
+  let joined = ordered(ss + [Seat(m: moved_to(m, lo(mates(ss, dest)), y), row: dest, off: off)], order)
+  !m.on ? ms : laid(ms, into != null ? joined : ss + [slid(me, along)])
 }

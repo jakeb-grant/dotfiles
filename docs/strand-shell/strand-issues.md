@@ -34,6 +34,18 @@ nested Hyprland 0.57 (Strand's `target/try/mon`: headless outputs, a fake UPower
 private system bus). No repro folders yet: the harness needs nested Hyprland, which `verify.sh`'s
 headless sway can't stand in for.
 
+### A whole number reads as float through `reduce` and `distinct`
+
+**What happens:** `strand check` types these as `float`, so an `int` let or return refuses them:
+`xs.reduce(-1, (m, x) => x > m ? x : m)` over `xs: [int]` (a negative literal as the start),
+`[3, 1, 2].reduce(0, …)` (a list literal with no type), and `[0, n].distinct()` with `n: int`
+(`[float]`). `xs.reduce(0, …)` over a typed `[int]` is `int`.
+
+**What it should do:** a whole-number literal stays `int` there, as it does everywhere else.
+
+**Worked around:** the monitor editor's `band_end` starts its `reduce` at 0 (rows are never above
+0), and its offset stops are a typed `let pts: [int]` with no `distinct`.
+
 ### A workspace moved off a monitor turned off still reads as shown
 
 **What happens:** docked with the lid shut, Hyprland moves the panel's workspace (1) to the
@@ -116,8 +128,10 @@ what wouldn't load, as the running shell would.
 
 ### No way to copy a record with one field changed
 
-**What happens:** turning one monitor of a profile off means rebuilding its `Mon` with every field
-written out (`as_held`), so a field added to the type must be added there too.
+**What happens:** the monitor editor changes one or two fields of a `Mon` at a time (its place, on or
+off, mode and scale and turn, workspaces), and each change is a function rebuilding it with every
+field written out (`moved_to`, `lit_as`, `shown_as`, `holding` in `monitors.strand`; a `Seat` the
+same in `slid`), so a field added to the type must be added to each.
 
 **What it should do:** something like `m with { on: false }`.
 
