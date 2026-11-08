@@ -15,7 +15,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop. A palette-driven theme system 
 - **Theme System**: Palette-based runtime theme switching across all apps
 - **GTK Theming**: libadwaita color names for GTK4 apps, and the same for GTK3 apps through the adw-gtk3 theme
 - **Qt Theming**: Qt5 apps (VLC) through qt5ct, Fusion coloured from the palette
-- **Monitors and Thunderbolt**: Strand, a profile per set of monitors with its workspaces (`monitors.toml`; it writes `monitors.lua`), and bolt's devices allowed from the launcher
+- **Monitors and Thunderbolt**: Strand, named monitor profiles with their workspaces, several a set and one its default (`monitors.toml`; it writes `monitors.lua`), and bolt's devices allowed from the launcher
 - **Login Manager**: greetd + tuigreet
 
 ## Installation

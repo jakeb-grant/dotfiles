@@ -64,7 +64,7 @@ Strand (https://strand.jacobgrant.dev) provides the island bar, launcher, notifi
 
 Locking is Strand's (`lock.strand`): everything locks through `loginctl lock-session`, and Strand answers logind's request. hypridle starts hyprlock only while no `strand` process is running. Recovering from a lock screen that died is in `dot_config/hypr/README.md`.
 
-Monitors are Strand's too (`monitors.strand`): it writes `~/.config/hypr/monitors.lua`, and its profiles are `state/monitors.toml` in the source, linked to `~/.config/strand/monitors.toml`, so the Displays page's Save and Del write into the source tree (the one file Strand writes there; `.chezmoiignore` keeps `state/` from being applied as a target). Test monitor changes in nested Hyprland, never on the live session.
+Monitors are Strand's too (`monitors.strand`): it writes `~/.config/hypr/monitors.lua`, and its profiles are `state/monitors.toml` in the source, linked to `~/.config/strand/monitors.toml`, so the Displays page's Save, rename (F2), Del and default (Ctrl+D) write into the source tree (the one file Strand writes there; `.chezmoiignore` keeps `state/` from being applied as a target). Test monitor changes in nested Hyprland, never on the live session.
 
 Quickshell, the shell before Strand, was retired on 2026-11-07 with Ghostty and pane-fm; its config and docs are in git history.
 

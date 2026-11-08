@@ -125,8 +125,9 @@ state wall_tick = 0             // counts wallpaper changes, so what is shown is
 state applying = ""             // the wallpaper awww is putting up
 state ejecting = ""             // the drive being made safe to remove
 state notice = ""              // the last thing that went well, shown in the hint row
-state naming_what = ""          // "profile", or the Thunderbolt device being named
+state naming_what = ""          // "profile" (saving it), "rename", or the Thunderbolt device being named
 state new_name = ""             // and that name
+state renamed_from = ""         // and the profile being renamed
 state tray_open = ""            // the tray item whose menu the Tray page shows
 state tray_sub: int? = null      // and the entry of it whose submenu is open
 state tray_leave = ""           // a tray item just activated: the launcher goes unless its menu opens
@@ -293,22 +294,40 @@ let peek_wall = peek_up ?? peek_walls.find(w => w.file == peek_default) ?? peek_
 let found_docks = docks.sort_by(d => d.uid == newest_tb && waiting.contains(d.uid) ? 0 : waiting.contains(d.uid) ? 1 : 2)
   .fuzzy(query, d => d.label)
 let picked_dock: Bolt? = view == bolt_list && !is_sum ? found_docks.skip(sel).first?.item : null
-// the Displays page's monitors left to right as saved (an edit doesn't reorder
-// them under the selection), after the profile's row; the one selected, by id,
-// which a click on its tile in the pane selects too
+// the Displays page's rows: the set's profiles (its best guess while it has
+// none), its monitors left to right as saved (an edit doesn't reorder them
+// under the selection), then every other set's profiles, a set's together; the
+// profile or monitor selected, by name or id (a click on a monitor's tile in
+// the pane selects it too)
+let here_ps = monitors.saved.profiles.filter(p => p.setup == monitors.setup)
+let away_ps = monitors.saved.profiles.filter(p => p.setup != monitors.setup)
+  .sort_by(p => monitors.saved.profiles.index_of(q => q.setup == p.setup) ?? 0)
+let tops = here_ps.len > 0 ? here_ps.len : 1
 let mon_order = monitors.base.sort_by(m => m.x).map(m => m.id)
 let shown_mons = monitors.plan.sort_by(m => mon_order.index_of(i => i == m.id) ?? 99)
+let prof_names = (here_ps + away_ps).map(p => p.name).join("\n")
 state mon_pick = ""
+state prof_pick = ""
+fn mon_in(at: int) -> text { at >= tops ? shown_mons.skip(at - tops).first?.id ?? "" : "" }
+fn prof_in(at: int) -> text {
+  at < tops ? here_ps.skip(at).first?.name ?? "" : at >= tops + shown_mons.len ? away_ps.skip(at - tops - shown_mons.len).first?.name ?? "" : ""
+}
 state tile_tick = 0             // counts clicks on the pane's tiles, so the list follows
 // a tile or workspace chip held or just let go: a drag let go over the list
 // isn't a click on its row
 state tile_held = false
 state tile_let = 0
 on change tile_let after 300ms { tile_held = false }
-// the list starts on the monitor picked, so a surface brought back on another
-// monitor (the one it was on turned off) keeps it
-let mon_at: int? = mon_pick == "" ? null : (shown_mons.index_of(m => m.id == mon_pick) ?? -1) + 1
+// the list starts on the monitor or profile picked, so a surface brought back
+// on another monitor (the one it was on turned off) keeps it
+let away_at = away_ps.index_of(p => p.name == prof_pick)
+let row_at: int? = mon_pick != "" ? tops + (shown_mons.index_of(m => m.id == mon_pick) ?? 0)
+  : here_ps.index_of(p => p.name == prof_pick) ?? (away_at == null ? null : tops + shown_mons.len + (away_at ?? 0))
 let picked_mon: Mon? = view == displays && !is_sum && mon_pick != "" ? shown_mons.find(m => m.id == mon_pick) : null
+let picked_prof: Profile? = view == displays && !is_sum && mon_pick == "" ? (here_ps + away_ps).find(p => p.name == prof_in(sel)) : null
+// a profile up now, and a set's default
+fn is_up(p: Profile?) -> bool { p != null && (p?.setup ?? "") == monitors.setup && (p?.name ?? "") == (monitors.profile?.name ?? "") }
+fn is_default(p: Profile?) -> bool { p != null && (default_of(monitors.saved.profiles, p?.setup ?? "")?.name ?? "") == (p?.name ?? "") }
 let ten_ws: [int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 let found_rec = [Command(id: "rec", name: "Record screen", glyph: "screen_record")].fuzzy(query, c => c.name)
@@ -426,7 +445,7 @@ on network.failed(ssid, error) {
 // a page left: its search, its question and what it said go; a tray menu open on it closes
 on change view {
   query = ""; armed = ""; problem = ""; notice = ""; mon_pick = ""
-  asking = ""; secret = ""; naming = false; hidden_name = ""; naming_what = ""; new_name = ""
+  asking = ""; secret = ""; naming = false; hidden_name = ""; naming_what = ""; new_name = ""; prof_pick = ""
   if view != tray_list && tray_open != "" {
     tray.items.find(i => i.id == tray_open)?.menu?.close(); tray_open = ""; tray_sub = null
   }
@@ -464,13 +483,15 @@ panel Launcher {
     results_at = results.selected_index ?? 0
     // a tile or chip let go over a row leaves the selection on its monitor
     if view == displays && tile_held { tile_tick += 1 }
-    else { mon_pick = view == displays && results_at >= 1 ? shown_mons.skip(results_at - 1).first?.id ?? "" : "" }
+    else if view == displays { mon_pick = mon_in(results_at); prof_pick = prof_in(results_at) }
+    else { mon_pick = ""; prof_pick = "" }
   }
-  // the monitor picked stays selected when a save reorders the rows, and a click
-  // on its tile selects its row
-  on change tile_tick, mon_order.join(" ") {
-    let i = shown_mons.index_of(m => m.id == mon_pick)
-    if view == displays && i != null { results.select((i ?? 0) + 1) }
+  // the monitor or profile picked stays selected when a save, a rename or a
+  // forget reorders the rows, and a click on a tile selects its row; one
+  // forgotten leaves the row in its place picked
+  on change tile_tick, mon_order.join(" "), prof_names {
+    if view == displays && row_at != null { results.select(row_at ?? 0) }
+    else if view == displays { mon_pick = mon_in(results_at); prof_pick = prof_in(results_at) }
   }
   when at_level == 0 {
     on key "left" { audio.sink.volume = clamp(audio.sink.volume - level_step, 0, 1) }
@@ -564,9 +585,21 @@ panel Launcher {
   on key "alt+p" { view = power }
   on key "alt+y" { view = displays }
   on key "alt+h" { if docks.len > 0 { view = bolt_list } }
-  // on the Displays page: Delete forgets the saved profile
-  when view == displays && sel == 0 && monitors.profile != null && naming_what == "" && !is_sum {
-    on key "delete" { monitors.saved.profiles.remove(monitors.setup); notice = "Forgotten" }
+  // on the Displays page, on any profile (one not connected too): F2 renames it,
+  // Delete forgets it, Ctrl+D makes it its set's default (the one up stays up)
+  when picked_prof != null && naming_what == "" {
+    on key "f2" { problem = ""; naming_what = "rename"; renamed_from = picked_prof?.name ?? ""; new_name = picked_prof?.name ?? "" }
+    on key "delete" {
+      let n = picked_prof?.name ?? ""
+      problem = ""; monitors.saved.profiles = forgetting(monitors.saved.profiles, n); notice = "Forgot " + n
+    }
+    on key "ctrl+d" {
+      let n = picked_prof?.name ?? ""
+      problem = ""
+      if monitors.choice == "" && (picked_prof?.setup ?? "") == monitors.setup { monitors.choice = monitors.profile?.name ?? "" }
+      monitors.saved.profiles = defaulting(monitors.saved.profiles, n)
+      notice = n + " is the default for its monitors"
+    }
   }
   // and hyprpier's arrange keys on the monitor selected, each change on the
   // monitors at once: the arrows move it along, Shift and ↑ ↓ stack it, Ctrl
@@ -673,15 +706,29 @@ panel Launcher {
         row { height: closed_h; shrink: 0; pad: 0, 14; gap: 8; align: center
           text "edit" { font: "Material Symbols Rounded" 16; color: $fg.alpha(0.7); width: 16; shrink: 0 }
           input { text: <-> new_name; focus: true; grow: 1; color: $fg
-            placeholder: naming_what == "profile" ? "This setup's name" : "The device's name"
+            placeholder: naming_what == "profile" ? "This setup's name" : naming_what == "rename" ? "The profile's new name" : "The device's name"
+            // a profile's name is its own: one another set has (saving) or
+            // another profile has (renaming) is refused
             on activate {
-              if new_name != "" {
+              let other = monitors.saved.profiles.find(p => p.name == new_name)
+              if new_name == "" {}
+              else if naming_what == "profile" && other != null && (other?.setup ?? "") != monitors.setup {
+                problem = "“" + new_name + "” is a profile for other monitors (" + set_name(other?.setup ?? "") + "): give another name"
+              } else if naming_what == "rename" && other != null && new_name != renamed_from {
+                problem = "There is already a profile called “" + new_name + "”"
+              } else {
+                problem = ""
                 if naming_what == "profile" {
-                  monitors.saved.profiles[monitors.setup] = Profile(name: new_name, mons: monitors.plan)
-                  monitors.draft = []
+                  monitors.saved.profiles = saving(monitors.saved.profiles, new_name, monitors.setup, monitors.plan)
+                  monitors.choice = new_name; monitors.draft = []; prof_pick = new_name
                   notice = "Saved as " + new_name
+                } else if naming_what == "rename" {
+                  monitors.saved.profiles = renaming(monitors.saved.profiles, renamed_from, new_name)
+                  if monitors.choice == renamed_from { monitors.choice = new_name }
+                  if mon_pick == "" { prof_pick = new_name }
+                  notice = "Renamed to " + new_name
                 } else { relabel(naming_what, new_name) }
-                naming_what = ""; new_name = ""
+                naming_what = ""; new_name = ""; renamed_from = ""
               }
             }
           }
@@ -750,7 +797,7 @@ panel Launcher {
       // the island follows
       list { id: results; height: rows * row_h; shrink: 0; wrap: true
         width: has_pane ? list_w : box_w
-        selected_index: view == theme_list ? theme_at : view == media_list ? media_at : view == displays ? mon_at : null
+        selected_index: view == theme_list ? theme_at : view == media_list ? media_at : view == displays ? row_at : null
         if is_sum { SumRow {} }
         else {
           if view == home && query == "" {
@@ -828,8 +875,10 @@ panel Launcher {
             }
           }
           if view == displays {
-            SetupRow {}
+            if here_ps.len == 0 { GuessRow {} }
+            for p in here_ps key p.name { ProfRow p }
             for m in shown_mons key m.id { MonRow m }
+            for p in away_ps key p.name { ProfRow p }
           }
           if view == bolt_list {
             for m in found_docks key m.item.uid { DockRow m }
@@ -887,7 +936,10 @@ panel Launcher {
           if picked_win != null { Hint "⇧ Enter" { what: "go to it" } }
           if picked_ap?.known ?? false { Hint "Del" { what: "forget" } }
           if picked_bt != null { Hint "Del" { what: "forget" } }
-          if view == displays && sel == 0 && monitors.profile != null && naming_what == "" && !is_sum { Hint "Del" { what: "forget" } }
+          if picked_prof != null && naming_what == "" {
+            Hint "F2" { what: "rename" }; Hint "Del" { what: "forget" }
+            if !is_default(picked_prof) { Hint "Ctrl D" { what: "default" } }
+          }
           if view == displays && monitors.draft.len > 0 && naming_what == "" && !is_sum { Hint "Ctrl S" { what: "save" } }
           // the arrange keys on a monitor lit (off, or under a shut lid, only its workspaces)
           if picked_mon != null && naming_what == "" {
@@ -934,8 +986,9 @@ fn enter_does(ap: AccessPoint?, at: int) -> text {
     : view == theme_list || view == wall_list ? "use"
     : view == clips ? "copy" : view == spaces ? "go"
     : view == keys_list ? ""
-    : view == displays ? (naming_what != "" || at == 0 ? "save" : !(picked_mon?.on ?? false) ? "turn on"
-        : !last_lit(monitors.plan, mon_pick) ? "turn off" : "")
+    : view == displays ? (naming_what != "" || (at == 0 && here_ps.len == 0) || is_up(picked_prof) ? "save"
+        : picked_prof != null ? ((picked_prof?.setup ?? "") == monitors.setup ? "use" : "")
+        : !(picked_mon?.on ?? false) ? "turn on" : !last_lit(monitors.plan, mon_pick) ? "turn off" : "")
     : view == bolt_list ? (naming_what != "" ? "save" : picked_dock == null ? ""
         : !(picked_dock?.stored ?? true) ? "allow always"
         : picked_dock?.status == "connected" ? "allow" : "")
@@ -2077,25 +2130,51 @@ fn kind_glyph(icon: text) -> text {
     : icon.contains("computer") ? "computer" : "bluetooth"
 }
 
-// the Displays page: the setup, its profile's name or the best guess; Enter saves
-// it under a name, Delete forgets it. Then each monitor, left to right as saved:
-// Enter turns it off or on, the arrange keys move, turn, scale and give it
-// workspaces; every change is an edit, on the monitors at once, until it is
-// saved or put back (Esc), or the set changes
-component SetupRow {
-  let p = monitors.profile
+// the Displays page: the set's profiles, the one up lit and its default marked,
+// or the best guess while it has none; Enter on the one up saves it
+// under a name, on another puts that one up until the set changes. Then each
+// monitor, left to right as saved: Enter turns it off or on, the arrange keys
+// move, turn, scale and give it workspaces; every change is an edit, on the
+// monitors at once, until it is saved or put back (Esc), or the set changes.
+// Then the other sets' profiles, not connected, each with its monitors. F2
+// renames a profile, Delete forgets it, Ctrl+D makes it its set's default.
+component GuessRow {
   Row {
-    on activate { if !tile_held { problem = ""; naming_what = "profile"; new_name = p?.name ?? "" } }
-    Glyph p == null ? "auto_awesome_mosaic" : "bookmark" { on: p != null }
-    text setup_name() { color: $fg; grow: 1; ellipsis: end }
-    if monitors.failed != "" { text monitors.failed { color: $red; shrink: 1; ellipsis: end } }
-    else if monitors.draft.len > 0 { text "edited, not saved" { color: $accent; shrink: 0 } }
-    else { Aside p == null ? "not saved" : "saved" }
+    on activate { if !tile_held { problem = ""; naming_what = "profile"; new_name = "" } }
+    Glyph "auto_awesome_mosaic"
+    text "Best guess" { color: $fg; grow: 1; ellipsis: end }
+    UpState "not saved"
   }
 }
-fn setup_name() -> text {
-  monitors.profile == null ? "Best guess" : (monitors.profile?.name ?? "") != "" ? monitors.profile?.name ?? "" : "Saved setup"
+component ProfRow(p: Profile) {
+  let here = p.setup == monitors.setup
+  Row {
+    on activate {
+      problem = ""
+      if tile_held {}
+      else if is_up(p) { naming_what = "profile"; new_name = p.name }
+      else if here {
+        notice = monitors.draft.len > 0 ? p.name + " is up, the edit put back" : p.name + " is up"
+        monitors.draft = []; monitors.choice = p.name
+      } else { problem = "Its monitors aren't connected, so it can't go up" }
+    }
+    Glyph "bookmark" { on: is_up(p) }
+    if here { text p.name { color: $fg; grow: 1; ellipsis: end } }
+    else {
+      text p.name { color: $fg.alpha(0.75); shrink: 0; max_width: 150; ellipsis: end }
+      text set_name(p.setup) { color: $fg.alpha(0.4); grow: 1; ellipsis: end; font: sans 12px 500 }
+    }
+    if is_up(p) { UpState is_default(p) ? "default · in use" : "in use" }
+    else { Aside join(" · ", is_default(p) ? "default" : null, here ? null : "not connected") }
+  }
 }
+// the layout up: why Hyprland refused it, else edited, else what it is
+component UpState(what: text) {
+  if monitors.failed != "" { text monitors.failed { color: $red; shrink: 1; ellipsis: end } }
+  else if monitors.draft.len > 0 { text "edited, not saved" { color: $accent; shrink: 0 } }
+  else { Aside what }
+}
+fn setup_name() -> text { monitors.profile?.name ?? "Best guess" }
 
 // a monitor: its connector, model (the laptop's own: "Laptop screen"), mode,
 // scale, turn and, once saved or edited, its workspaces; the panel says when its
@@ -2145,16 +2224,21 @@ fn spread(ws: [int]) -> text? {
 // selects one; a drag places it, let go beside the others (into the row it is
 // level with, or a row of its own above, between or below), held to the pane;
 // under them workspaces 1 to 10, the selected monitor's lit: a click gives it
-// one or takes it back, a drag gives one to the monitor it is let go on
+// one or takes it back, a drag gives one to the monitor it is let go on. A
+// profile selected that isn't up is shown as saved, to look at only.
 component SetupPane {
-  let tiles = monitors.plan.filter(m => m.on)
+  let shown: Profile? = is_up(picked_prof) ? null : picked_prof
+  let live = shown == null
+  let here = (shown?.setup ?? "") == monitors.setup
+  let tiles = (shown?.mons ?? monitors.plan).filter(m => m.on)
   let wide_all = max(tiles.reduce(1, (a, m) => max(a, m.x + mon_w(m))), 1)
   let tall_all = max(tiles.reduce(1, (a, m) => max(a, m.y + mon_h(m))), 1)
   let k = min((pane_box_w - list_w - 1 - 16 - 40) / wide_all, 130 / tall_all)
   Pane {
     row { gap: 10; align: center
-      Title setup_name()
-      Detail monitors.draft.len > 0 ? "Edited: Ctrl+S saves, Esc puts back"
+      Title shown?.name ?? setup_name()
+      Detail !live ? (here ? "Not in use: Enter puts it up" : "Not connected: it goes up when they are")
+        : monitors.draft.len > 0 ? "Edited: Ctrl+S saves, Esc puts back"
         : join(" · ", monitors.profile == null ? "Not saved: Enter saves it" : "Saved in monitors.toml",
           monitors.shut ? "lid shut" : null)
     }
@@ -2168,23 +2252,29 @@ component SetupPane {
         let dy = held_at == null ? 0 : clamp((now?.y ?? 0) - (held_at?.y ?? 0),
           -(m.y + mon_h(m) / 2) * k - 8, (tall_all - m.y - mon_h(m) / 2) * k + 8)
         col { x: m.x * k + dx; y: m.y * k + dy; width: mon_w(m) * k - 4; height: mon_h(m) * k - 4; radius: 6; shrink: 0
-          justify: center; align: center; gap: 2; cursor: grab; opacity: on_now(m) ? 1 : 0.45
-          bg: $fg.alpha(held_at != null ? 0.14 : 0.06); border: 1, m.id == mon_pick ? $accent : $fg.alpha(0.14)
-          when pressed { cursor: grabbing }
-          on click { mon_pick = m.id; tile_tick += 1 }
+          justify: center; align: center; gap: 2; opacity: on_now(m) ? 1 : 0.45; clip: true
+          bg: $fg.alpha(held_at != null ? 0.14 : 0.06); border: 1, live && m.id == mon_pick ? $accent : $fg.alpha(0.14)
+          when live { cursor: grab }
+          when live && self.pressed { cursor: grabbing }
+          on click { if live { mon_pick = m.id; tile_tick += 1 } }
           on change self.pressed {
-            if self.pressed { held_at = self.pointer; now = self.pointer; mon_pick = m.id; tile_tick += 1; tile_held = true }
+            if !live {}
+            else if self.pressed { held_at = self.pointer; now = self.pointer; mon_pick = m.id; tile_tick += 1; tile_held = true }
             else {
               if dx.abs() + dy.abs() > 6 { monitors.draft = dragged_to(monitors.plan, m.id, (m.x + dx / k).round(), (m.y + dy / k).round()) }
               held_at = null; now = null; tile_let += 1
             }
           }
           on change self.pointer { if held_at != null && self.pointer != null { now = self.pointer } }
-          on drop(n: int, at: int) { monitors.draft = handed(monitors.plan, m.id, n, false) }
-          text out(m)?.name ?? "" { color: $fg.alpha(0.8); font: mono 11px 600 }
+          on drop(n: int, at: int) { if live { monitors.draft = handed(monitors.plan, m.id, n, false) } }
+          text out(m)?.name ?? mon_name(m.id) { color: $fg.alpha(0.8); font: mono 11px 600; ellipsis: end }
           text on_now(m) ? spread(m.workspaces) ?? "" : "lid shut" { color: on_now(m) ? $accent : $fg.alpha(0.6); font: mono 11px 500 }
         }
       }
+    }
+    // a profile only looked at: its monitors, and what it is
+    if !live {
+      Detail join(" · ", set_name(shown?.setup ?? ""), is_default(shown) ? "default" : null)
     }
     if picked_mon != null {
       row { gap: 4; align: center

@@ -17,6 +17,11 @@ chezmoi apply
 `monitors.strand` needs `d9d726f4` or later, so update Strand first. `chezmoi apply` asks for sudo twice: once for
 retiring hyprpier and once for installing `thunderbolt-resume.service`.
 
+The merge also brings `state/monitors.toml` in the shape with several profiles a set (a
+`[[profiles]]` table each, with its set and whether it is the set's default); until `chezmoi apply`
+brings the `monitors.strand` that reads it, a running one can't, keeps the profiles it has and says
+so in its log, so apply right after the merge.
+
 Strand reloads `~/.config/strand` on its own and arranges the monitors about 1.5 s later. Strand
 won't write over a `monitors.lua` it didn't write, so until the retire script removes hyprpier's,
 it tries again every few seconds. That is expected.
@@ -67,18 +72,22 @@ asks again at its next plug. Check with `boltctl list`: each dock should show `s
   `hyprpier-resume.service` are gone, and `systemctl is-enabled thunderbolt-resume` says
   `enabled`.
 - `head -3 ~/.config/hypr/monitors.lua` says Strand wrote it.
-- Alt+Y names the profile: "home" docked at home, "default" undocked, "work" at work. It shows
-  "Best guess" for a set with no profile. Workspaces 1-5 sit on the left ASUS and 6-10 on the
+- Alt+Y lists the profile in use first: "home" docked at home, "default" undocked, "work" at work,
+  and the other two under the monitors as "not connected", each drawn in the pane when selected.
+  It shows "Best guess" for a set with no profile. Workspaces 1-5 sit on the left ASUS and 6-10 on the
   right. `strand get monitors.profile --json` says the same from a terminal.
 - Shut the lid while docked: the panel goes off and the focus stays where it was. Open the lid:
   the panel comes back.
 - Unplug the dock: the panel takes all ten workspaces. Plug it back in: home comes back without a
   Thunderbolt prompt, now that the dock is enrolled.
 - **At work:** the work profile's monitor ids come from hyprpier's profile, and Strand hasn't seen
-  those monitors yet. If Alt+Y says "Best guess" and the guess is right (left to right by port, panel
-  last), save it with Enter on the profile row and name it "work". If the guess is wrong, arrange
-  it on Alt+Y: select a monitor (↑ ↓ or a click on its tile), move it with ← → and ⇧↑ ⇧↓ or drag
-  its tile, give it its workspaces with Alt+1 to Alt+0, then Ctrl+S and name it "work". Each
+  those monitors yet. If Alt+Y says "Best guess", hyprpier's ids didn't match: compare them with the
+  "work" listed as not connected (its pane names its monitors), select it and Del to forget it, since
+  a name is one profile's whatever the set and saving the guess as "work" is refused while it is
+  there. If the guess is right (left to right by port, panel last), save it with Enter on the
+  "Best guess" row and name it "work". If it is wrong, arrange it on Alt+Y: select a monitor (↑ ↓
+  or a click on its tile), move it with ← → and ⇧↑ ⇧↓ or drag its tile, give it its workspaces with
+  Alt+1 to Alt+0, then Ctrl+S and name it "work". Each
   change goes up at once and Esc puts back what was there. chezmoi's autoCommit commits a save at
   the next `chezmoi` write, or you can commit it by hand. Enroll a work dock the same way as in
   step 3.

@@ -1,11 +1,13 @@
-// monitors.strand: the monitors arranged for each set of them. A set saved in
-// monitors.toml gets its profile and its workspaces, any other a best guess
-// (left to right, the laptop's panel last); the panel is off while its lid is
-// shut on a desk; and monitors.lua is written for Hyprland's next start. The
-// launcher's Displays page (Alt+Y) shows it, edits it live (the arrangement,
-// each monitor's turn, scale, mode and workspaces, and which are on), saves it
-// under a name and forgets it. Strand's monitor-profiles recipe, with
-// workspaces, names and hyprpier's arrange screen added.
+// monitors.strand: the monitors arranged for each set of them. A set with
+// profiles in monitors.toml gets its default (or the one chosen on the Displays
+// page, until the set changes) and its workspaces, any other a best guess (left
+// to right, the laptop's panel last); the panel is off while its lid is shut on
+// a desk; and monitors.lua is written for Hyprland's next start. The launcher's
+// Displays page (Alt+Y) shows every profile, edits the one up live (the
+// arrangement, each monitor's turn, scale, mode and workspaces, and which are
+// on), saves it under a name, and renames, forgets or makes default any of
+// them. Strand's monitor-profiles recipe, with workspaces, names, several
+// profiles a set and hyprpier's arrange screen added.
 
 permit exec "hyprctl", "notify-send"
 action shown_note(what: text) ["notify-send", "-a", "Displays", "-i", "video-display", what]
@@ -15,9 +17,11 @@ type Mon {
   id: text; on: bool; width: int; height: int; refresh: float
   x: int; y: int; scale: float; transform: OutputTransform; workspaces: [int]
 }
-type Profile { name: text; mons: [Mon] }
-// one section per set of monitors, keyed by their ids (a link into chezmoi)
-export state saved from "monitors.toml" { profiles: [text: Profile] = [] }
+// a profile: its name (one per profile, whatever the set), its set of monitors
+// (`setup`'s key) and whether that set gets it when it connects
+type Profile { name: text; setup: text; default: bool; mons: [Mon] }
+// one [[profiles]] table each, in the order saved (a link into chezmoi)
+export state saved from "monitors.toml" { profiles: [Profile] = [] }
 
 service upower from dbus system "org.freedesktop.UPower" { lid_closed: bool = LidIsClosed }
 
@@ -29,9 +33,54 @@ fn out(m: Mon) -> Output? { outputs.all.find(o => ident(o) == m.id) }
 fn lidded(m: Mon) -> bool { (out(m)?.name ?? "").starts_with("eDP") }
 fn wsn(w: Workspace) -> int { (number(w.name) ?? 0).round() }
 
-// the set connected now, and the profile saved for it
+// the set connected now, its profiles, and the one up: the one chosen on the
+// Displays page (until the set changes), else the set's default (the one
+// marked, else its first)
 export let setup = outputs.all.map(o => ident(o)).sort_by(i => i).join(" + ")
-export let profile = saved.profiles[setup]
+let ours = saved.profiles.filter(p => p.setup == setup)
+export state choice = ""
+export let profile: Profile? = ours.find(p => p.name == choice) ?? default_of(saved.profiles, setup)
+fn default_of(ps: [Profile], s: text) -> Profile? {
+  ps.find(p => p.setup == s && p.default) ?? ps.find(p => p.setup == s)
+}
+
+// The profiles as the Displays page changes them: each fn takes the list and
+// gives it back changed, for the page to write. A change in place keeps the
+// profile's [[profiles]] table and its comments where they are in the file.
+fn marked(p: Profile, d: bool) -> Profile { Profile(name: p.name, setup: p.setup, default: d, mons: p.mons) }
+// saved as `name` for set `s`: over the profile of that name (it keeps its
+// place and whether it is the default), else a new one at the end, the set's
+// first its default
+fn saving(ps: [Profile], name: text, s: text, ms: [Mon]) -> [Profile] {
+  ps.any(p => p.name == name)
+    ? ps.map(p => p.name != name ? p : Profile(name: name, setup: s, default: p.default, mons: ms))
+    : ps + [Profile(name: name, setup: s, default: !ps.any(p => p.setup == s), mons: ms)]
+}
+fn renaming(ps: [Profile], from: text, to: text) -> [Profile] {
+  ps.map(p => p.name != from ? p : Profile(name: to, setup: p.setup, default: p.default, mons: p.mons))
+}
+// the set's default the one given, no other of the set
+fn defaulting(ps: [Profile], name: text) -> [Profile] {
+  let s = ps.find(p => p.name == name)?.setup ?? ""
+  ps.map(p => p.setup != s ? p : marked(p, p.name == name))
+}
+// a default forgotten: the set's first left is its default
+fn forgetting(ps: [Profile], name: text) -> [Profile] {
+  let gone = ps.find(p => p.name == name)
+  let rest = ps.filter(p => p.name != name)
+  let s = gone?.setup ?? ""
+  let heir = (gone?.default ?? false) && !rest.any(p => p.setup == s && p.default) ? rest.find(p => p.setup == s)?.name ?? "" : ""
+  rest.map(p => p.name == heir ? marked(p, true) : p)
+}
+// a monitor by its id, connected or not: the laptop's panel, else its model
+fn mon_name(id: text) -> text {
+  outputs.all.any(o => inside(o) && ident(o) == id) ? "Laptop" : id.split(" | ").skip(1).first ?? id
+}
+// a set's monitors by name, one of several alike counted: Laptop + ASUS VS239 ×2
+fn set_name(s: text) -> text {
+  let ns = s.split(" + ").map(i => mon_name(i))
+  ns.distinct().map(n => ns.count(x => x == n) > 1 ? n + " ×" + num(ns.count(x => x == n)) : n).join(" + ")
+}
 
 // how each monitor was last lit: one turned off reads scale 1 and no turn, and
 // the guess keeps what it had
@@ -79,7 +128,7 @@ export state draft: [Mon] = []
 export let base: [Mon] = profile == null ? outputs.all.map(o => guessed(o)) : profile?.mons ?? []
 on change setup {
   if draft.len > 0 { shown_note("The monitors changed, so the edit not saved was put back") }
-  draft.clear(); docking = true
+  draft.clear(); docking = true; choice = ""
 }
 // (an edit lists its monitors row by row, so they are compared in any order)
 fn by_id(ms: [Mon]) -> [Mon] { ms.sort_by(m => m.id) }
@@ -109,7 +158,7 @@ on change chosen, places, outputs.ready, upower.ready after 1500ms {
   docking = false
   if outputs.ready && (chosen != sent || places != placed_for) { sent = chosen; outputs.apply(chosen) }
 }
-on change draft after 100ms {
+on change draft, choice after 100ms {
   if outputs.ready && !docking && chosen != sent { sent = chosen; outputs.apply(chosen) }
 }
 on change outputs.ready { if !outputs.ready { sent = [] } }
@@ -138,12 +187,14 @@ on outputs.failed(action, error) { if action == "apply" { failed = error; sent =
 
 // a saved profile's workspaces moved onto its lit monitors once its layout took;
 // again whenever the set, the monitors on or the profile change (a set not saved
-// in between counts), never at a restart (a workspace not made yet is placed by
-// monitors.lua's rules, and Hyprland itself puts one moved by hand back when it
-// reloads or a monitor comes and goes). A move can leave Hyprland making a new
-// workspace on the monitor it left, so they move until none is astray, for 5s
-// at most.
-let places = profile == null ? "" : base.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
+// in between counts, and so does another of the set's profiles put up: the
+// name is in it while the set has several), never at a restart (a workspace not
+// made yet is placed by monitors.lua's rules, and Hyprland itself puts one
+// moved by hand back when it reloads or a monitor comes and goes). A move can
+// leave Hyprland making a new workspace on the monitor it left, so they move
+// until none is astray, for 5s at most.
+let places = profile == null ? "" : (ours.len > 1 ? (profile?.name ?? "") + " = " : "")
+  + base.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
 state placed_for = "" persist
 // the monitors lit, each with its saved workspaces (an edit moves none)
 let lit: [Mon] = profile == null ? [] : plan.filter(m => on_now(m))

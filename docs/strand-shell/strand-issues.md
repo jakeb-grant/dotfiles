@@ -34,6 +34,20 @@ nested Hyprland 0.57 (Strand's `target/try/mon`: headless outputs, a fake UPower
 private system bus). No repro folders yet: the harness needs nested Hyprland, which `verify.sh`'s
 headless sway can't stand in for.
 
+### A settings field that doesn't load is invisible to the config
+
+**What happens:** `monitors.toml` in a shape the type doesn't read (the one-profile-a-set file from
+before several profiles, `profiles: expected [Profile]`) keeps the field's last good value, which
+is the default (`[]`) at a start, and refuses to save it ("not saved while its value in the file is
+bad"); both are a log line and a `strand watch` diagnostic only. The config can't tell, so the
+Displays page shows "Best guess" and says "Saved as …" for a save that is live but never written.
+
+**What it should do:** something the config can read, such as `saved.problem` (the field's
+diagnostic, or `""`), so the page can say the file needs fixing and not claim a save.
+
+**Worked around:** nothing at runtime; the commit that changed the shape converted the owner's file
+(features.md, Monitors).
+
 ### A release on a node fires its click though the press was on another
 
 **What happens:** on the Displays page a tile in the pane is dragged (`self.pressed`, `self.pointer`)
@@ -145,7 +159,7 @@ what wouldn't load, as the running shell would.
 **What happens:** the monitor editor changes one or two fields of a `Mon` at a time (its place, on or
 off, mode and scale and turn, workspaces), and each change is a function rebuilding it with every
 field written out (`moved_to`, `lit_as`, `shown_as`, `holding` in `monitors.strand`; a `Seat` the
-same in `slid`), so a field added to the type must be added to each. Record fields take no defaults
+same in `slid`, a `Profile` in `marked`, `saving` and `renaming`), so a field added to the type must be added to each. Record fields take no defaults
 either (`check::misplaced`), so `Seat`'s `free` flag is written into every one of its sixteen
 constructions, `free: s.free` where a seat is copied and `free: false` where one is made.
 
