@@ -188,12 +188,14 @@ on outputs.failed(action, error) { if action == "apply" { failed = error; sent =
 // a saved profile's workspaces moved onto its lit monitors once its layout took;
 // again whenever the set, the monitors on or the profile change (a set not saved
 // in between counts, and so does another of the set's profiles put up: the
-// name is in it while the set has several), never at a restart (a workspace not
-// made yet is placed by monitors.lua's rules, and Hyprland itself puts one
+// Displays page counts those in `turns`, which a rename, a save or a profile
+// added or forgotten beside it leave alone), never at a restart (a workspace
+// not made yet is placed by monitors.lua's rules, and Hyprland itself puts one
 // moved by hand back when it reloads or a monitor comes and goes). A move can
 // leave Hyprland making a new workspace on the monitor it left, so they move
 // until none is astray, for 5s at most.
-let places = profile == null ? "" : (ours.len > 1 ? (profile?.name ?? "") + " = " : "")
+export state turns = 0 persist
+let places = profile == null ? "" : (turns > 0 ? num(turns) + " = " : "")
   + base.filter(m => m.on).map(m => m.id + ": " + json(m.workspaces)).join("; ")
 state placed_for = "" persist
 // the monitors lit, each with its saved workspaces (an edit moves none)

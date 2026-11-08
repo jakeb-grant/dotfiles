@@ -19,8 +19,13 @@ retiring hyprpier and once for installing `thunderbolt-resume.service`.
 
 The merge also brings `state/monitors.toml` in the shape with several profiles a set (a
 `[[profiles]]` table each, with its set and whether it is the set's default); until `chezmoi apply`
-brings the `monitors.strand` that reads it, a running one can't, keeps the profiles it has and says
-so in its log, so apply right after the merge.
+brings the `monitors.strand` that reads it, a running one can't: it logs `profiles: expected [text:
+Profile]; keeping its last good value`, keeps the profiles it has (a dock out and in still gets
+its own) and writes nothing over the file, and the apply's reload reads the new file. A Strand
+started in between would have no profiles (the best guess on every set, nothing saved over the
+file), so apply right after the merge. (Run in nested Hyprland, the old config and file first, the
+new file, then the new config.) Strand main's `strand check` (from `e5d1ca83`) warns about a
+`monitors.toml` its config can't read; edge `d9d726f4` doesn't.
 
 Strand reloads `~/.config/strand` on its own and arranges the monitors about 1.5 s later. Strand
 won't write over a `monitors.lua` it didn't write, so until the retire script removes hyprpier's,

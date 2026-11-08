@@ -46,7 +46,9 @@ Displays page shows "Best guess" and says "Saved as …" for a save that is live
 diagnostic, or `""`), so the page can say the file needs fixing and not claim a save.
 
 **Worked around:** nothing at runtime; the commit that changed the shape converted the owner's file
-(features.md, Monitors).
+(features.md, Monitors). `strand check` on Strand main (`e5d1ca83`, check-settings) now warns
+`expected [Profile]` at the file's line, so the shape is caught before a reload; edge `d9d726f4`
+doesn't.
 
 ### A release on a node fires its click though the press was on another
 

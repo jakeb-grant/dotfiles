@@ -128,6 +128,7 @@ state notice = ""              // the last thing that went well, shown in the hi
 state naming_what = ""          // "profile" (saving it), "rename", or the Thunderbolt device being named
 state new_name = ""             // and that name
 state renamed_from = ""         // and the profile being renamed
+state replacing = ""            // a profile of the set not up, its name given once to save over it
 state tray_open = ""            // the tray item whose menu the Tray page shows
 state tray_sub: int? = null      // and the entry of it whose submenu is open
 state tray_leave = ""           // a tray item just activated: the launcher goes unless its menu opens
@@ -318,6 +319,12 @@ state tile_tick = 0             // counts clicks on the pane's tiles, so the lis
 state tile_held = false
 state tile_let = 0
 on change tile_let after 300ms { tile_held = false }
+// a profile's row pressed, and whether it was selected then: a click selects
+// one (the pane shows it), a click on the one selected does what Enter does
+state row_pressed = ""
+state row_was_picked = false
+state row_let = 0
+on change row_let after 300ms { row_pressed = "" }
 // the list starts on the monitor or profile picked, so a surface brought back
 // on another monitor (the one it was on turned off) keeps it
 let away_at = away_ps.index_of(p => p.name == prof_pick)
@@ -443,6 +450,7 @@ on network.failed(ssid, error) {
   }
 }
 // a page left: its search, its question and what it said go; a tray menu open on it closes
+on change naming_what { replacing = "" }
 on change view {
   query = ""; armed = ""; problem = ""; notice = ""; mon_pick = ""
   asking = ""; secret = ""; naming = false; hidden_name = ""; naming_what = ""; new_name = ""; prof_pick = ""
@@ -591,7 +599,10 @@ panel Launcher {
     on key "f2" { problem = ""; naming_what = "rename"; renamed_from = picked_prof?.name ?? ""; new_name = picked_prof?.name ?? "" }
     on key "delete" {
       let n = picked_prof?.name ?? ""
-      problem = ""; monitors.saved.profiles = forgetting(monitors.saved.profiles, n); notice = "Forgot " + n
+      problem = ""
+      if is_up(picked_prof) { monitors.turns += 1 }
+      if monitors.choice == n { monitors.choice = "" }
+      monitors.saved.profiles = forgetting(monitors.saved.profiles, n); notice = "Forgot " + n
     }
     on key "ctrl+d" {
       let n = picked_prof?.name ?? ""
@@ -708,12 +719,17 @@ panel Launcher {
           input { text: <-> new_name; focus: true; grow: 1; color: $fg
             placeholder: naming_what == "profile" ? "This setup's name" : naming_what == "rename" ? "The profile's new name" : "The device's name"
             // a profile's name is its own: one another set has (saving) or
-            // another profile has (renaming) is refused
+            // another profile has (renaming) is refused; saving over another of
+            // the set, not the one up, takes Enter twice
             on activate {
               let other = monitors.saved.profiles.find(p => p.name == new_name)
+              let over = other != null && !is_up(other)
               if new_name == "" {}
               else if naming_what == "profile" && other != null && (other?.setup ?? "") != monitors.setup {
                 problem = "“" + new_name + "” is a profile for other monitors (" + set_name(other?.setup ?? "") + "): give another name"
+              } else if naming_what == "profile" && over && replacing != new_name {
+                replacing = new_name
+                problem = "“" + new_name + "” is another profile for these monitors: Enter again saves over it"
               } else if naming_what == "rename" && other != null && new_name != renamed_from {
                 problem = "There is already a profile called “" + new_name + "”"
               } else {
@@ -721,14 +737,14 @@ panel Launcher {
                 if naming_what == "profile" {
                   monitors.saved.profiles = saving(monitors.saved.profiles, new_name, monitors.setup, monitors.plan)
                   monitors.choice = new_name; monitors.draft = []; prof_pick = new_name
-                  notice = "Saved as " + new_name
+                  notice = (over ? "Saved over " : "Saved as ") + new_name
                 } else if naming_what == "rename" {
                   monitors.saved.profiles = renaming(monitors.saved.profiles, renamed_from, new_name)
                   if monitors.choice == renamed_from { monitors.choice = new_name }
                   if mon_pick == "" { prof_pick = new_name }
                   notice = "Renamed to " + new_name
                 } else { relabel(naming_what, new_name) }
-                naming_what = ""; new_name = ""; renamed_from = ""
+                naming_what = ""; new_name = ""; renamed_from = ""; replacing = ""
               }
             }
           }
@@ -2149,14 +2165,20 @@ component GuessRow {
 component ProfRow(p: Profile) {
   let here = p.setup == monitors.setup
   Row {
+    on change self.pressed {
+      if self.pressed { row_pressed = p.name; row_was_picked = mon_pick == "" && prof_pick == p.name }
+      else { row_let += 1 }
+    }
     on activate {
+      let click = row_pressed == p.name
+      row_pressed = ""
       problem = ""
-      if tile_held {}
+      if tile_held || (click && !row_was_picked) {}
       else if is_up(p) { naming_what = "profile"; new_name = p.name }
       else if here {
         notice = monitors.draft.len > 0 ? p.name + " is up, the edit put back" : p.name + " is up"
-        monitors.draft = []; monitors.choice = p.name
-      } else { problem = "Its monitors aren't connected, so it can't go up" }
+        monitors.draft = []; monitors.turns += 1; monitors.choice = p.name
+      } else if !click { problem = "Its monitors aren't connected, so it can't go up" }
     }
     Glyph "bookmark" { on: is_up(p) }
     if here { text p.name { color: $fg; grow: 1; ellipsis: end } }
@@ -2227,7 +2249,7 @@ fn spread(ws: [int]) -> text? {
 // one or takes it back, a drag gives one to the monitor it is let go on. A
 // profile selected that isn't up is shown as saved, to look at only.
 component SetupPane {
-  let shown: Profile? = is_up(picked_prof) ? null : picked_prof
+  let shown: Profile? = is_up(picked_prof) || naming_what == "profile" ? null : picked_prof
   let live = shown == null
   let here = (shown?.setup ?? "") == monitors.setup
   let tiles = (shown?.mons ?? monitors.plan).filter(m => m.on)
@@ -2251,8 +2273,10 @@ component SetupPane {
           -(m.x + mon_w(m) / 2) * k - 8, (wide_all - m.x - mon_w(m) / 2) * k + 8)
         let dy = held_at == null ? 0 : clamp((now?.y ?? 0) - (held_at?.y ?? 0),
           -(m.y + mon_h(m) / 2) * k - 8, (tall_all - m.y - mon_h(m) / 2) * k + 8)
+        // lit: a profile looked at as saved, whatever the lid does now
+        let lit = !live || on_now(m)
         col { x: m.x * k + dx; y: m.y * k + dy; width: mon_w(m) * k - 4; height: mon_h(m) * k - 4; radius: 6; shrink: 0
-          justify: center; align: center; gap: 2; opacity: on_now(m) ? 1 : 0.45; clip: true
+          justify: center; align: center; gap: 2; opacity: lit ? 1 : 0.45; clip: true
           bg: $fg.alpha(held_at != null ? 0.14 : 0.06); border: 1, live && m.id == mon_pick ? $accent : $fg.alpha(0.14)
           when live { cursor: grab }
           when live && self.pressed { cursor: grabbing }
@@ -2268,7 +2292,7 @@ component SetupPane {
           on change self.pointer { if held_at != null && self.pointer != null { now = self.pointer } }
           on drop(n: int, at: int) { if live { monitors.draft = handed(monitors.plan, m.id, n, false) } }
           text out(m)?.name ?? mon_name(m.id) { color: $fg.alpha(0.8); font: mono 11px 600; ellipsis: end }
-          text on_now(m) ? spread(m.workspaces) ?? "" : "lid shut" { color: on_now(m) ? $accent : $fg.alpha(0.6); font: mono 11px 500 }
+          text lit ? spread(m.workspaces) ?? "" : "lid shut" { color: lit ? $accent : $fg.alpha(0.6); font: mono 11px 500 }
         }
       }
     }
