@@ -85,18 +85,21 @@ let chosen = plan.map(m => placed(m))
 on change chosen, places, outputs.ready, upower.ready after 1500ms {
   if outputs.ready { outputs.apply(chosen) }
 }
-// what the monitors showed when the lid moved: Hyprland switches a monitor that
-// stays lit to another of its workspaces when the panel comes and goes
+// what the monitors showed when the lid moved, and the workspace focused:
+// Hyprland switches a monitor that stays lit to another of its workspaces, and
+// moves the focus, when the panel comes and goes
 state seen: [int] = []
+state had: [int] = []
 on change upower.lid_closed {
   seen = workspaces.all.filter(w => w.active).map(w => wsn(w))
+  had = workspaces.all.filter(w => w.focused).map(w => w.id)
   if outputs.ready { outputs.apply(chosen) }
 }
 export state failed = ""      // why the last layout did not apply, for the Displays page
 state applied = 0             // counts layouts that took, so the workspaces follow
 state booted = ""             // monitors.lua for the last layout that took
 on outputs.succeeded(action) { if action == "apply" { failed = ""; applied += 1; booted = boot_lua } }
-on outputs.failed(action, error) { if action == "apply" { failed = error; seen = [] } }
+on outputs.failed(action, error) { if action == "apply" { failed = error; seen = []; had = [] } }
 
 // a saved profile's workspaces moved onto its lit monitors once its layout took;
 // again whenever the set, the monitors on or the profile change (a set not saved
@@ -125,9 +128,8 @@ on change placing, astray after 300ms {
 on change placed_for after 5s { placing = false }
 // then each lit monitor shows one of its own workspaces (the one it showed
 // before the lid moved), not an empty one Hyprland made for it when it lit or
-// the lid opened, and the focus goes back to the monitor that had it. Two read
-// as shown on one monitor is not trusted: Strand still reads a workspace moved
-// off a monitor turned off as shown.
+// the lid opened. Two read as shown on one monitor is not trusted: Strand still
+// reads a workspace moved off a monitor turned off as shown.
 fn was(m: Mon, w: Workspace) -> bool { mine(m, w) && seen.contains(wsn(w)) }
 fn shows_own(m: Mon) -> bool {
   let shown = workspaces.all.filter(w => w.active && w.screen == (out(m)?.name ?? ""))
@@ -138,14 +140,20 @@ fn put(m: Mon) -> Workspace? {
     ?? workspaces.all.find(w => mine(m, w) && wsn(w) == m.workspaces.first)
     ?? workspaces.configured.find(w => mine(m, w) && wsn(w) == m.workspaces.first)
 }
+// The focus goes back to what had it when the lid moved, if a monitor on shows
+// it alone (a profile or a guess), else to what has it now.
+fn lights(s: text) -> bool { plan.any(m => on_now(m) && (out(m)?.name ?? "") == s) }
+fn alone(w: Workspace) -> bool {
+  w.active && lights(w.screen) && workspaces.all.filter(x => x.active && x.screen == w.screen).len == 1
+}
 on change applied, placing, workspaces.ready after 800ms {
   let fix = placing ? [] : lit.filter(m => !shows_own(m))
-  let f = workspaces.focused
+  let f = workspaces.all.find(w => had.contains(w.id) && alone(w)) ?? workspaces.focused
   for m in fix { put(m)?.focus() }
-  for m in fix.len == 0 ? [] : lit.filter(m => (f?.screen ?? "") == (out(m)?.name ?? "")) {
-    (fix.any(x => x.id == m.id) ? put(m) : f)?.focus()
-  }
-  if !placing { seen = [] }
+  let home = fix.filter(m => (f?.screen ?? "") == (out(m)?.name ?? ""))
+  for m in home { put(m)?.focus() }
+  if home.len == 0 && (fix.len > 0 || !(f?.focused ?? true)) && lights(f?.screen ?? "") { f?.focus() }
+  if !placing { seen = []; had = [] }
 }
 
 // monitors.lua for Hyprland's next start (hyprland.lua requires it): a line for
