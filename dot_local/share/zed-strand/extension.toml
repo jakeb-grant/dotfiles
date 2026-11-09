@@ -1,0 +1,19 @@
+id = "strand"
+name = "Strand"
+version = "0.1.0"
+schema_version = 1
+authors = ["Jacob Grant"]
+description = "The .strand language: highlighting from Strand's tree-sitter grammar, and strand-dev lsp"
+repository = "https://github.com/jakeb-grant/strand"
+
+# The grammar in the Strand repository. Bump `rev` when
+# crates/strand-dev/tree-sitter-strand changes, and copy its queries
+# again (see README.md).
+[grammars.strand]
+repository = "https://github.com/jakeb-grant/strand"
+rev = "bd96eabf798499858f5b51bb6b7f73bf6ad532ca"
+path = "crates/strand-dev/tree-sitter-strand"
+
+[language_servers.strand-dev]
+name = "strand-dev lsp"
+languages = ["Strand"]
