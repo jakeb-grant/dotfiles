@@ -4,15 +4,21 @@
 // Open it from the launcher's Upkeep row, the island's update symbol, or a key bound
 // to: strand toggle upkeep.open
 //
-// Reading is Strand's own: checkupdates, pacman -Q and -S, the AUR's RPC and the
-// news feed through curl. Some run through `sh -c`, only to turn an exit status
-// that means "none" (checkupdates' 2, pacman's 1) into an empty answer and keep an
-// error's first line, which a failed action would lose. Changes go through
-// ~/.local/bin/upkeep-tx: pacman through pkexec (the island asks the password), the
-// AUR through yay --sudo pkexec, and to Kitty where pacman would stop to ask
-// something or a PKGBUILD deserves a look.
+// Reading is Strand's own: pacman -Q and -S, the AUR's RPC and the news feed through
+// curl, vercmp. Some run through `sh -c`, only to turn an exit status that means
+// "none" (pacman's 1) into an empty answer and keep an error's first line, which a
+// failed action would lose. checkupdates, which can take longer than an action that
+// answers may (10 s), runs from ~/.local/bin/upkeep-tx into a file read here. Changes
+// go through upkeep-tx too: pacman through pkexec (the island asks the password), the
+// AUR through the helper upkeep's config names (yay or paru) with pkexec, and to Kitty
+// where pacman would stop to ask something or a PKGBUILD deserves a look.
 
-permit exec "sh", "curl", "vercmp", "upkeep-tx", "kitty", "xdg-open"
+permit exec "sh", "curl", "upkeep-tx", "kitty", "xdg-open"
+
+// upkeep's own config, only read: the AUR helper (upkeep-tx takes yay or paru, any
+// other name is yay)
+state ucfg from "~/.config/upkeep/config.toml" { aur_helper: text = "yay" }
+let helper = ucfg.aur_helper == "paru" ? "paru" : "yay"
 
 export state open = false
 
@@ -26,25 +32,38 @@ on change pac_busy { if !pac_busy { tick += 1 } }
 
 // --- reading -------------------------------------------------------------------
 
-// pacman's lists and a package's details; a status of 1 is "none" (no orphans, not
-// found), never an error. `t` is only there to ask again.
-action pac(flags: text, t: int) -> text ["sh", "-c", "LC_ALL=C pacman $1 2>/dev/null; exit 0", "sh", flags, t]
+// pacman's lists: a status of 1 with nothing said is "none" (no orphans), an error
+// comes back as "!" and its first two lines (pacman's "error: …:" and why). `t` is only there to ask again.
+action pac(flags: text, t: int) -> text ["sh", "-c",
+  "{ e=$(LC_ALL=C pacman $1 2>&1 >&3 3>&-); s=$?; } 3>&1; [ $s -eq 0 ] || [ -z \"$e\" ] || echo \"!$(printf '%s\\n' \"$e\" | grep -m2 . | paste -sd ' ' -)\"; exit 0",
+  "sh", flags, t]
+// a package's details; not found is an empty answer
 action pac_on(flags: text, name: text) -> text ["sh", "-c", "LC_ALL=C pacman $1 -- \"$2\" 2>/dev/null; exit 0", "sh", flags, name]
 // a repo search, each package's two lines (name, then description) as one
 action repo_search(q: text) -> text ["sh", "-c", "LC_ALL=C pacman -Ss -- \"$1\" 2>/dev/null | paste - -; exit 0", "sh", q]
-// checkupdates: its own copy of the sync db (upkeep-tx reads what an upgrade would
-// do from it), so no root. 2 is "none"; an error comes back as "!" and its first line
-action repo_check(t: int) -> text ["sh", "-c",
-  "export CHECKUPDATES_DB=\"${XDG_CACHE_HOME:-$HOME/.cache}/upkeep/syncdb\"; command -v checkupdates >/dev/null || { echo '!checkupdates not found (install pacman-contrib)'; exit 0; }; o=$(checkupdates --nocolor 2>&1); case $? in 0) printf '%s\\n' \"$o\" ;; 2) ;; *) echo \"!$(printf '%s\\n' \"$o\" | grep -m1 . || echo checkupdates failed)\" ;; esac",
-  "sh", t]
-// yay's own AUR check, when the AUR's RPC can't be reached: 1 with nothing printed is "none"
-action yay_check(t: int) -> text ["sh", "-c",
-  "o=$(yay -Qua 2>&1); s=$?; if [ $s -eq 0 ]; then printf '%s\\n' \"$o\"; elif [ -n \"$o\" ]; then echo \"!$(printf '%s\\n' \"$o\" | grep -m1 .)\"; fi",
-  "sh", t]
+// checkupdates, with its own copy of the sync db (upkeep-tx reads what an upgrade
+// would do from it), so no root: upkeep-tx writes the list, or why it failed (keeping
+// the last list), to ~/.cache/upkeep/updates.json. An action with no answer has no
+// time limit, so a slow mirror is waited for
+action ups_check() ["upkeep-tx", "updates"]
+service upd from file "~/.cache/upkeep/updates.json" { updates: [text]; fail: text? }
+after 0s while true { ups_check() }
+on change tick { ups_check() }
+// the helper's own AUR check, when the AUR's RPC can't be reached: 1 with nothing
+// said is "none"; an error (stderr, kept apart from the list) comes back as "!"
+action aur_check(helper: text, t: int) -> text ["sh", "-c",
+  "case $1 in paru) h=paru ;; *) h=yay ;; esac; e=$(mktemp) || exit 1; o=$($h -Qua 2>\"$e\"); s=$?; if [ $s -eq 0 ]; then printf '%s\\n' \"$o\"; elif [ -s \"$e\" ]; then echo \"!$h: $(grep -m1 . \"$e\" | sed 's/^ *-> *//')\"; fi; rm -f \"$e\"",
+  "sh", helper, t]
 // the AUR's RPC and Arch's news; `mark` (a header) only makes a refresh ask again
 action aur(url: text, mark: text) -> AurReply ["curl", "-sg", "-m", "9", "-H", mark, url]
+// one package's AUR details, asked only for a name given ("" asks nothing)
+action aur_info(arg: text) -> AurReply? ["sh", "-c",
+  "[ -z \"$1\" ] || exec curl -sg -m 9 -H 'X-Upkeep: info' \"https://aur.archlinux.org/rpc/v5/info?arg[]=$1\"", "sh", arg]
 action feed(mark: text) -> Rss ["curl", "-sf", "-m", "9", "-H", mark, "https://archlinux.org/feeds/news/"]
-action vercmp(a: text, b: text) -> int ["vercmp", a, b]
+// vercmp over `name old new` lines, all at once: `name old new N` each, N > 0 newer
+action vercmp_all(pairs: text) -> text ["sh", "-c",
+  "printf '%s\\n' \"$1\" | while read -r n o w; do [ -n \"$n\" ] || continue; r=$(vercmp \"$w\" \"$o\") || exit 1; echo \"$n $o $w $r\"; done",
+  "sh", pairs]
 // the explicit packages' names to ~/.config/upkeep/backups, the repos' and the AUR's
 action export_lists(day: text) -> text ["sh", "-c",
   "d=\"$HOME/.config/upkeep/backups\"; mkdir -p \"$d\" || { echo \"!could not make $d\"; exit 0; }; pacman -Qqen >\"$d/packages-$1.txt\" 2>/dev/null; pacman -Qqem >\"$d/aur-$1.txt\" 2>/dev/null; echo \"$(wc -l <\"$d/packages-$1.txt\") $(wc -l <\"$d/aur-$1.txt\")\"",
@@ -61,7 +80,9 @@ type Rss { channel: Chan }
 
 fn lines(t: text) -> [text] { t.split("\n").filter(l => l.trim() != "") }
 fn word(l: text, i: int) -> text { l.split(" ").filter(w => w != "").skip(i).first ?? "" }
-fn pkgs_of(t: text) -> [Pkg] { lines(t).map(l => Pkg(name: word(l, 0), ver: word(l, 1))) }
+fn pkgs_of(t: text) -> [Pkg] { lines(t).filter(l => !l.starts_with("!")).map(l => Pkg(name: word(l, 0), ver: word(l, 1))) }
+// what a read's "!" line says went wrong
+fn bang(t: text) -> text? { lines(t).find(l => l.starts_with("!"))?.slice(1) }
 // `name old -> new`, yay's `[age]` after it left out
 fn up_of(l: text, aur: bool) -> Up { Up(name: word(l, 0), old: word(l, 1), new: word(l, 3), aur: aur) }
 fn up_key(u: Up) -> text { u.name + " " + u.old + " " + u.new }
@@ -79,12 +100,13 @@ let explicit = pkgs_of(explicit_r ?? "")
 let foreign = pkgs_of(foreign_r ?? "")
 let foreign_names = foreign.map(p => p.name)
 let orphan_pkgs = pkgs_of(orphans_r ?? "")
+let explicit_err: text? = explicit_r.error ?? bang(explicit_r ?? "")
+let foreign_err: text? = foreign_r.error ?? bang(foreign_r ?? "")
+let orphans_err: text? = orphans_r.error ?? bang(orphans_r ?? "")
 
 // updates from the repos
-let repo_r = repo_check(tick)
-let repo_lines = lines(repo_r ?? "")
-let repo_ups = repo_lines.filter(l => l.contains(" -> ")).map(l => up_of(l, false))
-let repo_err: text? = repo_r.error ?? repo_lines.find(l => l.starts_with("!"))?.slice(1)
+let repo_ups = upd.updates.filter(l => l.contains(" -> ")).map(l => up_of(l, false))
+let repo_err: text? = upd.fail ?? ups_check.error
 
 // updates from the AUR: the foreign packages' versions there, newer by vercmp; yay's
 // own check if the AUR can't be reached. A package not in the AUR is left out, and a
@@ -94,23 +116,27 @@ let aur_got = aur_r.value?.results ?? []
 fn aur_ver(n: text) -> text { aur_got.find(a => a.Name == n)?.Version ?? "" }
 let aur_diffs = foreign.filter(p => aur_ver(p.name) != "" && aur_ver(p.name) != p.ver)
   .map(p => Up(name: p.name, old: p.ver, new: aur_ver(p.name), aur: true))
-let diffs_key = aur_diffs.map(d => up_key(d)).join("\n")
-state newer: [text: bool] = []
-on change diffs_key {
-  newer = newer.filter(e => aur_diffs.any(d => up_key(d) == e.key))
-  for d in aur_diffs {
-    if newer[up_key(d)] == null { newer[up_key(d)] = (await vercmp(d.new, d.old)) > 0 }
-  }
-}
+// one vercmp run for them all; if it fails, every version that differs is counted, as
+// upkeep does, and the footer says so
+let vc = vercmp_all(aur_diffs.map(d => up_key(d)).join("\n"))
+let vc_lines = lines(vc ?? "")
+let vc_failed = vc.error != null && !vc.pending
 let aur_failed = aur_r.error != null && !aur_r.pending
-let yay_lines = aur_failed ? lines(yay_check(tick) ?? "") : []
-let yay_err: text? = yay_lines.find(l => l.starts_with("!"))?.slice(1)
+let helper_lines = aur_failed ? lines(aur_check(helper, tick) ?? "") : []
+let helper_err: text? = bang(helper_lines.join("\n"))
 let aur_ups: [Up] = foreign_r.value == null ? []
-  : aur_failed ? yay_lines.filter(l => l.contains(" -> ")).map(l => up_of(l, true))
-  : aur_diffs.filter(d => newer[up_key(d)] ?? false)
-let aur_err: text? = aur_failed && yay_err != null ? (aur_r.error ?? "") + "; " + (yay_err ?? "") : null
+  : aur_failed ? helper_lines.filter(l => !l.starts_with("!") && l.contains(" -> ")).map(l => up_of(l, true))
+  : vc_failed ? aur_diffs
+  : aur_diffs.filter(d => vc_lines.contains(up_key(d) + " 1"))
+let aur_err: text? = aur_failed && helper_err != null ? "the AUR: " + (aur_r.error ?? "") + "; " + (helper_err ?? "") : null
+let vc_err: text? = vc_failed ? "vercmp: " + (vc.error ?? "") + ", so every AUR version that differs is listed" : null
 let ups = repo_ups + aur_ups
-let checking = repo_r.pending || foreign_r.pending || aur_r.pending || explicit_r.pending
+let checking = ups_check.running || foreign_r.pending || aur_r.pending || explicit_r.pending || vc.pending
+// what went wrong reading, for the footer
+let read_err: text? = repo_err != null || aur_err != null || vc_err != null || foreign_err != null
+  ? join("; ", repo_err != null ? "checkupdates: " + (repo_err ?? "") : null, aur_err, vc_err,
+    foreign_err != null ? "pacman -Qm: " + (foreign_err ?? "") : null)
+  : null
 
 // the news, newest first: `!` asks for a hand before upgrading (upkeep's words, plain
 // substrings), `*` names something installed by hand (a word, or a dash-separated
@@ -149,6 +175,8 @@ fn alnum(c: text) -> bool { c != "" && (c.lower() != c.upper() || "0123456789".c
 state news_seen: Date? = null persist
 export let alerts = stories.count(s => s.alert && s.when != null && (s.when ?? clock.today) > (news_seen ?? clock.today.add(days: -30)))
 export let pending = ups.len
+let attention = stories.count(s => s.alert)
+let related = stories.count(s => s.rel.len > 0)
 let newest: Date? = stories.first?.when
 
 // --- the rows ------------------------------------------------------------------
@@ -232,20 +260,26 @@ state job_kitty = false          // it is running in Kitty
 state job_secs = 0
 state choose = ""                // the dialog's answer: "here", "here_aur" or "kitty"
 
-action tx_run(op: text, pkgs: text) ["upkeep-tx", "run", op, pkgs]
-action tx_kitty(op: text, pkgs: text) ["kitty", "--class", "upkeep-term", "--title", "Upkeep", "-e", "upkeep-tx", "term", op, pkgs]
+action tx_run(op: text, pkgs: text, helper: text) ["upkeep-tx", "run", op, pkgs, helper]
+action tx_kitty(op: text, pkgs: text, helper: text) ["kitty", "--class", "upkeep-term", "--title", "Upkeep", "-e", "upkeep-tx", "term", op, pkgs, helper]
 action tx_check(op: text, pkgs: text) -> text ["upkeep-tx", "check", op, pkgs]
 service txlog from listen ["upkeep-tx", "watch"] { kind: text; line: text?; code: int?; what: text? }
 
 let busy = tx_run.running || tx_kitty.running
 let pre = tx_check(ask?.op ?? "", ask?.pkgs ?? "")
-let pre_lines = lines(pre ?? "")
+// a check that failed (or ran out of time) says nothing it last said for another change
+let pre_failed = pre.error != null && !pre.pending
+let pre_lines: [text] = pre_failed ? [] : lines(pre ?? "")
 let pre_asks = pre_lines.filter(l => l.starts_with("ask ")).map(l => l.slice(4))
 let pre_fails = pre_lines.filter(l => l.starts_with("fail ")).map(l => l.slice(5))
+let pre_also = pre_lines.filter(l => l.starts_with("also ")).map(l => l.slice(5))
 let pre_aur = pre_lines.filter(l => l.starts_with("aur ")).map(l => l.slice(4)).join(" ")
 let pre_notes = pre_lines.filter(l => l.starts_with("note ")).map(l => l.slice(5))
-// Kitty first where pacman would ask, or a PKGBUILD would be built unread
-let to_kitty = pre_asks.len > 0 || pre_aur != ""
+// Kitty first where pacman would ask, a PKGBUILD would be built unread, or the check
+// itself failed: never here unchecked
+let to_kitty = pre_failed || pre_asks.len > 0 || pre_aur != ""
+// Shift+Enter: here even with the AUR's, but only once checked and with nothing to ask
+let may_here = !pre.pending && !pre_failed && pre_asks.len == 0
 
 on txlog.line(doc) {
   if doc.kind == "start" { job_lines = []; job_code = null; job_why = ""; job_secs = 0 }
@@ -260,10 +294,13 @@ every 1s while busy { job_secs += 1 }
 // upkeep-tx or Kitty that couldn't start says nothing in the log
 on change busy after 800ms { if !busy && job != null && job_code == null { job_code = 1; job_why = tx_run.error ?? tx_kitty.error ?? "It ended without a word" } }
 on change choose {
-  if choose != "" && ask != null && !busy {
+  if choose == "here" && !may_here && ask != null {
+    msg = pre_failed ? "Not here: pacman's check failed, so only Kitty runs it" : "Not here: pacman would ask something"
+    msg_bad = true
+  } else if choose != "" && ask != null && !busy {
     job = ask; job_lines = []; job_code = null; job_why = ""; job_secs = 0
     job_kitty = choose == "kitty"
-    if choose == "kitty" { tx_kitty(ask?.op ?? "", ask?.pkgs ?? "") } else { tx_run(ask?.op ?? "", ask?.pkgs ?? "") }
+    if choose == "kitty" { tx_kitty(ask?.op ?? "", ask?.pkgs ?? "", ucfg.aur_helper) } else { tx_run(ask?.op ?? "", ask?.pkgs ?? "", ucfg.aur_helper) }
     ask = null; marks.clear()
   }
   choose = ""
@@ -280,6 +317,14 @@ let hint_h = 30
 // a key or a click on its hint: one place that does what it asks
 state cmd = ""
 state cmd_n = 0
+// an export's command that fails ends its handler at the await, saying nothing: said here
+state exporting = false
+on change export_lists.running after 300ms {
+  if !export_lists.running && exporting { exporting = false; msg = "Export failed: its command did not finish (strand's log says why)"; msg_bad = true }
+}
+on change exporting after 11s {
+  if exporting { exporting = false; msg = "Export failed: its command did not finish (strand's log says why)"; msg_bad = true }
+}
 
 window Upkeep {
   title: "Upkeep"; app_id: "upkeep"; open: <-> open
@@ -321,9 +366,9 @@ window Upkeep {
     }
     else if c == "dismiss" { if !busy { job = null } }
     else if busy && c != "open_link" && c != "copy" && c != "export" { msg = "A change is still running"; msg_bad = true }
-    // Updates: everything (the AUR's too, through yay), or what is checked
+    // Updates: everything (the AUR's too, through the helper), or what is checked
     else if c == "upgrade" {
-      if ups.len > 0 { ask = Ask(op: "upgrade", title: "Update everything?", note: "pacman -Syu" + (aur_ups.len > 0 ? ", then the AUR's through yay" : ""),
+      if ups.len > 0 { ask = Ask(op: "upgrade", title: "Update everything?", note: "pacman -Syu" + (aur_ups.len > 0 ? ", then the AUR's through " + helper : ""),
         names: ups.map(u => u.name + "  " + u.old + " → " + u.new), pkgs: aur_ups.map(u => u.name).join(" ")) }
       else { msg = "Nothing to update"; msg_bad = false }
     }
@@ -344,7 +389,7 @@ window Upkeep {
     else if c == "reinstall" || c == "rebuild" {
       if targets.len > 0 && tab == installed {
         ask = Ask(op: c, title: (c == "rebuild" ? "Rebuild " : "Reinstall ") + count(targets.len) + "?",
-          note: c == "rebuild" ? "Built again from source (yay --rebuild)" : "Downloaded and installed again",
+          note: c == "rebuild" ? "Built again from source (" + helper + " --rebuild)" : "Downloaded and installed again",
           names: targets.map(i => i.name), pkgs: targets.map(i => i.name).join(" "))
       }
     }
@@ -356,7 +401,9 @@ window Upkeep {
         names: these.map(i => i.name + "  " + i.ver + ((i.repo ?? "") != "" ? "  (" + (i.repo ?? "") + ")" : "")), pkgs: these.map(i => i.name).join(" ")) }
     }
     if c == "export" {
+      exporting = true
       let out = await export_lists(clock.format("%Y-%m-%d"))
+      exporting = false
       if out.starts_with("!") { msg = "Export failed: " + out.slice(1); msg_bad = true }
       else { msg = "Exported " + word(out, 0) + " + " + word(out, 1) + " AUR to ~/.config/upkeep/backups"; msg_bad = false }
     }
@@ -429,8 +476,8 @@ window Upkeep {
   }
   when asking {
     on key "enter", "y" { if !pre.pending { choose = to_kitty ? "kitty" : "here" } }
-    on key "shift+enter" { if !pre.pending && pre_asks.len == 0 { choose = "here" } }
-    on key "k" { choose = "kitty" }
+    on key "shift+enter" { if may_here { choose = "here" } }
+    on key "k", "shift+k" { choose = "kitty" }
     on key "esc", "n" { ask = null }
   }
 
@@ -511,7 +558,7 @@ component Header {
     TabChip installed { glyph: "inventory_2"; name: "Installed"; n: explicit.len }
     TabChip orphans { glyph: "link_off"; name: "Orphans"; n: orphan_pkgs.len; hot: orphan_pkgs.len > 0 }
     TabChip search { glyph: "search"; name: "Search"; n: tab == search && searched != "" ? search_items.len : -1 }
-    TabChip news { glyph: "newspaper"; name: "News"; n: alerts > 0 ? alerts : -1; hot: alerts > 0 }
+    TabChip news { glyph: "newspaper"; name: "News"; n: -1; hot: alerts > 0; attn: attention; rel: related }
     spacer {}
     if checking || searching {
       row { gap: 6; align: center; shrink: 0
@@ -524,7 +571,9 @@ component Header {
   }
 }
 
-component TabChip(t: Tab, glyph: text, name: text, n: int = -1, hot: bool = false) {
+// the News tab's are two: posts asking for a hand (orange while one is unread) and
+// posts naming something installed by hand, each after its mark
+component TabChip(t: Tab, glyph: text, name: text, n: int = -1, hot: bool = false, attn: int = -1, rel: int = -1) {
   row { id: c; height: 32; pad: 0, 12; gap: 7; radius: 8; align: center; shrink: 0; cursor: pointer
     bg: (tab == t ? $accent.alpha(0.15) : c.hover ? $fg.alpha(0.06) : $fg.alpha(0)) ~ 120ms
     border: 1, (tab == t ? $accent.alpha(0.3) : $fg.alpha(0)) ~ 120ms
@@ -534,6 +583,18 @@ component TabChip(t: Tab, glyph: text, name: text, n: int = -1, hot: bool = fals
     if n >= 0 {
       text num(n, 0) { font: mono 11px 700; shrink: 0; roll: true
         color: hot ? (t == news ? island.warn : $accent) : $fg.alpha(0.45) }
+    }
+    if attn >= 0 {
+      row { gap: 1; align: center; shrink: 0; tooltip: num(attn, 0) + " asking for a hand before upgrading" + (hot ? " (" + num(alerts, 0) + " unread)" : "")
+        text "priority_high" { font: "Material Symbols Rounded" 13; color: hot ? island.warn : $fg.alpha(0.45) }
+        text num(attn, 0) { font: mono 11px 700; roll: true; color: hot ? island.warn : $fg.alpha(0.45) }
+      }
+    }
+    if rel >= 0 {
+      row { gap: 3; align: center; shrink: 0; tooltip: num(rel, 0) + " naming a package you installed"
+        text "inventory_2" { font: "Material Symbols Rounded" 12; color: $fg.alpha(0.45) }
+        text num(rel, 0) { font: mono 11px 700; roll: true; color: $fg.alpha(0.45) }
+      }
     }
   }
 }
@@ -546,7 +607,10 @@ component Empty {
   }
 }
 
-fn empty_bad() -> bool { (tab == updates && (repo_err != null || aur_err != null)) || (tab == news && feed_r.error != null) }
+fn empty_bad() -> bool {
+  (tab == updates && (repo_err != null || aur_err != null)) || (tab == news && feed_r.error != null)
+    || (tab == installed && explicit_err != null) || (tab == orphans && orphans_err != null)
+}
 fn empty_glyph() -> text {
   empty_bad() ? "error" : tab == updates ? (checking ? "hourglass_top" : "task_alt") : tab == installed ? "inventory_2"
     : tab == orphans ? "link_off" : tab == search ? "search" : "newspaper"
@@ -555,23 +619,25 @@ fn empty_text() -> text {
   filtered && filter != "" && tab_rows.len > 0 ? "No packages match the filter"
     : tab == updates ? (repo_err != null || aur_err != null ? "Update check failed: " + join("; ", repo_err, aur_err) + "\nr tries again"
       : checking ? "Checking for updates…" : "No updates available")
-    : tab == installed ? (explicit_r.pending ? "Loading installed packages…" : "No explicitly installed packages found")
-    : tab == orphans ? (orphans_r.pending ? "Checking for orphan packages…" : "No orphan packages")
+    : tab == installed ? (explicit_err != null ? "Couldn't read the installed packages: " + (explicit_err ?? "") + "\nr tries again"
+      : explicit_r.pending ? "Loading installed packages…" : "No explicitly installed packages found")
+    : tab == orphans ? (orphans_err != null ? "Couldn't read the orphans: " + (orphans_err ?? "") + "\nr tries again"
+      : orphans_r.pending ? "Checking for orphan packages…" : "No orphan packages")
     : tab == search ? (searched == "" ? "Type to search packages" : searching ? "Searching…" : "No results found")
     : feed_r.error != null ? "Failed to fetch the news: r tries again" : "Fetching Arch's news…"
 }
 
-// a package: its check box (a click checks it; Ctrl+click too), name, the AUR's tag
-// and its versions; in a search its repo, description, and installed ones dimmed
+// a package: its check box, name, the AUR's tag and its versions; in a search its
+// repo, description, and installed ones dimmed. A click anywhere on it selects it and
+// checks it (or unchecks it), once; Enter is the window's, as a key
 component PkgRow(r: Item) {
   let on = marks[r.key] ?? false
   let have = tab == search && (r.inst ?? false)
   Row {
-    on activate { if keyboard.ctrl && !have { marks[r.key] = !on } }
+    on click { if !have { marks[r.key] = !on } }
     text have ? "check_circle" : on ? "check_box" : "check_box_outline_blank" {
-      width: 20; shrink: 0; font: "Material Symbols Rounded" 18; cursor: pointer
+      width: 20; shrink: 0; font: "Material Symbols Rounded" 18
       color: on ? $accent : $fg.alpha(have ? 0.6 : 0.35)
-      on click { if !have { marks[r.key] = !on } }
     }
     text r.name { color: have ? $fg.alpha(0.5) : $fg; shrink: 0; max_width: 300; ellipsis: end }
     if r.aur { Tag "AUR" }
@@ -597,8 +663,10 @@ component Tag(t: text) {
 // a news item: `!` it asks for a hand, `*` it names something installed by hand
 component NewsRow(s: Story) {
   Row {
-    text s.alert ? "priority_high" : "" { width: 14; shrink: 0; font: "Material Symbols Rounded" 16; color: island.warn }
-    text s.rel.len > 0 ? "inventory_2" : "" { width: 16; shrink: 0; font: "Material Symbols Rounded" 15; color: $blue }
+    text s.alert ? "priority_high" : "" { width: 14; shrink: 0; font: "Material Symbols Rounded" 16; color: island.warn
+      tooltip: s.alert ? "Asks for a hand before upgrading" : "" }
+    text s.rel.len > 0 ? "inventory_2" : "" { width: 16; shrink: 0; font: "Material Symbols Rounded" 15; color: $blue
+      tooltip: s.rel.len > 0 ? "Names " + s.rel.join(", ") : "" }
     text s.when?.format("%b %d") ?? "" { color: $fg.alpha(0.5); shrink: 0; width: 48; font: mono 12px 500 }
     text s.title { color: s.alert ? island.warn : $fg; grow: 1; shrink: 1; ellipsis: end }
     Aside s.by
@@ -631,7 +699,8 @@ let qf: [Kv] = fields(info_q ?? "")
 let sf: [Kv] = fields(info_s ?? "")
 let info_aur_wanted = info_for != "" && !info_q.pending && !info_s.pending
   && (foreign_names.contains(info_for) || (qf.len == 0 && sf.len == 0))
-let info_a = aur("https://aur.archlinux.org/rpc/v5/info?arg[]=" + urlenc(info_for), "X-Upkeep: info")
+// asked only for a package of the AUR's (or one neither pacman knows): none for a repo's
+let info_a = aur_info(info_aur_wanted ? urlenc(info_for) : "")
 let af: AurPkg? = info_aur_wanted ? info_a.value?.results?.find(a => a.Name == info_for) : null
 type Kv { k: text; v: text }
 let no_fields: [Kv] = []
@@ -741,9 +810,10 @@ component JobPane {
         text dur(job_secs * 1s, clock: true) { color: $fg.alpha(0.45); font: mono 12px 500 }
       }
     }
-    if job_why != "" && !ok {
-      text job_why { color: asked || cancelled ? island.warn : $red; font: mono 12px 500; max_lines: 6; ellipsis: end
-        pad: 8, 10; radius: 6; bg: (asked ? island.warn : $red).alpha(0.08) }
+    // how it failed, or (done) a replacement pacman took without asking
+    if job_why != "" {
+      text job_why { color: ok || asked || cancelled ? island.warn : $red; font: mono 12px 500; max_lines: 6; ellipsis: end
+        pad: 8, 10; radius: 6; bg: (ok || asked ? island.warn : $red).alpha(0.08) }
     }
     if job_kitty && job_lines.len == 0 {
       text busy ? "Its questions and output are in the Kitty window; this follows how it ends."
@@ -775,9 +845,11 @@ fn line_tint(l: text) -> color {
 }
 
 // a change asked before it runs: what it does, to what, and what pacman's own check
-// found; Enter takes it (to Kitty where something would be asked), Esc doesn't
+// found; Enter takes it (to Kitty where something would be asked, or the check
+// failed), Esc doesn't
 component Dialog(a: Ask) {
   let more = a.names.len - 15
+  let aur_here = pre_aur != "" || a.op == "rebuild" || (a.op == "upgrade" && a.pkgs != "")
   stack { align: center
     box { bg: $shadow.alpha(0.45); on click { ask = null } }
     col { width: 600; pad: 20, 22; gap: 12; radius: island.corner; corners: squircle
@@ -794,16 +866,25 @@ component Dialog(a: Ask) {
       if pre.pending {
         row { gap: 8; align: center; Spin {}; text "Asking pacman what it would do…" { color: $fg.alpha(0.6); font: sans 12px 500 } }
       } else {
+        if pre_failed {
+          Said "error" { what: "pacman's check failed (" + (pre.error ?? "") + "), so it won't run here: Kitty asks every question"; tint: $red }
+        }
+        if pre_also.len > 0 {
+          Said "delete_sweep" { what: "Also removed, as nothing else needs " + (pre_also.len == 1 ? "it: " : "them: ") + pre_also.join(", "); tint: island.warn }
+        }
         for q in pre_asks key q { Said "help" { what: "pacman would ask: " + q; tint: island.warn } }
         for f in pre_fails key f { Said "error" { what: f; tint: $red } }
         if pre_aur != "" { Said "construction" { what: "Built from the AUR: " + pre_aur + ". Kitty shows each PKGBUILD's changes first."; tint: $blue } }
+        if aur_here && ucfg.aur_helper != helper {
+          Said "info" { what: "upkeep's config names " + ucfg.aur_helper + "; this runs yay or paru, so yay"; tint: $fg.alpha(0.6) }
+        }
         for n in pre_notes key n { Said "info" { what: n; tint: $fg.alpha(0.6) } }
         if !to_kitty && a.op != "clean" { Said "lock" { what: "pacman runs here; the island asks your password"; tint: $fg.alpha(0.6) } }
       }
-      row { gap: 8; margin: 4, 0, 0; wrap: true
+      row { gap: 4; margin: 4, 0, 0; wrap: true
         if !pre.pending {
           UpKey "Enter" { what: to_kitty ? "in Kitty" : "go ahead"; does: "go"; strong: true }
-          if to_kitty && pre_asks.len == 0 { UpKey "⇧ Enter" { what: "here, unread"; does: "go_here" } }
+          if to_kitty && may_here { UpKey "⇧ Enter" { what: "here, unread"; does: "go_here" } }
           if !to_kitty { UpKey "K" { what: "in Kitty"; does: "go_kitty" } }
         }
         UpKey "Esc" { what: "cancel"; does: "cancel" }
@@ -819,13 +900,16 @@ component Said(glyph: text, what: text, tint: color) {
   }
 }
 
-// a key and what it does, as a pill; a click does it too
-component UpKey(key: text, what: text, does: text, strong: bool = false) {
-  row { id: d; gap: 6; pad: 5, 10; radius: full; shrink: 0; align: center; cursor: pointer
-    bg: (strong ? $accent.alpha(d.hover ? 0.28 : 0.18) : d.hover ? $fg.alpha(0.12) : $fg.alpha(0.06)) ~ instant
-    on click { pressed_what = does; pressed_n += 1 }
-    text key { color: strong ? $accent : $fg.alpha(0.75); font: mono 10px 700 }
-    text what { color: strong ? $accent : $fg.alpha(0.65); font: sans 12px 500 }
+// a key and what it does, as the launcher's hint row shows them (its Cap); a click does
+// it too where it does something (`does`; a hint alone has none)
+component UpKey(key: text, what: text, does: text = "", strong: bool = false) {
+  row { id: d; gap: 5; pad: 3, 6; radius: 6; shrink: 0; align: center
+    cursor: does != "" ? pointer : default
+    bg: (does != "" && d.hover ? (strong ? $accent.alpha(0.14) : $fg.alpha(0.07)) : $fg.alpha(0)) ~ 120ms
+    on click { if does != "" { pressed_what = does; pressed_n += 1 } }
+    Cap key
+    text what { font: sans 11px (strong ? 650 : 500)
+      color: strong ? $accent : $fg.alpha(does != "" && d.hover ? 0.8 : 0.5) }
   }
 }
 
@@ -844,10 +928,11 @@ on change pressed_n {
   else { cmd = p; cmd_n += 1 }
 }
 
-// the keys of the tab (each a click too), and what the window has to say
+// the keys of the tab (each a click too, but those that only move), and what the
+// window has to say
 component Footer {
-  col { shrink: 0; pad: 0, 14, 8; gap: 6
-    row { gap: 6; wrap: true; align: center
+  col { shrink: 0; pad: 4, 8, 8; gap: 4
+    row { gap: 4; wrap: true; align: center
       if tab == updates { UpKey "Enter" { what: "update all"; does: "upgrade" }; UpKey "u" { what: "update checked"; does: "update" }; UpKey "c" { what: "clean cache"; does: "clean" } }
       if tab == installed {
         UpKey "d" { what: "remove"; does: "remove" }; UpKey "D" { what: "remove + deps"; does: "purge" }
@@ -856,9 +941,11 @@ component Footer {
       }
       if tab == orphans { UpKey "d" { what: "remove"; does: "remove" }; UpKey "D" { what: "remove + deps"; does: "purge" } }
       if tab == search { UpKey "Enter" { what: "install"; does: "install" } }
-      if tab == news { UpKey "Enter" { what: "open in browser"; does: "open_link" }; UpKey "⇧ ↑ ↓" { what: "scroll"; does: "" } }
+      if tab == news { UpKey "Enter" { what: "open in browser"; does: "open_link" } }
+      if !typing { UpKey "j k" { what: "move" } }
+      if tab == news { UpKey "⇧ ↑ ↓" { what: "scroll" }; UpKey "PgUp PgDn" { what: "page" } }
       if tab != news { UpKey "Space" { what: "check"; does: "mark" } }
-      if tab != news && !typing { UpKey "a / n" { what: "all / none"; does: "all" } }
+      if tab != news && !typing { UpKey "a" { what: "all"; does: "all" }; UpKey "n" { what: "none"; does: "none" } }
       if filtered { UpKey "f" { what: "filter"; does: "filter" } }
       UpKey "r" { what: "refresh"; does: "refresh" }
       if tab != news { UpKey "?" { what: show_info ? "hide info" : "info"; does: "info" } }
@@ -866,15 +953,23 @@ component Footer {
       if typing { UpKey "Esc" { what: tab == search ? "clear, close" : "clear filter"; does: "esc" } }
       else { UpKey "q" { what: "close"; does: "close" } }
     }
-    row { height: 18; gap: 8; align: center
+    row { height: 18; gap: 8; align: center; pad: 0, 6
       if msg != "" {
         text msg { color: msg_bad ? $red : $green; font: sans 12px 600; ellipsis: end; shrink: 1 }
+      } else if tab == news {
+        // what the news list's marks say
+        text "priority_high" { font: "Material Symbols Rounded" 14; color: island.warn; shrink: 0 }
+        text "asks for a hand before upgrading" { color: $fg.alpha(0.5); font: sans 12px 500; shrink: 1; ellipsis: end }
+        text "inventory_2" { font: "Material Symbols Rounded" 13; color: $blue; shrink: 0; margin: 0, 0, 0, 8 }
+        text "names a package you installed by hand" { color: $fg.alpha(0.5); font: sans 12px 500; shrink: 1; ellipsis: end }
       } else {
         text join("  ·  ", num(repo_ups.len, 0) + " from the repos", num(aur_ups.len, 0) + " from the AUR",
           num(explicit.len, 0) + " installed (" + num(explicit.count(p => foreign_names.contains(p.name)), 0) + " AUR)",
           num(orphan_pkgs.len, 0) + (orphan_pkgs.len == 1 ? " orphan" : " orphans"), checked.len > 0 ? num(checked.len, 0) + " checked" : null) {
           color: $fg.alpha(0.5); font: sans 12px 500; ellipsis: end; shrink: 1 }
-        if repo_err != null || aur_err != null { text "update check failed" { color: $red; font: sans 12px 600; shrink: 0 } }
+        if read_err != null {
+          text "Check failed: " + (read_err ?? "") { color: $red; font: sans 12px 600; shrink: 1; ellipsis: end; tooltip: read_err ?? "" }
+        }
       }
     }
   }

@@ -1018,7 +1018,7 @@ fn enter_does(ap: AccessPoint?, at: int) -> text {
     : "open"
 }
 
-// home: the pages, then Record screen; searched, the rows as the list has them
+// home: the pages, then Record screen and Upkeep; searched, the rows as the list has them
 fn home_does(at: int) -> text {
   let rec = record.recording ? "stop" : "record"
   let upto_rec = lead_parts.len + hit_list.len + late_parts.len + found_rec.len
@@ -1137,8 +1137,6 @@ component PartKey(l: text) {
   }
 }
 
-// starts or stops a recording of the focused monitor (record.strand), which
-// waits for the launcher to fold away, so the recording opens on what is under it
 // Upkeep's window (upkeep.strand): updates waiting, news that asks for a hand
 component UpkeepRow {
   Row {
@@ -1151,6 +1149,8 @@ component UpkeepRow {
   }
 }
 
+// starts or stops a recording of the focused monitor (record.strand), which
+// waits for the launcher to fold away, so the recording opens on what is under it
 component RecordRow {
   Row {
     on activate { record.key = !record.key; open = false }
