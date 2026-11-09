@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a8fe0"/>
+      <stop offset="1" stop-color="#1c5fb8"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bg)"/>
+  <!-- the package: an isometric box -->
+  <path d="M64 34 L94 49 L94 83 L64 98 L34 83 L34 49 Z" fill="#f3f6fb"/>
+  <path d="M64 34 L94 49 L64 64 L34 49 Z" fill="#ffffff"/>
+  <path d="M64 64 L94 49 L94 83 L64 98 Z" fill="#d5e1f2"/>
+  <path d="M49 41.5 L79 56.5 L79 66 L72 62.5 L72 59 L42 44 Z" fill="#c7d6ec"/>
+  <!-- the update: an arrow up on the box's front -->
+  <circle cx="92" cy="90" r="20" fill="#2ec27e" stroke="#1c5fb8" stroke-width="4"/>
+  <path d="M92 78 L102 89 L96 89 L96 101 L88 101 L88 89 L82 89 Z" fill="#ffffff"/>
+</svg>
