@@ -28,13 +28,11 @@ on change pac_busy { if !pac_busy { tick += 1 } }
 
 // --- reading -------------------------------------------------------------------
 
-// pacman's lists. Its status 1 is "none" (no orphans, nothing said) and an error (said
-// on stderr) alike, so `ok 0, 1` would hide the errors: the script makes a 1 with nothing
-// said a 0, and leaves an error its status and its stderr, for `.error`. `t` is only
-// there to ask again.
-action pac(flags: text, t: int) -> text ["sh", "-c",
-  "{ e=$(LC_ALL=C pacman \"$1\" 2>&1 >&3 3>&-); s=$?; } 3>&1; [ $s -eq 1 ] && [ -z \"$e\" ] && exit 0; [ -z \"$e\" ] || printf '%s\\n' \"$e\" >&2; exit $s",
-  "sh", flags, t]
+// pacman's lists. Its status 1 is "none" when it says nothing, and an error when it
+// says why on stderr: `ok 0, 1` reads the first as nothing and the second as `.error`.
+// The `sh` is only there to take `t`, which asks again (a call runs again when an
+// argument changes, and pacman has no argument to spare).
+action pac(flags: text, t: int) -> text ["sh", "-c", "LC_ALL=C exec pacman \"$1\"", "sh", flags, t] ok 0, 1
 // a package's details: not found is an error, read as nothing
 action pac_on(flags: text, name: text) -> text ["env", "LC_ALL=C", "pacman", flags, "--", name]
 // a repo search: each package's line, then its description indented on the next. None
@@ -49,10 +47,9 @@ service upd from file "~/.cache/upkeep/updates.json" { updates: [text]; fail: te
 after 0s while true { ups_check() }
 on change tick { ups_check() }
 // yay's own AUR check, only when `want` (the AUR's RPC can't be reached): its 1 is
-// "none" and an error alike, told apart as pacman's lists are
+// "none" or an error, told apart as pacman's lists are
 action aur_check(want: bool, t: int) -> text ["sh", "-c",
-  "[ \"$1\" = true ] || exit 0; { e=$(yay -Qua 2>&1 >&3 3>&-); s=$?; } 3>&1; [ $s -eq 1 ] && [ -z \"$e\" ] && exit 0; [ -z \"$e\" ] || printf '%s\\n' \"$e\" >&2; exit $s",
-  "sh", want, t]
+  "[ \"$1\" = true ] || exit 0; exec yay -Qua", "sh", want, t] ok 0, 1
 // the AUR's RPC and Arch's news; `mark` (a header) only makes a refresh ask again
 action aur(url: text, mark: text) -> AurReply ["curl", "-sg", "-m", "9", "-H", mark, url]
 action feed(mark: text) -> Rss ["curl", "-sf", "-m", "9", "-H", mark, "https://archlinux.org/feeds/news/"]
@@ -826,11 +823,8 @@ component JobPane {
     }
     // how it failed, or (done) a replacement pacman took without asking
     if job_why != "" {
-      // the padding on a box around the text: a wrapping text's own `pad` is measured
-      // at another width than it is drawn
-      col { pad: 8, 10; radius: 6; bg: (ok || asked || cancelled ? island.warn : $red).alpha(0.08)
-        text job_why { color: ok || asked || cancelled ? island.warn : $red; font: mono 12px 500; max_lines: 6; ellipsis: end }
-      }
+      text job_why { color: ok || asked || cancelled ? island.warn : $red; font: mono 12px 500; max_lines: 6
+        ellipsis: end; pad: 8, 10; radius: 6; bg: (ok || asked || cancelled ? island.warn : $red).alpha(0.08) }
     }
     if job_kitty {
       text busy ? "Its questions and output are in the Kitty window; this follows how it ends."
