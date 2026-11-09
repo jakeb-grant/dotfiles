@@ -6,6 +6,8 @@ docs/
 # monitors.toml, which ~/.config/strand/monitors.toml links to (Strand saves into it)
 state/
 screenshots/
+# The Strand extension for Zed, built and installed by run_onchange_after_install-zed-strand.sh
+zed-strand/
 
 
 # Python bytecode — never deploy (theme-switch tooling can create these in source)

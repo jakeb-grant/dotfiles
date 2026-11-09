@@ -1,0 +1,82 @@
+#!/bin/bash
+# Builds the Strand extension for Zed (zed-strand/ in this repo: .strand
+# highlighting from Strand's tree-sitter grammar, and strand-dev lsp) and
+# installs it where Zed keeps the extensions it installs, the way Zed's own
+# builder does: the Rust crate for wasm32-wasip2, the grammar with
+# wasi-sdk's clang, the manifest given the zed_extension_api version.
+# A running Zed sees the new extension at once. Runs again whenever a file
+# of zed-strand/ changes:
+{{- range list "extension.toml" "Cargo.toml" "src/lib.rs" "languages/strand/config.toml" "languages/strand/highlights.scm" "languages/strand/brackets.scm" "languages/strand/indents.scm" "languages/strand/outline.scm" "languages/strand/overrides.scm" }}
+# {{ . }} {{ include (joinPath "zed-strand" .) | sha256sum }}
+{{- end }}
+set -euo pipefail
+
+src={{ joinPath .chezmoi.sourceDir "zed-strand" | quote }}
+zed_ext=${XDG_DATA_HOME:-$HOME/.local/share}/zed/extensions
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/zed-strand
+# Zed's own builder (crates/extension/src/extension_builder.rs) uses this
+# wasi-sdk; its sha256 is the one GitHub lists for the release asset.
+wasi_version=34
+wasi_sha256=b761e3a0721dbae9c09a0059e5fdb2bf917d1b4a8a7b430fb3b5aafb0984b2c4
+
+if ! command -v zeditor >/dev/null && ! command -v zed >/dev/null; then
+  echo "zed-strand: Zed is not installed; skipping"
+  exit 0
+fi
+for tool in cargo rustup git curl tar; do
+  command -v "$tool" >/dev/null || { echo "zed-strand: needs $tool" >&2; exit 1; }
+done
+echo "zed-strand: building the Strand extension for Zed"
+mkdir -p "$cache"
+
+# The extension's Rust crate.
+rustup target list --installed | grep -qx wasm32-wasip2 || rustup target add wasm32-wasip2
+rm -rf "$cache/build"
+cp -r "$src" "$cache/build"
+CARGO_TARGET_DIR="$cache/target" cargo build --quiet --release --target wasm32-wasip2 \
+  --manifest-path "$cache/build/Cargo.toml"
+api=$(awk '/^name = "zed_extension_api"$/ { getline; gsub(/version = |"/, ""); print }' "$cache/build/Cargo.lock")
+[ -n "$api" ] || { echo "zed-strand: no zed_extension_api in Cargo.lock" >&2; exit 1; }
+
+# The grammar, at the commit extension.toml names.
+field() { sed -n "s/^$1 = \"\(.*\)\"$/\1/p" "$src/extension.toml" | tail -1; }
+repo=$(field repository) rev=$(field rev) path=$(field path)
+grammar="$cache/grammar"
+if [ "$(git -C "$grammar" rev-parse HEAD 2>/dev/null)" != "$rev" ]; then
+  rm -rf "$grammar"
+  git init -q "$grammar"
+  git -C "$grammar" remote add origin "$repo"
+  git -C "$grammar" sparse-checkout set "$path"
+  git -C "$grammar" fetch -q --depth 1 --filter=blob:none origin "$rev"
+  git -C "$grammar" checkout -q FETCH_HEAD
+fi
+
+sdk="$cache/wasi-sdk-$wasi_version"
+if [ ! -x "$sdk/bin/clang" ]; then
+  tarball="$cache/wasi-sdk.tar.gz"
+  curl --proto '=https' -sSfL -o "$tarball" \
+    "https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-$wasi_version/wasi-sdk-$wasi_version.0-x86_64-linux.tar.gz"
+  echo "$wasi_sha256  $tarball" | sha256sum -c --quiet -
+  mkdir -p "$sdk"
+  tar -xzf "$tarball" -C "$sdk" --strip-components 1
+  rm "$tarball"
+fi
+
+# Put together in staging, then swapped in whole.
+stage="$cache/stage/strand"
+rm -rf "$cache/stage"
+mkdir -p "$stage/grammars"
+cp -r "$src/languages" "$stage/"
+{ cat "$src/extension.toml"; printf '\n[lib]\nkind = "Rust"\nversion = "%s"\n' "$api"; } >"$stage/extension.toml"
+cp "$cache/target/wasm32-wasip2/release/zed_strand.wasm" "$stage/extension.wasm"
+gsrc="$grammar/$path/src"
+"$sdk/bin/clang" -fPIC -shared -Os -Wl,--export=tree_sitter_strand -Wl,--max-memory=4294967296 \
+  -o "$stage/grammars/strand.wasm" -I "$gsrc" "$gsrc/parser.c" "$gsrc/scanner.c"
+
+mkdir -p "$zed_ext/installed"
+rm -rf "$zed_ext/installed/strand"
+mv "$stage" "$zed_ext/installed/strand"
+# The build cache (wasi-sdk alone is 600 MB) is only needed when this
+# runs again, which is when the extension changes.
+rm -rf "$cache"
+echo "zed-strand: installed into $zed_ext/installed/strand (grammar ${rev:0:8}, zed_extension_api $api)"
