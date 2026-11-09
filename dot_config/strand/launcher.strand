@@ -338,6 +338,7 @@ fn is_default(p: Profile?) -> bool { p != null && (default_of(monitors.saved.pro
 let ten_ws: [int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 let found_rec = [Command(id: "rec", name: "Record screen", glyph: "screen_record")].fuzzy(query, c => c.name)
+let found_upkeep = [Command(id: "upkeep", name: "Upkeep: packages, updates, news", glyph: "deployed_code_update")].fuzzy(query, c => c.name)
 // the Bluetooth device selected (the switch is row 0, then paired, then nearby)
 let picked_bt: BluetoothDevice? = view == bt && !is_sum && sel >= 1 ? found_paired.skip(sel - 1).first?.item : null
 // the app selected, here or in home search, and a window of it already open
@@ -819,12 +820,14 @@ panel Launcher {
           if view == home && query == "" {
             for m in found_parts key m.item.letter { Part m.item }
             RecordRow {}
+            UpkeepRow {}
           }
           if view == home && query != "" {
             for m in lead_parts key m.item.letter { Part m.item }
             for h in hits { AppRow h }
             for m in late_parts key m.item.letter { Part m.item }
             for m in found_rec key m.item.id { RecordRow {} }
+            for m in found_upkeep key m.item.id { UpkeepRow {} }
             for m in found_spaces key m.item.id { SpaceRow m }
             for m in found_powers key m.item.id { PowerRow m }
           }
@@ -1018,12 +1021,14 @@ fn enter_does(ap: AccessPoint?, at: int) -> text {
 // home: the pages, then Record screen; searched, the rows as the list has them
 fn home_does(at: int) -> text {
   let rec = record.recording ? "stop" : "record"
-  query == "" ? (at < found_parts.len ? "open" : rec)
+  let upto_rec = lead_parts.len + hit_list.len + late_parts.len + found_rec.len
+  query == "" ? (at < found_parts.len ? "open" : at == found_parts.len ? rec : "open")
     : at < lead_parts.len ? "open"
     : at < lead_parts.len + hit_list.len ? "launch"
     : at < lead_parts.len + hit_list.len + late_parts.len ? "open"
-    : at < lead_parts.len + hit_list.len + late_parts.len + found_rec.len ? rec
-    : at < lead_parts.len + hit_list.len + late_parts.len + found_rec.len + found_spaces.len ? "go"
+    : at < upto_rec ? rec
+    : at < upto_rec + found_upkeep.len ? "open"
+    : at < upto_rec + found_upkeep.len + found_spaces.len ? "go"
     : "run"
 }
 
@@ -1134,6 +1139,18 @@ component PartKey(l: text) {
 
 // starts or stops a recording of the focused monitor (record.strand), which
 // waits for the launcher to fold away, so the recording opens on what is under it
+// Upkeep's window (upkeep.strand): updates waiting, news that asks for a hand
+component UpkeepRow {
+  Row {
+    on activate { upkeep.open = true; open = false }
+    Glyph "deployed_code_update"
+    text "Upkeep" { color: $fg; grow: 1 }
+    Aside upkeep.pending == 0 && upkeep.alerts == 0 ? "packages"
+      : join(" · ", upkeep.pending > 0 ? num(upkeep.pending, 0) + (upkeep.pending == 1 ? " update" : " updates") : null,
+        upkeep.alerts > 0 ? num(upkeep.alerts, 0) + " news to read first" : null)
+  }
+}
+
 component RecordRow {
   Row {
     on activate { record.key = !record.key; open = false }

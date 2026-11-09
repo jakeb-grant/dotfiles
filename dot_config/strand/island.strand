@@ -502,6 +502,16 @@ component Status {
         Sym "radio_button_checked" { tint: danger; tip: "Recording the screen: click to stop" }
       }
     }
+    // updates waiting, or Arch news that asks for a hand first: a click opens Upkeep
+    if upkeep.pending > 0 || upkeep.alerts > 0 {
+      row { cursor: pointer; on click { upkeep.open = true }
+        Sym (upkeep.alerts > 0 ? "release_alert" : "system_update_alt") {
+          tint: upkeep.alerts > 0 ? warn : dim
+          tip: (upkeep.alerts > 0 ? num(upkeep.alerts, 0) + " Arch news to read before updating" + (upkeep.pending > 0 ? ", " : "") : "")
+            + (upkeep.pending > 0 ? num(upkeep.pending, 0) + (upkeep.pending == 1 ? " update" : " updates") : "") + ": click for Upkeep"
+        }
+      }
+    }
     // notifications not yet opened or cleared, or do not disturb: a click opens their page
     if notifications.dnd || notifications.count > 0 {
       row { cursor: pointer; on click { launcher.by_pointer = true; launcher.notes_key = !launcher.notes_key }

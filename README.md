@@ -7,7 +7,7 @@ Chezmoi-managed dotfiles for my Hyprland desktop. A palette-driven theme system 
 ## Features
 
 - **Window Manager**: Hyprland
-- **Desktop Shell**: [Strand](https://strand.jacobgrant.dev) (island bar, launcher, notifications, lock screen, polkit password prompt, wallpaper picker, screen recording; hyprlock is the fallback locker)
+- **Desktop Shell**: [Strand](https://strand.jacobgrant.dev) (island bar, launcher, notifications, lock screen, polkit password prompt, wallpaper picker, screen recording, Upkeep package manager; hyprlock is the fallback locker)
 - **Terminal**: Kitty (its drag-and-drop protocol lets Yazi drag files in and out)
 - **Editor**: Zed with hand-crafted themes per palette
 - **File Manager**: Yazi, in Kitty (Super+Shift+F)
@@ -54,8 +54,11 @@ dot_config/
 │   ├── island.strand       # The island: workspaces, status, clock, OSD, polkit prompt
 │   ├── launcher.strand     # Launcher: apps, Wi-Fi, Bluetooth, sound, themes, wallpapers, power…
 │   ├── lock.strand         # Lock screen (answers loginctl lock-session)
+│   ├── monitors.strand     # Monitor profiles, the launcher's Displays page
 │   ├── notify.strand       # Notification server
-│   └── record.strand       # Screen recording (wf-recorder)
+│   ├── record.strand       # Screen recording (wf-recorder)
+│   ├── upkeep.strand       # Upkeep: updates, installed, orphans, search, Arch news
+│   └── vm.strand           # Windows VM start-up on the island
 ├── kitty/              # Terminal emulator + a colour theme per palette; launch-actions
 │                       #   opens folders handed to it (the system folder handler) in Yazi
 ├── zed/                # Zed editor settings + hand-crafted themes
@@ -83,6 +86,7 @@ dot_local/bin/
 ├── screenshot          # Capture (region/full) + clipboard + notification
 ├── term                # Kitty's single instance; Strand's launcher runs terminal apps through it
 ├── theme-switch        # Theme switching utility
+├── upkeep-tx           # Upkeep's package changes (pkexec pacman, yay, or Kitty)
 ├── wallpaper-split     # Split wide/panoramic images into per-monitor sets
 ├── wallpaper-upscale   # AI upscale images using EDSR 4x (CPU)
 └── win-vm              # Windows VM management
