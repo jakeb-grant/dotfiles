@@ -13,15 +13,15 @@
 #                             (pacman refuses it as it stands), "also <name>" (removed
 #                             with it: purge's dependencies nothing else needs), "aur <names>"
 #                             (built from PKGBUILDs) and "note <text>"
-#   upkeep-tx run OP PKGS [HELPER]
+#   upkeep-tx run OP PKGS
 #                             OP with no questions: pacman through pkexec (Strand's polkit
-#                             prompt asks the password), the AUR through HELPER --sudo pkexec
+#                             prompt asks the password), the AUR through yay --sudo pkexec
 #                             with its menus answered None (no PKGBUILD review). It first
 #                             checks, and stops with 3 where pacman would ask. Exits 0 done,
 #                             1 failed, 3 it would have asked, 126 the password was cancelled
-#   upkeep-tx term OP PKGS [HELPER]
+#   upkeep-tx term OP PKGS
 #                             OP in this terminal with every question asked (sudo pacman,
-#                             or HELPER with its diffs and all), then waits for Enter (Kitty
+#                             or yay with its diffs and all), then waits for Enter (Kitty
 #                             runs it)
 #   upkeep-tx watch           the log, a JSON line each as it is written (a `from listen`):
 #                             {"kind":"start","op":…,"what":…}, {"kind":"out","line":…},
@@ -30,8 +30,7 @@
 # OP: upgrade (everything: -Syu; PKGS the AUR updates, if any), update (PKGS, -S --needed),
 # install (-S), reinstall (-S), rebuild (-S --rebuild), remove (-R), purge (-Rns), clean
 # (paccache -r). PKGS is one argument, names split on spaces: a Strand action passes each
-# of its parameters as one argument. HELPER is the AUR helper upkeep's config names: yay or
-# paru, anything else is yay.
+# of its parameters as one argument.
 set -u
 
 LOG="${XDG_RUNTIME_DIR:-/tmp}/upkeep-tx.jsonl"
@@ -51,18 +50,11 @@ STDBUF=/usr/bin/stdbuf
 emit() { jq -nc "$@" >>"$LOG"; }
 words() { local w; for w in $1; do printf '%s\n' "$w"; done; }
 
-# the AUR helper: only a known one, with its own flags; any other name is yay
-helper() { case ${1:-} in paru) echo paru ;; *) echo yay ;; esac; }
-# HFLAGS: its flags for a run with no questions, root through pkexec and the pacman
-# above. yay's sudo flags put stdbuf after pkexec, so pacman's output comes line by line
-# (pkexec drops stdbuf's preload); paru's are left alone, its output may come in blocks
-quiet_flags() {
-  case $1 in
-    paru) HFLAGS=(--sudo "$PKEXEC" --pacman "$PACMAN" --noconfirm --skipreview --removemake=yes --color=never) ;;
-    *) HFLAGS=(--sudo "$PKEXEC" --sudoflags "$STDBUF -oL -eL" --pacman "$PACMAN" --noconfirm
-      --answerclean None --answerdiff None --answeredit None --answerupgrade None --removemake --color never) ;;
-  esac
-}
+# yay's flags for a run with no questions, root through pkexec and the pacman above. Its
+# sudo flags put stdbuf after pkexec, so pacman's output comes line by line (pkexec drops
+# stdbuf's preload)
+YAY_QUIET=(--sudo "$PKEXEC" --sudoflags "$STDBUF -oL -eL" --pacman "$PACMAN" --noconfirm
+  --answerclean None --answerdiff None --answeredit None --answerupgrade None --removemake --color never)
 
 # PKGS split into those in a sync repo and those only in the AUR
 split_pkgs() {
@@ -259,27 +251,24 @@ title() {
 }
 
 # the command for OP: quiet (no questions, root through pkexec) or asking (a terminal,
-# root through sudo), the AUR's through helper $4
+# root through sudo), the AUR's through yay
 command_for() {
-  local op=$1 mode=$2 h pac aur rebuild=(--rebuild) names
-  h=$(helper "${4:-}")
+  local op=$1 mode=$2 pac aur names
   read -ra names <<<"$3"
   split_pkgs "$3"
-  [ "$h" = paru ] && rebuild=(--rebuild=yes)
   if [ "$mode" = quiet ]; then
-    quiet_flags "$h"
     pac=("$PKEXEC" "$STDBUF" -oL -eL "$PACMAN" --noconfirm --color never)
-    aur=("$h" "${HFLAGS[@]}")
+    aur=(yay "${YAY_QUIET[@]}")
   else
     pac=("$SUDO" "$PACMAN")
-    aur=("$h" --sudo "$SUDO" --pacman "$PACMAN")
+    aur=(yay --sudo "$SUDO" --pacman "$PACMAN")
   fi
   case $op in
     upgrade) if [ -n "$3" ]; then CMD=("${aur[@]}" -Syu); else CMD=("${pac[@]}" -Syu); fi ;;
     update | install | reinstall)
       local need=(); [ "$op" = update ] && need=(--needed)
       if [ ${#AUR[@]} -gt 0 ]; then CMD=("${aur[@]}" -S "${need[@]}" "${names[@]}"); else CMD=("${pac[@]}" -S "${need[@]}" -- "${names[@]}"); fi ;;
-    rebuild) CMD=("${aur[@]}" -S "${rebuild[@]}" "${names[@]}") ;;
+    rebuild) CMD=("${aur[@]}" -S --rebuild "${names[@]}") ;;
     remove) CMD=("${pac[@]}" -R -- "${names[@]}") ;;
     purge) CMD=("${pac[@]}" -Rns -- "${names[@]}") ;;
     clean) if [ "$mode" = quiet ]; then CMD=("$PKEXEC" "$STDBUF" -oL -eL "$PACCACHE" -r); else CMD=("$SUDO" "$PACCACHE" -r); fi ;;
@@ -297,13 +286,13 @@ run() {
     emit --arg what "$asks" '{kind: "end", code: 3, what: $what}'
     exit 3
   fi
-  if ! command_for "$op" quiet "$pkgs" "${3:-}"; then
+  if ! command_for "$op" quiet "$pkgs"; then
     emit --arg what "unknown change: $op" '{kind: "end", code: 1, what: $what}'
     exit 1
   fi
   tmp=$(mktemp)
   # line by line as they come: output is buffered when it is not on a terminal (stdbuf
-  # here for the helper; after pkexec for pacman, whose preload pkexec drops)
+  # here for yay; after pkexec for pacman, whose preload pkexec drops)
   { "$STDBUF" -oL -eL "${CMD[@]}" </dev/null 2>&1; echo "$?" >"$tmp.code"; } |
     tee "$tmp" | jq -R -c --unbuffered '{kind: "out", line: .}' >>"$LOG"
   code=$(cat "$tmp.code" 2>/dev/null || echo 1)
@@ -330,7 +319,7 @@ term() {
   local op=$1 pkgs=$2 code prog
   mkdir -p "$(dirname "$LOG")"
   emit --arg op "$op" --arg what "$(title "$op" "$pkgs") in Kitty" '{kind: "start", op: $op, what: $what}'
-  command_for "$op" ask "$pkgs" "${3:-}" || { echo "unknown change: $op"; exit 1; }
+  command_for "$op" ask "$pkgs" || { echo "unknown change: $op"; exit 1; }
   # named by what sudo runs, not sudo
   prog=$(basename "${CMD[0]}"); [ "$prog" = sudo ] && prog=$(basename "${CMD[1]}")
   printf '\e[1m%s\e[0m\n\n' "$(title "$op" "$pkgs"): ${CMD[*]}"
@@ -346,8 +335,8 @@ term() {
 case ${1:-} in
   updates) updates ;;
   check) check "${2:-}" "${3:-}" ;;
-  run) run "${2:-}" "${3:-}" "${4:-}" ;;
-  term) term "${2:-}" "${3:-}" "${4:-}" ;;
+  run) run "${2:-}" "${3:-}" ;;
+  term) term "${2:-}" "${3:-}" ;;
   watch)
     mkdir -p "$(dirname "$LOG")"; touch "$LOG"
     exec tail -n0 -F "$LOG" 2>/dev/null ;;

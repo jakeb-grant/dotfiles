@@ -10,15 +10,11 @@
 // failed action would lose. checkupdates, which can take longer than an action that
 // answers may (10 s), runs from ~/.local/bin/upkeep-tx into a file read here. Changes
 // go through upkeep-tx too: pacman through pkexec (the island asks the password), the
-// AUR through the helper upkeep's config names (yay or paru) with pkexec, and to Kitty
+// AUR through yay with pkexec, and to Kitty
 // where pacman would stop to ask something or a PKGBUILD deserves a look.
 
 permit exec "sh", "curl", "upkeep-tx", "kitty", "xdg-open"
 
-// upkeep's own config, only read: the AUR helper (upkeep-tx takes yay or paru, any
-// other name is yay)
-state ucfg from "~/.config/upkeep/config.toml" { aur_helper: text = "yay" }
-let helper = ucfg.aur_helper == "paru" ? "paru" : "yay"
 
 export state open = false
 
@@ -49,11 +45,11 @@ action ups_check() ["upkeep-tx", "updates"]
 service upd from file "~/.cache/upkeep/updates.json" { updates: [text]; fail: text? }
 after 0s while true { ups_check() }
 on change tick { ups_check() }
-// the helper's own AUR check, when the AUR's RPC can't be reached: 1 with nothing
+// yay's own AUR check, when the AUR's RPC can't be reached: 1 with nothing
 // said is "none"; an error (stderr, kept apart from the list) comes back as "!"
-action aur_check(helper: text, t: int) -> text ["sh", "-c",
-  "case $1 in paru) h=paru ;; *) h=yay ;; esac; e=$(mktemp) || exit 1; o=$($h -Qua 2>\"$e\"); s=$?; if [ $s -eq 0 ]; then printf '%s\\n' \"$o\"; elif [ -s \"$e\" ]; then echo \"!$h: $(grep -m1 . \"$e\" | sed 's/^ *-> *//')\"; fi; rm -f \"$e\"",
-  "sh", helper, t]
+action aur_check(t: int) -> text ["sh", "-c",
+  "h=yay; e=$(mktemp) || exit 1; o=$($h -Qua 2>\"$e\"); s=$?; if [ $s -eq 0 ]; then printf '%s\\n' \"$o\"; elif [ -s \"$e\" ]; then echo \"!$h: $(grep -m1 . \"$e\" | sed 's/^ *-> *//')\"; fi; rm -f \"$e\"",
+  "sh", t]
 // the AUR's RPC and Arch's news; `mark` (a header) only makes a refresh ask again
 action aur(url: text, mark: text) -> AurReply ["curl", "-sg", "-m", "9", "-H", mark, url]
 // one package's AUR details, asked only for a name given ("" asks nothing)
@@ -122,7 +118,7 @@ let vc = vercmp_all(aur_diffs.map(d => up_key(d)).join("\n"))
 let vc_lines = lines(vc ?? "")
 let vc_failed = vc.error != null && !vc.pending
 let aur_failed = aur_r.error != null && !aur_r.pending
-let helper_lines = aur_failed ? lines(aur_check(helper, tick) ?? "") : []
+let helper_lines = aur_failed ? lines(aur_check(tick) ?? "") : []
 let helper_err: text? = bang(helper_lines.join("\n"))
 let aur_ups: [Up] = foreign_r.value == null ? []
   : aur_failed ? helper_lines.filter(l => !l.starts_with("!") && l.contains(" -> ")).map(l => up_of(l, true))
@@ -260,8 +256,8 @@ state job_kitty = false          // it is running in Kitty
 state job_secs = 0
 state choose = ""                // the dialog's answer: "here", "here_aur" or "kitty"
 
-action tx_run(op: text, pkgs: text, helper: text) ["upkeep-tx", "run", op, pkgs, helper]
-action tx_kitty(op: text, pkgs: text, helper: text) ["kitty", "--class", "upkeep-term", "--title", "Upkeep", "-e", "upkeep-tx", "term", op, pkgs, helper]
+action tx_run(op: text, pkgs: text) ["upkeep-tx", "run", op, pkgs]
+action tx_kitty(op: text, pkgs: text) ["kitty", "--class", "upkeep-term", "--title", "Upkeep", "-e", "upkeep-tx", "term", op, pkgs]
 action tx_check(op: text, pkgs: text) -> text ["upkeep-tx", "check", op, pkgs]
 service txlog from listen ["upkeep-tx", "watch"] { kind: text; line: text?; code: int?; what: text? }
 
@@ -300,7 +296,7 @@ on change choose {
   } else if choose != "" && ask != null && !busy {
     job = ask; job_lines = []; job_code = null; job_why = ""; job_secs = 0
     job_kitty = choose == "kitty"
-    if choose == "kitty" { tx_kitty(ask?.op ?? "", ask?.pkgs ?? "", ucfg.aur_helper) } else { tx_run(ask?.op ?? "", ask?.pkgs ?? "", ucfg.aur_helper) }
+    if choose == "kitty" { tx_kitty(ask?.op ?? "", ask?.pkgs ?? "") } else { tx_run(ask?.op ?? "", ask?.pkgs ?? "") }
     ask = null; marks.clear()
   }
   choose = ""
@@ -366,9 +362,9 @@ window Upkeep {
     }
     else if c == "dismiss" { if !busy { job = null } }
     else if busy && c != "open_link" && c != "copy" && c != "export" { msg = "A change is still running"; msg_bad = true }
-    // Updates: everything (the AUR's too, through the helper), or what is checked
+    // Updates: everything (the AUR's too, through yay), or what is checked
     else if c == "upgrade" {
-      if ups.len > 0 { ask = Ask(op: "upgrade", title: "Update everything?", note: "pacman -Syu" + (aur_ups.len > 0 ? ", then the AUR's through " + helper : ""),
+      if ups.len > 0 { ask = Ask(op: "upgrade", title: "Update everything?", note: "pacman -Syu" + (aur_ups.len > 0 ? ", then the AUR's through yay" : ""),
         names: ups.map(u => u.name + "  " + u.old + " → " + u.new), pkgs: aur_ups.map(u => u.name).join(" ")) }
       else { msg = "Nothing to update"; msg_bad = false }
     }
@@ -389,7 +385,7 @@ window Upkeep {
     else if c == "reinstall" || c == "rebuild" {
       if targets.len > 0 && tab == installed {
         ask = Ask(op: c, title: (c == "rebuild" ? "Rebuild " : "Reinstall ") + count(targets.len) + "?",
-          note: c == "rebuild" ? "Built again from source (" + helper + " --rebuild)" : "Downloaded and installed again",
+          note: c == "rebuild" ? "Built again from source (yay --rebuild)" : "Downloaded and installed again",
           names: targets.map(i => i.name), pkgs: targets.map(i => i.name).join(" "))
       }
     }
@@ -875,9 +871,6 @@ component Dialog(a: Ask) {
         for q in pre_asks key q { Said "help" { what: "pacman would ask: " + q; tint: island.warn } }
         for f in pre_fails key f { Said "error" { what: f; tint: $red } }
         if pre_aur != "" { Said "construction" { what: "Built from the AUR: " + pre_aur + ". Kitty shows each PKGBUILD's changes first."; tint: $blue } }
-        if aur_here && ucfg.aur_helper != helper {
-          Said "info" { what: "upkeep's config names " + ucfg.aur_helper + "; this runs yay or paru, so yay"; tint: $fg.alpha(0.6) }
-        }
         for n in pre_notes key n { Said "info" { what: n; tint: $fg.alpha(0.6) } }
         if !to_kitty && a.op != "clean" { Said "lock" { what: "pacman runs here; the island asks your password"; tint: $fg.alpha(0.6) } }
       }
