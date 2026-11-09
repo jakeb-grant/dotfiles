@@ -516,7 +516,7 @@ window Upkeep {
       stack { grow: 1; width: 0; clip: true; min_width: 300
         stack { height: row_h; clip: true
           y: (sel ?? 0) * row_h - scrolled
-          opacity: sel == null ? 0 : 1
+          opacity: sel == null || (tab == news ? stories.len : rows.len) == 0 ? 0 : 1
           bg: linear(90deg, $accent.alpha(0.22 * wash), $accent.alpha(0.175 * wash), $accent.alpha(0.135 * wash),
             $accent.alpha(0.1 * wash), $accent.alpha(0.07 * wash), $accent.alpha(0.045 * wash),
             $accent.alpha(0.025 * wash), $accent.alpha(0.01 * wash), $accent.alpha(0))
