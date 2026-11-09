@@ -5,15 +5,15 @@
 // to: strand toggle upkeep.open
 //
 // Reading is Strand's own: pacman -Q and -S, the AUR's RPC and the news feed through
-// curl, vercmp. Some run through `sh -c`, only to turn an exit status that means
-// "none" (pacman's 1) into an empty answer and keep an error's first line, which a
-// failed action would lose. checkupdates, which can take longer than an action that
-// answers may (10 s), runs from ~/.local/bin/upkeep-tx into a file read here. Changes
-// go through upkeep-tx too: pacman through pkexec (the island asks the password), the
-// AUR through yay with pkexec, and to Kitty
-// where pacman would stop to ask something or a PKGBUILD deserves a look.
+// curl, vercmp. pacman's lists and yay's AUR check go through `sh -c`, only because
+// their status 1 means both "none" and an error. checkupdates, which can take longer
+// than an action that answers may (10 s), runs from ~/.local/bin/upkeep-tx into a file
+// read here. Changes go through upkeep-tx too, as jobs whose output the window follows:
+// pacman through pkexec (the island asks the password), the AUR through yay with
+// pkexec, and to Kitty where pacman would stop to ask something or a PKGBUILD deserves
+// a look.
 
-permit exec "sh", "curl", "upkeep-tx", "kitty", "xdg-open"
+permit exec "sh", "pacman", "curl", "upkeep-tx", "xdg-open"
 
 
 export state open = false
@@ -28,15 +28,18 @@ on change pac_busy { if !pac_busy { tick += 1 } }
 
 // --- reading -------------------------------------------------------------------
 
-// pacman's lists: a status of 1 with nothing said is "none" (no orphans), an error
-// comes back as "!" and its first two lines (pacman's "error: …:" and why). `t` is only there to ask again.
+// pacman's lists. Its status 1 is "none" (no orphans, nothing said) and an error (said
+// on stderr) alike, so `ok 0, 1` would hide the errors: the script makes a 1 with nothing
+// said a 0, and leaves an error its status and its stderr, for `.error`. `t` is only
+// there to ask again.
 action pac(flags: text, t: int) -> text ["sh", "-c",
-  "{ e=$(LC_ALL=C pacman $1 2>&1 >&3 3>&-); s=$?; } 3>&1; [ $s -eq 0 ] || [ -z \"$e\" ] || echo \"!$(printf '%s\\n' \"$e\" | grep -m2 . | paste -sd ' ' -)\"; exit 0",
+  "{ e=$(LC_ALL=C pacman \"$1\" 2>&1 >&3 3>&-); s=$?; } 3>&1; [ $s -eq 1 ] && [ -z \"$e\" ] && exit 0; [ -z \"$e\" ] || printf '%s\\n' \"$e\" >&2; exit $s",
   "sh", flags, t]
-// a package's details; not found is an empty answer
-action pac_on(flags: text, name: text) -> text ["sh", "-c", "LC_ALL=C pacman $1 -- \"$2\" 2>/dev/null; exit 0", "sh", flags, name]
-// a repo search, each package's two lines (name, then description) as one
-action repo_search(q: text) -> text ["sh", "-c", "LC_ALL=C pacman -Ss -- \"$1\" 2>/dev/null | paste - -; exit 0", "sh", q]
+// a package's details: not found is an error, read as nothing
+action pac_on(flags: text, name: text) -> text ["env", "LC_ALL=C", "pacman", flags, "--", name]
+// a repo search: each package's line, then its description indented on the next. None
+// found is pacman's 1, read as nothing, as an error is
+action repo_search(q: text) -> text ["env", "LC_ALL=C", "pacman", "-Ss", "--", q]
 // checkupdates, with its own copy of the sync db (upkeep-tx reads what an upgrade
 // would do from it), so no root: upkeep-tx writes the list, or why it failed (keeping
 // the last list), to ~/.cache/upkeep/updates.json. An action with no answer has no
@@ -45,24 +48,23 @@ action ups_check() ["upkeep-tx", "updates"]
 service upd from file "~/.cache/upkeep/updates.json" { updates: [text]; fail: text? }
 after 0s while true { ups_check() }
 on change tick { ups_check() }
-// yay's own AUR check, when the AUR's RPC can't be reached: 1 with nothing
-// said is "none"; an error (stderr, kept apart from the list) comes back as "!"
-action aur_check(t: int) -> text ["sh", "-c",
-  "h=yay; e=$(mktemp) || exit 1; o=$($h -Qua 2>\"$e\"); s=$?; if [ $s -eq 0 ]; then printf '%s\\n' \"$o\"; elif [ -s \"$e\" ]; then echo \"!$h: $(grep -m1 . \"$e\" | sed 's/^ *-> *//')\"; fi; rm -f \"$e\"",
-  "sh", t]
+// yay's own AUR check, only when `want` (the AUR's RPC can't be reached): its 1 is
+// "none" and an error alike, told apart as pacman's lists are
+action aur_check(want: bool, t: int) -> text ["sh", "-c",
+  "[ \"$1\" = true ] || exit 0; { e=$(yay -Qua 2>&1 >&3 3>&-); s=$?; } 3>&1; [ $s -eq 1 ] && [ -z \"$e\" ] && exit 0; [ -z \"$e\" ] || printf '%s\\n' \"$e\" >&2; exit $s",
+  "sh", want, t]
 // the AUR's RPC and Arch's news; `mark` (a header) only makes a refresh ask again
 action aur(url: text, mark: text) -> AurReply ["curl", "-sg", "-m", "9", "-H", mark, url]
-// one package's AUR details, asked only for a name given ("" asks nothing)
-action aur_info(arg: text) -> AurReply? ["sh", "-c",
-  "[ -z \"$1\" ] || exec curl -sg -m 9 -H 'X-Upkeep: info' \"https://aur.archlinux.org/rpc/v5/info?arg[]=$1\"", "sh", arg]
 action feed(mark: text) -> Rss ["curl", "-sf", "-m", "9", "-H", mark, "https://archlinux.org/feeds/news/"]
 // vercmp over `name old new` lines, all at once: `name old new N` each, N > 0 newer
 action vercmp_all(pairs: text) -> text ["sh", "-c",
   "printf '%s\\n' \"$1\" | while read -r n o w; do [ -n \"$n\" ] || continue; r=$(vercmp \"$w\" \"$o\") || exit 1; echo \"$n $o $w $r\"; done",
   "sh", pairs]
 // the explicit packages' names to ~/.config/upkeep/backups, the repos' and the AUR's
-action export_lists(day: text) -> text ["sh", "-c",
-  "d=\"$HOME/.config/upkeep/backups\"; mkdir -p \"$d\" || { echo \"!could not make $d\"; exit 0; }; pacman -Qqen >\"$d/packages-$1.txt\" 2>/dev/null; pacman -Qqem >\"$d/aur-$1.txt\" 2>/dev/null; echo \"$(wc -l <\"$d/packages-$1.txt\") $(wc -l <\"$d/aur-$1.txt\")\"",
+// (none of the AUR's is pacman's 1, no failure); its last line the two counts. A job,
+// so a slow pacman is waited for: read when it ends
+action export_lists(day: text) ["sh", "-c",
+  "d=\"$HOME/.config/upkeep/backups\"; mkdir -p \"$d\" && pacman -Qqen >\"$d/packages-$1.txt\" || exit 1; pacman -Qqem >\"$d/aur-$1.txt\"; echo \"$(wc -l <\"$d/packages-$1.txt\") $(wc -l <\"$d/aur-$1.txt\")\"",
   "sh", day]
 action open_url(u: text) ["xdg-open", u]
 
@@ -76,9 +78,14 @@ type Rss { channel: Chan }
 
 fn lines(t: text) -> [text] { t.split("\n").filter(l => l.trim() != "") }
 fn word(l: text, i: int) -> text { l.split(" ").filter(w => w != "").skip(i).first ?? "" }
-fn pkgs_of(t: text) -> [Pkg] { lines(t).filter(l => !l.starts_with("!")).map(l => Pkg(name: word(l, 0), ver: word(l, 1))) }
-// what a read's "!" line says went wrong
-fn bang(t: text) -> text? { lines(t).find(l => l.starts_with("!"))?.slice(1) }
+fn pkgs_of(t: text) -> [Pkg] { lines(t).map(l => Pkg(name: word(l, 0), ver: word(l, 1))) }
+// why a command failed, in its own words on one line: what follows Strand's headline
+// ("`sh` failed (exit status: 1): …"), else the headline
+fn reason(e: text?) -> text? {
+  let s = e ?? ""
+  let at = s.index_of("): ")
+  e == null ? null : lines(at == null ? s : s.slice((at ?? 0) + 3)).map(l => l.trim()).join(" ")
+}
 // `name old -> new`, yay's `[age]` after it left out
 fn up_of(l: text, aur: bool) -> Up { Up(name: word(l, 0), old: word(l, 1), new: word(l, 3), aur: aur) }
 fn up_key(u: Up) -> text { u.name + " " + u.old + " " + u.new }
@@ -92,13 +99,14 @@ let mark = "X-Upkeep: " + num(tick, 0)
 let explicit_r = pac("-Qe", tick)
 let foreign_r = pac("-Qm", tick)
 let orphans_r = pac("-Qdt", tick)
-let explicit = pkgs_of(explicit_r ?? "")
-let foreign = pkgs_of(foreign_r ?? "")
+// a read that failed keeps its last answer: none of it is shown, only why
+let explicit: [Pkg] = explicit_r.error != null ? [] : pkgs_of(explicit_r ?? "")
+let foreign: [Pkg] = foreign_r.error != null ? [] : pkgs_of(foreign_r ?? "")
 let foreign_names = foreign.map(p => p.name)
-let orphan_pkgs = pkgs_of(orphans_r ?? "")
-let explicit_err: text? = explicit_r.error ?? bang(explicit_r ?? "")
-let foreign_err: text? = foreign_r.error ?? bang(foreign_r ?? "")
-let orphans_err: text? = orphans_r.error ?? bang(orphans_r ?? "")
+let orphan_pkgs: [Pkg] = orphans_r.error != null ? [] : pkgs_of(orphans_r ?? "")
+let explicit_err: text? = reason(explicit_r.error)
+let foreign_err: text? = reason(foreign_r.error)
+let orphans_err: text? = reason(orphans_r.error)
 
 // updates from the repos
 let repo_ups = upd.updates.filter(l => l.contains(" -> ")).map(l => up_of(l, false))
@@ -118,14 +126,16 @@ let vc = vercmp_all(aur_diffs.map(d => up_key(d)).join("\n"))
 let vc_lines = lines(vc ?? "")
 let vc_failed = vc.error != null && !vc.pending
 let aur_failed = aur_r.error != null && !aur_r.pending
-let helper_lines = aur_failed ? lines(aur_check(tick) ?? "") : []
-let helper_err: text? = bang(helper_lines.join("\n"))
+let helper_r = aur_check(aur_failed, tick)
+let helper_why = reason(helper_r.error) ?? ""
+let helper_err: text? = aur_failed && helper_r.error != null ? "yay: " + helper_why.slice(helper_why.starts_with("-> ") ? 3 : 0) : null
+let helper_lines: [text] = aur_failed && helper_r.error == null ? lines(helper_r ?? "") : []
 let aur_ups: [Up] = foreign_r.value == null ? []
-  : aur_failed ? helper_lines.filter(l => !l.starts_with("!") && l.contains(" -> ")).map(l => up_of(l, true))
+  : aur_failed ? helper_lines.filter(l => l.contains(" -> ")).map(l => up_of(l, true))
   : vc_failed ? aur_diffs
   : aur_diffs.filter(d => vc_lines.contains(up_key(d) + " 1"))
 let aur_err: text? = aur_failed && helper_err != null ? "the AUR: " + (aur_r.error ?? "") + "; " + (helper_err ?? "") : null
-let vc_err: text? = vc_failed ? "vercmp: " + (vc.error ?? "") + ", so every AUR version that differs is listed" : null
+let vc_err: text? = vc_failed ? "vercmp: " + (reason(vc.error) ?? "") + ", so every AUR version that differs is listed" : null
 let ups = repo_ups + aur_ups
 let checking = ups_check.running || foreign_r.pending || aur_r.pending || explicit_r.pending || vc.pending
 // what went wrong reading, for the footer
@@ -204,10 +214,11 @@ let orph_items = orphan_pkgs.map(p => Item(key: "o " + p.name, name: p.name, ver
 
 // the search: the repos' and the AUR's at once, a repo's package winning a name both
 // have, those not installed first, each by name
-let all_names = lines(pac("-Qq", tick) ?? "")
+let names_r = pac("-Qq", tick)
+let all_names: [text] = names_r.error != null ? [] : lines(names_r ?? "")
 let ss_r = repo_search(searched)
 let as_r = aur("https://aur.archlinux.org/rpc/?v=5&type=search&arg=" + urlenc(searched), mark)
-let repo_hits: [Item] = searched == "" ? [] : lines(ss_r ?? "").map(l => hit_of(l))
+let repo_hits: [Item] = searched == "" || ss_r.error != null ? [] : hit_lines(ss_r ?? "").map(l => hit_of(l))
 let repo_hit_names: [text] = repo_hits.map(h => h.name)
 let aur_hits: [Item] = searched == "" || as_r.error != null ? [] : (as_r.value?.results ?? [])
   .filter(a => !repo_hit_names.contains(a.Name))
@@ -215,7 +226,13 @@ let aur_hits: [Item] = searched == "" || as_r.error != null ? [] : (as_r.value?.
 let search_items = (repo_hits + aur_hits).map(h => Item(key: h.key, name: h.name, ver: h.ver, aur: h.aur, repo: h.repo, desc: h.desc, inst: all_names.contains(h.name)))
   .sort_by(h => ((h.inst ?? false) ? "1 " : "0 ") + h.name)
 let searching = searched != "" && (ss_r.pending || as_r.pending)
-// `extra/name 1.0-1 [installed]<tab>    description`
+// pacman -Ss's lines, each package's line and its description (indented on the next)
+// as one: `extra/name 1.0-1 [installed]<tab>description`
+fn hit_lines(t: text) -> [text] {
+  t.split("\n").reduce(no_text, (acc, l) =>
+    l.starts_with(" ") ? (acc.len == 0 ? acc : acc.take(acc.len - 1) + [(acc.last ?? "") + "\t" + l.trim()])
+    : l.trim() == "" ? acc : acc + [l])
+}
 fn hit_of(l: text) -> Item {
   let head = l.slice(0, l.index_of("\t") ?? l.len)
   let at_repo = word(head, 0)
@@ -244,25 +261,38 @@ let typing = filtering || tab == search
 // --- changes -------------------------------------------------------------------
 
 // what a change is asked as, before it runs: the dialog
-type Ask { op: text; title: text; note: text; names: [text]; pkgs: text }
+type Ask { op: text; title: text; note: text; names: [text]; pkgs: [text] }
 state ask: Ask? = null
 state job: Ask? = null           // the change running, or the last one until Esc
-type Out { n: int; line: text }
-state job_lines: [Out] = []      // its output, the last 400 lines
-state job_n = 0
-state job_code: int? = null      // how it ended
-state job_why = ""               // and why, when it didn't end well
 state job_kitty = false          // it is running in Kitty
 state job_secs = 0
 state choose = ""                // the dialog's answer: "here", "here_aur" or "kitty"
 
-action tx_run(op: text, pkgs: text) ["upkeep-tx", "run", op, pkgs]
-action tx_kitty(op: text, pkgs: text) ["kitty", "--class", "upkeep-term", "--title", "Upkeep", "-e", "upkeep-tx", "term", op, pkgs]
-action tx_check(op: text, pkgs: text) -> text ["upkeep-tx", "check", op, pkgs]
-service txlog from listen ["upkeep-tx", "watch"] { kind: text; line: text?; code: int?; what: text? }
+// A change is a job: what it prints, the status it ends with and why it failed are its
+// run's. Its last lines on stderr that start "upkeep-tx: " are upkeep-tx's word on how
+// it went (why it failed, a replacement pacman took without asking). 3 (it would have
+// asked) and 126 (the password was cancelled) are no failure
+action tx_run(op: text, pkgs: [text]) ["upkeep-tx", "run", op, pkgs] ok 0, 3, 126
+// in Kitty, every question asked there: upkeep-tx waits for Kitty, then says how it ended
+action tx_kitty(op: text, pkgs: [text]) ["upkeep-tx", "kitty", op, pkgs]
+action tx_check(op: text, pkgs: [text]) -> text ["upkeep-tx", "check", op, pkgs]
 
 let busy = tx_run.running || tx_kitty.running
-let pre = tx_check(ask?.op ?? "", ask?.pkgs ?? "")
+let job_lines: [Line] = job_kitty ? tx_kitty.lines : tx_run.lines
+let job_code: int? = job_kitty ? tx_kitty.code : tx_run.code
+let job_err: text? = job_kitty ? tx_kitty.error : tx_run.error
+let said = "upkeep-tx: "
+fn is_said(l: Line) -> bool { l.stderr && l.text.starts_with(said) }
+// how it went, in upkeep-tx's words, else Strand's (upkeep-tx could not start)
+let job_why = job_lines.any(l => is_said(l)) ? job_lines.filter(l => is_said(l)).map(l => l.text.slice(said.len)).join("\n")
+  : reason(job_err) ?? ""
+// what it printed, the last 400 lines
+let job_out = job_lines.filter(l => !is_said(l))
+let job_tail = job_out.skip(job_out.len > 400 ? job_out.len - 400 : 0)
+// how it ended: null while it runs, and before it starts; one that could not start has
+// no status, only why
+let job_end: int? = busy ? null : job_code ?? (job_err != null ? 1 : null)
+let pre = tx_check(ask?.op ?? "", ask?.pkgs ?? no_text)
 // a check that failed (or ran out of time) says nothing it last said for another change
 let pre_failed = pre.error != null && !pre.pending
 let pre_lines: [text] = pre_failed ? [] : lines(pre ?? "")
@@ -277,26 +307,18 @@ let to_kitty = pre_failed || pre_asks.len > 0 || pre_aur != ""
 // Shift+Enter: here even with the AUR's, but only once checked and with nothing to ask
 let may_here = !pre.pending && !pre_failed && pre_asks.len == 0
 
-on txlog.line(doc) {
-  if doc.kind == "start" { job_lines = []; job_code = null; job_why = ""; job_secs = 0 }
-  if doc.kind == "out" {
-    job_n += 1
-    let all = job_lines + [Out(n: job_n, line: doc.line ?? "")]
-    job_lines = all.skip(all.len > 400 ? all.len - 400 : 0)
-  }
-  if doc.kind == "end" { job_code = doc.code ?? 1; job_why = doc.what ?? ""; tick += 1 }
-}
 every 1s while busy { job_secs += 1 }
-// upkeep-tx or Kitty that couldn't start says nothing in the log
-on change busy after 800ms { if !busy && job != null && job_code == null { job_code = 1; job_why = tx_run.error ?? tx_kitty.error ?? "It ended without a word" } }
+// its end comes in one piece, lines, status and why before `running` turns false: the
+// lists are read again
+on change busy { if !busy && job != null { tick += 1 } }
 on change choose {
   if choose == "here" && !may_here && ask != null {
     msg = pre_failed ? "Not here: pacman's check failed, so only Kitty runs it" : "Not here: pacman would ask something"
     msg_bad = true
   } else if choose != "" && ask != null && !busy {
-    job = ask; job_lines = []; job_code = null; job_why = ""; job_secs = 0
+    job = ask; job_secs = 0
     job_kitty = choose == "kitty"
-    if choose == "kitty" { tx_kitty(ask?.op ?? "", ask?.pkgs ?? "") } else { tx_run(ask?.op ?? "", ask?.pkgs ?? "") }
+    if choose == "kitty" { tx_kitty(ask?.op ?? "", ask?.pkgs ?? no_text) } else { tx_run(ask?.op ?? "", ask?.pkgs ?? no_text) }
     ask = null; marks.clear()
   }
   choose = ""
@@ -313,13 +335,13 @@ let hint_h = 30
 // a key or a click on its hint: one place that does what it asks
 state cmd = ""
 state cmd_n = 0
-// an export's command that fails ends its handler at the await, saying nothing: said here
-state exporting = false
-on change export_lists.running after 300ms {
-  if !export_lists.running && exporting { exporting = false; msg = "Export failed: its command did not finish (strand's log says why)"; msg_bad = true }
-}
-on change exporting after 11s {
-  if exporting { exporting = false; msg = "Export failed: its command did not finish (strand's log says why)"; msg_bad = true }
+// how an export went, once it has ended: its last line the two counts
+on change export_lists.running {
+  if !export_lists.running {
+    let out = export_lists.lines.filter(l => !l.stderr).last?.text ?? ""
+    if export_lists.code == 0 { msg = "Exported " + word(out, 0) + " + " + word(out, 1) + " AUR to ~/.config/upkeep/backups"; msg_bad = false }
+    else { msg = "Export failed: " + (reason(export_lists.error) ?? "it ended without a word"); msg_bad = true }
+  }
 }
 
 window Upkeep {
@@ -365,28 +387,28 @@ window Upkeep {
     // Updates: everything (the AUR's too, through yay), or what is checked
     else if c == "upgrade" {
       if ups.len > 0 { ask = Ask(op: "upgrade", title: "Update everything?", note: "pacman -Syu" + (aur_ups.len > 0 ? ", then the AUR's through yay" : ""),
-        names: ups.map(u => u.name + "  " + u.old + " → " + u.new), pkgs: aur_ups.map(u => u.name).join(" ")) }
+        names: ups.map(u => u.name + "  " + u.old + " → " + u.new), pkgs: aur_ups.map(u => u.name)) }
       else { msg = "Nothing to update"; msg_bad = false }
     }
     else if c == "update" {
       if checked.len > 0 { ask = Ask(op: "update", title: "Update " + count(checked.len) + "?", note: "Only these: a partial upgrade, against the sync database as it is",
-        names: checked.map(i => i.name + "  " + i.ver + " → " + (i.new ?? "")), pkgs: checked.map(i => i.name).join(" ")) }
+        names: checked.map(i => i.name + "  " + i.ver + " → " + (i.new ?? "")), pkgs: checked.map(i => i.name)) }
       else { msg = "Check the packages to update with Space"; msg_bad = false }
     }
-    else if c == "clean" { ask = Ask(op: "clean", title: "Clean the package cache?", note: "Old package versions will be removed: paccache keeps the last 3 of each", names: [], pkgs: "") }
+    else if c == "clean" { ask = Ask(op: "clean", title: "Clean the package cache?", note: "Old package versions will be removed: paccache keeps the last 3 of each", names: [], pkgs: []) }
     // Installed and Orphans: what is checked, else the selected row
     else if c == "remove" || c == "purge" {
       if targets.len > 0 && (tab == installed || tab == orphans) {
         ask = Ask(op: c, title: "Remove " + count(targets.len) + "?",
           note: c == "purge" ? "pacman -Rns: with the dependencies nothing else needs, and their saved settings" : "pacman -R: the packages alone",
-          names: targets.map(i => i.name), pkgs: targets.map(i => i.name).join(" "))
+          names: targets.map(i => i.name), pkgs: targets.map(i => i.name))
       }
     }
     else if c == "reinstall" || c == "rebuild" {
       if targets.len > 0 && tab == installed {
         ask = Ask(op: c, title: (c == "rebuild" ? "Rebuild " : "Reinstall ") + count(targets.len) + "?",
           note: c == "rebuild" ? "Built again from source (yay --rebuild)" : "Downloaded and installed again",
-          names: targets.map(i => i.name), pkgs: targets.map(i => i.name).join(" "))
+          names: targets.map(i => i.name), pkgs: targets.map(i => i.name))
       }
     }
     // Search: what is checked and not installed, else the selected row
@@ -394,15 +416,9 @@ window Upkeep {
       let picks = checked.filter(i => !(i.inst ?? false))
       let these = picks.len > 0 ? picks : cur_rows.filter(i => !(i.inst ?? false))
       if these.len > 0 { ask = Ask(op: "install", title: "Install " + count(these.len) + "?", note: "",
-        names: these.map(i => i.name + "  " + i.ver + ((i.repo ?? "") != "" ? "  (" + (i.repo ?? "") + ")" : "")), pkgs: these.map(i => i.name).join(" ")) }
+        names: these.map(i => i.name + "  " + i.ver + ((i.repo ?? "") != "" ? "  (" + (i.repo ?? "") + ")" : "")), pkgs: these.map(i => i.name)) }
     }
-    if c == "export" {
-      exporting = true
-      let out = await export_lists(clock.format("%Y-%m-%d"))
-      exporting = false
-      if out.starts_with("!") { msg = "Export failed: " + out.slice(1); msg_bad = true }
-      else { msg = "Exported " + word(out, 0) + " + " + word(out, 1) + " AUR to ~/.config/upkeep/backups"; msg_bad = false }
-    }
+    if c == "export" { msg = "Exporting…"; msg_bad = false; export_lists(clock.format("%Y-%m-%d")) }
     if c == "copy" {
       let ours = explicit_names.filter(n => !foreign_names.contains(n))
       let theirs = explicit_names.filter(n => foreign_names.contains(n))
@@ -462,7 +478,7 @@ window Upkeep {
     on key "pgup" { article.scroll_by(-200) }
   }
   // a change that failed here: Shift+K runs it again in Kitty, every question asked
-  when !asking && !busy && job_code != null && job_code != 0 && job_code != 126 && !job_kitty {
+  when !asking && !busy && job_end != null && job_end != 0 && job_end != 126 && !job_kitty {
     on key "shift+k" { pressed_what = "kitty_again"; pressed_n += 1 }
   }
   // typing the filter: Enter or F keeps it, Esc clears it
@@ -538,7 +554,7 @@ window Upkeep {
     }
     Footer {}
   }
-  if asking { Dialog ask ?? Ask(op: "", title: "", note: "", pkgs: "") }
+  if asking { Dialog ask ?? Ask(op: "", title: "", note: "") }
 }
 
 fn count(n: int) -> text { num(n, 0) + (n == 1 ? " package" : " packages") }
@@ -691,13 +707,15 @@ component UpPane {
 // a package's details: pacman -Qi, else -Si, else the AUR's; a search row's own, if none
 let info_q = pac_on("-Qi", info_for)
 let info_s = pac_on("-Si", info_for)
-let qf: [Kv] = fields(info_q ?? "")
-let sf: [Kv] = fields(info_s ?? "")
+// not found is an error, and a call that failed keeps its last answer: read as nothing
+let qf: [Kv] = info_q.error != null ? no_fields : fields(info_q ?? "")
+let sf: [Kv] = info_s.error != null ? no_fields : fields(info_s ?? "")
 let info_aur_wanted = info_for != "" && !info_q.pending && !info_s.pending
   && (foreign_names.contains(info_for) || (qf.len == 0 && sf.len == 0))
-// asked only for a package of the AUR's (or one neither pacman knows): none for a repo's
-let info_a = aur_info(info_aur_wanted ? urlenc(info_for) : "")
-let af: AurPkg? = info_aur_wanted ? info_a.value?.results?.find(a => a.Name == info_for) : null
+// asked only for a package of the AUR's (or one neither pacman knows): none for a repo's,
+// whose URL is "" (curl refuses it, asking nothing)
+let info_a = aur(info_aur_wanted ? "https://aur.archlinux.org/rpc/v5/info?arg[]=" + urlenc(info_for) : "", "X-Upkeep: info")
+let af: AurPkg? = info_aur_wanted ? (info_a.value?.results ?? []).find(a => a.Name == info_for) : null
 type Kv { k: text; v: text }
 let no_fields: [Kv] = []
 // `Key   : value` lines, a value's further lines indented under it
@@ -783,9 +801,9 @@ component NewsHead(s: Story?) {
 
 // the change running, or how the last one went: its output as it comes
 component JobPane {
-  let ok = job_code == 0
-  let asked = job_code == 3
-  let cancelled = job_code == 126
+  let ok = job_end == 0
+  let asked = job_end == 3
+  let cancelled = job_end == 126
   UpPane {
     Caption job_kitty ? "in kitty" : "change"
     Title job?.title?.replace("?", "") ?? ""
@@ -795,9 +813,9 @@ component JobPane {
         text polkit.request != null ? "Waiting for your password" : job_kitty ? "Running in Kitty: answer it there" : "Running" {
           color: $fg.alpha(0.75); font: sans 13px 600 }
         text dur(job_secs * 1s, clock: true) { color: $fg.alpha(0.45); font: mono 12px 500; roll: true }
-      } else if job_code == null {
+      } else if job_end == null {
         Spin {}
-        text job_secs > 0 ? "Reading how it ended" : "Starting" { color: $fg.alpha(0.75) }
+        text "Starting" { color: $fg.alpha(0.75) }
       } else {
         text ok ? "check_circle" : asked ? "help" : cancelled ? "cancel" : "error" {
           font: "Material Symbols Rounded" 18; color: ok ? $green : asked || cancelled ? island.warn : $red }
@@ -808,25 +826,31 @@ component JobPane {
     }
     // how it failed, or (done) a replacement pacman took without asking
     if job_why != "" {
-      text job_why { color: ok || asked || cancelled ? island.warn : $red; font: mono 12px 500; max_lines: 6; ellipsis: end
-        pad: 8, 10; radius: 6; bg: (ok || asked ? island.warn : $red).alpha(0.08) }
+      // the padding on a box around the text: a wrapping text's own `pad` is measured
+      // at another width than it is drawn
+      col { pad: 8, 10; radius: 6; bg: (ok || asked || cancelled ? island.warn : $red).alpha(0.08)
+        text job_why { color: ok || asked || cancelled ? island.warn : $red; font: mono 12px 500; max_lines: 6; ellipsis: end }
+      }
     }
-    if job_kitty && job_lines.len == 0 {
+    if job_kitty {
       text busy ? "Its questions and output are in the Kitty window; this follows how it ends."
-        : "The output stays in Kitty until Enter closes it." {
+        : "Its output was in the Kitty window." {
         color: $fg.alpha(0.55); font: sans 13px 450 }
       spacer {}
     } else {
-    scroll { id: out; grow: 1; radius: 6; bg: $fg.alpha(0.03); pad: 8, 10
-      on change job_lines.len { out.scroll_to(100000) }
-      col { gap: 1
-        for o in job_lines key o.n {
-          text o.line { color: line_tint(o.line); font: mono 11px 500; max_lines: 2; ellipsis: end }
+      // a bar pacman redraws is one line, its last drawing
+      scroll { id: out; grow: 1; radius: 6; bg: $fg.alpha(0.03); pad: 8, 10
+        on change job_out.last?.n ?? 0 { out.scroll_to(100000) }
+        // the end's reason and keys take room from it: still at the end
+        on change job_end after 150ms { out.scroll_to(100000) }
+        col { gap: 1
+          for o in job_tail key o.n {
+            text o.text { color: line_tint(o.text); font: mono 11px 500; max_lines: 2; ellipsis: end }
+          }
         }
       }
     }
-    }
-    if !busy && job_code != null {
+    if !busy && job_end != null {
       row { gap: 8; wrap: true
         if !ok && !cancelled && !job_kitty { UpKey "K" { what: "finish in Kitty"; does: "kitty_again" } }
         UpKey "Esc" { what: "close"; does: "dismiss" }
@@ -845,7 +869,6 @@ fn line_tint(l: text) -> color {
 // failed), Esc doesn't
 component Dialog(a: Ask) {
   let more = a.names.len - 15
-  let aur_here = pre_aur != "" || a.op == "rebuild" || (a.op == "upgrade" && a.pkgs != "")
   stack { align: center
     box { bg: $shadow.alpha(0.45); on click { ask = null } }
     col { width: 600; pad: 20, 22; gap: 12; radius: island.corner; corners: squircle

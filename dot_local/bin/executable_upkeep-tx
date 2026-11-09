@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
 # upkeep-tx: the package changes of Strand's Upkeep window (~/.config/strand/upkeep.strand).
-# The window reads everything else itself; this changes the system, says how it went,
-# and runs the update check that can take longer than an action that answers may.
+# The window reads everything else itself, and follows what a change prints as Strand
+# follows any job's output; this changes the system, checks first, and runs the update
+# check that can take longer than an action that answers may.
 #
-#   upkeep-tx updates         checkupdates (its own copy of the sync db, no root) into
-#                             ~/.cache/upkeep/updates.json: {"updates": ["name old -> new"…],
-#                             "fail": why or null, "at": when}; a failed check keeps the
-#                             last list and says why
-#   upkeep-tx check OP PKGS   what would stop OP to ask, found without root and changing
-#                             nothing: lines "ask <why>" (a question pacman would ask:
-#                             a replacement, a conflict, a provider to choose), "fail <why>"
-#                             (pacman refuses it as it stands), "also <name>" (removed
-#                             with it: purge's dependencies nothing else needs), "aur <names>"
-#                             (built from PKGBUILDs) and "note <text>"
-#   upkeep-tx run OP PKGS
-#                             OP with no questions: pacman through pkexec (Strand's polkit
-#                             prompt asks the password), the AUR through yay --sudo pkexec
-#                             with its menus answered None (no PKGBUILD review). It first
-#                             checks, and stops with 3 where pacman would ask. Exits 0 done,
-#                             1 failed, 3 it would have asked, 126 the password was cancelled
-#   upkeep-tx term OP PKGS
-#                             OP in this terminal with every question asked (sudo pacman,
-#                             or yay with its diffs and all), then waits for Enter (Kitty
-#                             runs it)
-#   upkeep-tx watch           the log, a JSON line each as it is written (a `from listen`):
-#                             {"kind":"start","op":…,"what":…}, {"kind":"out","line":…},
-#                             {"kind":"end","code":N,"what":…}
+#   upkeep-tx updates          checkupdates (its own copy of the sync db, no root) into
+#                              ~/.cache/upkeep/updates.json: {"updates": ["name old -> new"…],
+#                              "fail": why or null, "at": when}; a failed check keeps the
+#                              last list and says why
+#   upkeep-tx check OP [PKG…]  what would stop OP to ask, found without root and changing
+#                              nothing: lines "ask <why>" (a question pacman would ask:
+#                              a replacement, a conflict, a provider to choose), "fail <why>"
+#                              (pacman refuses it as it stands), "also <name>" (removed
+#                              with it: purge's dependencies nothing else needs), "aur <names>"
+#                              (built from PKGBUILDs) and "note <text>"
+#   upkeep-tx run OP [PKG…]    OP with no questions: pacman through pkexec (Strand's polkit
+#                              prompt asks the password), the AUR through yay --sudo pkexec
+#                              with its menus answered None (no PKGBUILD review). It first
+#                              checks, and stops with 3 where pacman would ask. What the
+#                              program prints comes out as it is, line by line; then its
+#                              summary, on stderr, each line starting "upkeep-tx: " (why it
+#                              failed, a replacement pacman took without asking). Exits 0
+#                              done, 1 failed, 3 it would have asked, 126 the password was
+#                              cancelled
+#   upkeep-tx kitty OP [PKG…]  `term` in a Kitty window (class upkeep-term), waited for; then
+#                              its summary as `run`'s ("yay exited with status 1 in Kitty")
+#                              and 0 done, 1 not
+#   upkeep-tx term OP [PKG…]   OP in this terminal with every question asked (sudo pacman,
+#                              or yay with its diffs and all), then waits for Enter
 #
-# OP: upgrade (everything: -Syu; PKGS the AUR updates, if any), update (PKGS, -S --needed),
+# OP: upgrade (everything: -Syu; PKGs the AUR updates, if any), update (PKGs, -S --needed),
 # install (-S), reinstall (-S), rebuild (-S --rebuild), remove (-R), purge (-Rns), clean
-# (paccache -r). PKGS is one argument, names split on spaces: a Strand action passes each
-# of its parameters as one argument.
+# (paccache -r). Each PKG is one name, an argument of its own.
 set -u
 
-LOG="${XDG_RUNTIME_DIR:-/tmp}/upkeep-tx.jsonl"
 # ~/.cache/upkeep whatever XDG_CACHE_HOME says: the window reads updates.json from there
 CACHE="$HOME/.cache/upkeep"
 # checkupdates' copy of the sync db, synced without root: what an upgrade would do is read
@@ -47,8 +47,8 @@ PACMAN=/usr/bin/pacman
 PACCACHE=/usr/bin/paccache
 STDBUF=/usr/bin/stdbuf
 
-emit() { jq -nc "$@" >>"$LOG"; }
-words() { local w; for w in $1; do printf '%s\n' "$w"; done; }
+# a line of the summary, which the window reads from the run's last lines
+say() { printf 'upkeep-tx: %s\n' "$*" >&2; }
 
 # yay's flags for a run with no questions, root through pkexec and the pacman above. Its
 # sudo flags put stdbuf after pkexec, so pacman's output comes line by line (pkexec drops
@@ -56,12 +56,12 @@ words() { local w; for w in $1; do printf '%s\n' "$w"; done; }
 YAY_QUIET=(--sudo "$PKEXEC" --sudoflags "$STDBUF -oL -eL" --pacman "$PACMAN" --noconfirm
   --answerclean None --answerdiff None --answeredit None --answerupgrade None --removemake --color never)
 
-# PKGS split into those in a sync repo and those only in the AUR
+# the PKGs split into those in a sync repo and those only in the AUR
 split_pkgs() {
   local all p
   REPO=() AUR=()
   all=$(pacman -Slq 2>/dev/null)
-  for p in $1; do
+  for p in "$@"; do
     if grep -qFx -- "$p" <<<"$all"; then REPO+=("$p"); else AUR+=("$p"); fi
   done
 }
@@ -194,8 +194,9 @@ conflicts() {
 # CHECK_WAIT: how long the update check's copy may take to sync (the window's dialog
 # waits 6 s; a run, as long as it takes)
 check() {
-  local op=$1 out f n
-  split_pkgs "$2"
+  local op=${1:-} out f n
+  shift
+  split_pkgs "$@"
   case $op in
     upgrade)
       # synced first, so a replacement published since the last check is seen
@@ -208,10 +209,10 @@ check() {
       else
         echo "ask the update check's copy of the sync database could not be synced ($CU_ERR), so what pacman would ask is unknown"
       fi
-      [ -n "$2" ] && echo "aur $2" ;;
+      [ $# -gt 0 ] && echo "aur $*" ;;
     update | install | reinstall | rebuild)
       if [ ${#REPO[@]} -gt 0 ]; then
-        out=$(LC_ALL=C pacman -Sp --noconfirm --print-format '%n' "${REPO[@]}" </dev/null 2>&1)
+        out=$(LC_ALL=C pacman -Sp --noconfirm --print-format '%n' -- "${REPO[@]}" </dev/null 2>&1)
         questions <<<"$out" | sed 's/^/ask /'
         grep -E '^error:' <<<"$out" | head -3 | sed 's/^error: */fail /'
         conflicts "" "${REPO[@]}"
@@ -220,12 +221,11 @@ check() {
     remove | purge)
       # -Rsp, not -Rnsp: pacman refuses --nosave with --print (n only drops the saved settings)
       f=-Rp; [ "$op" = purge ] && f=-Rsp
-      # shellcheck disable=SC2086
-      out=$(LC_ALL=C pacman $f --noconfirm --print-format '%n' -- $2 </dev/null 2>&1)
+      out=$(LC_ALL=C pacman $f --noconfirm --print-format '%n' -- "$@" </dev/null 2>&1)
       grep -E '^(error:|:: removing)' <<<"$out" | head -4 | sed -e 's/^error: */fail /' -e 's/^:: /fail /'
       if ! grep -qE '^error:' <<<"$out"; then
-        for n in $(grep -E '^[A-Za-z0-9@_+][A-Za-z0-9@._+-]*$' <<<"$out"); do
-          words "$2" | grep -qFx -- "$n" || echo "also $n"
+        grep -E '^[A-Za-z0-9@_+][A-Za-z0-9@._+-]*$' <<<"$out" | while IFS= read -r n; do
+          printf '%s\n' "$@" | grep -qFx -- "$n" || echo "also $n"
         done
       fi ;;
     clean)
@@ -236,26 +236,28 @@ check() {
 }
 
 title() {
-  local n; n=$(words "$2" | wc -l)
-  case $1 in
+  local op=$1 n s=s
+  shift
+  n=$#; [ "$n" = 1 ] && s=
+  case $op in
     upgrade) echo "Updating everything" ;;
-    update) echo "Updating $n package$([ "$n" = 1 ] || echo s)" ;;
-    install) echo "Installing $n package$([ "$n" = 1 ] || echo s)" ;;
-    reinstall) echo "Reinstalling $n package$([ "$n" = 1 ] || echo s)" ;;
-    rebuild) echo "Rebuilding $n package$([ "$n" = 1 ] || echo s)" ;;
-    remove) echo "Removing $n package$([ "$n" = 1 ] || echo s)" ;;
-    purge) echo "Removing $n package$([ "$n" = 1 ] || echo s) with their dependencies" ;;
+    update) echo "Updating $n package$s" ;;
+    install) echo "Installing $n package$s" ;;
+    reinstall) echo "Reinstalling $n package$s" ;;
+    rebuild) echo "Rebuilding $n package$s" ;;
+    remove) echo "Removing $n package$s" ;;
+    purge) echo "Removing $n package$s with their dependencies" ;;
     clean) echo "Cleaning the package cache" ;;
-    *) echo "$1" ;;
+    *) echo "$op" ;;
   esac
 }
 
-# the command for OP: quiet (no questions, root through pkexec) or asking (a terminal,
-# root through sudo), the AUR's through yay
+# the command for OP into CMD: quiet (no questions, root through pkexec) or asking (a
+# terminal, root through sudo), the AUR's through yay
 command_for() {
-  local op=$1 mode=$2 pac aur names
-  read -ra names <<<"$3"
-  split_pkgs "$3"
+  local op=$1 mode=$2 pac aur need=()
+  shift 2
+  split_pkgs "$@"
   if [ "$mode" = quiet ]; then
     pac=("$PKEXEC" "$STDBUF" -oL -eL "$PACMAN" --noconfirm --color never)
     aur=(yay "${YAY_QUIET[@]}")
@@ -264,81 +266,103 @@ command_for() {
     aur=(yay --sudo "$SUDO" --pacman "$PACMAN")
   fi
   case $op in
-    upgrade) if [ -n "$3" ]; then CMD=("${aur[@]}" -Syu); else CMD=("${pac[@]}" -Syu); fi ;;
+    upgrade) if [ $# -gt 0 ]; then CMD=("${aur[@]}" -Syu); else CMD=("${pac[@]}" -Syu); fi ;;
     update | install | reinstall)
-      local need=(); [ "$op" = update ] && need=(--needed)
-      if [ ${#AUR[@]} -gt 0 ]; then CMD=("${aur[@]}" -S "${need[@]}" "${names[@]}"); else CMD=("${pac[@]}" -S "${need[@]}" -- "${names[@]}"); fi ;;
-    rebuild) CMD=("${aur[@]}" -S --rebuild "${names[@]}") ;;
-    remove) CMD=("${pac[@]}" -R -- "${names[@]}") ;;
-    purge) CMD=("${pac[@]}" -Rns -- "${names[@]}") ;;
+      [ "$op" = update ] && need=(--needed)
+      if [ ${#AUR[@]} -gt 0 ]; then CMD=("${aur[@]}" -S "${need[@]}" -- "$@"); else CMD=("${pac[@]}" -S "${need[@]}" -- "$@"); fi ;;
+    rebuild) CMD=("${aur[@]}" -S --rebuild -- "$@") ;;
+    remove) CMD=("${pac[@]}" -R -- "$@") ;;
+    purge) CMD=("${pac[@]}" -Rns -- "$@") ;;
     clean) if [ "$mode" = quiet ]; then CMD=("$PKEXEC" "$STDBUF" -oL -eL "$PACCACHE" -r); else CMD=("$SUDO" "$PACCACHE" -r); fi ;;
     *) return 1 ;;
   esac
 }
 
 run() {
-  local op=$1 pkgs=$2 asks code what rep tmp
-  mkdir -p "$(dirname "$LOG")"
-  [ -f "$LOG" ] && [ "$(stat -c %s "$LOG")" -gt 1048576 ] && mv "$LOG" "$LOG.old"
-  emit --arg op "$op" --arg what "$(title "$op" "$pkgs")" '{kind: "start", op: $op, what: $what}'
-  asks=$(CHECK_WAIT=0 check "$op" "$pkgs" | sed -n 's/^ask //p')
+  local op=${1:-} asks code out rep why
+  shift
+  asks=$(CHECK_WAIT=0 check "$op" "$@" | sed -n 's/^ask //p')
   if [ -n "$asks" ]; then
-    emit --arg what "$asks" '{kind: "end", code: 3, what: $what}'
+    while IFS= read -r why; do say "pacman would ask: $why"; done <<<"$asks"
     exit 3
   fi
-  if ! command_for "$op" quiet "$pkgs"; then
-    emit --arg what "unknown change: $op" '{kind: "end", code: 1, what: $what}'
-    exit 1
-  fi
-  tmp=$(mktemp)
-  # line by line as they come: output is buffered when it is not on a terminal (stdbuf
-  # here for yay; after pkexec for pacman, whose preload pkexec drops)
-  { "$STDBUF" -oL -eL "${CMD[@]}" </dev/null 2>&1; echo "$?" >"$tmp.code"; } |
-    tee "$tmp" | jq -R -c --unbuffered '{kind: "out", line: .}' >>"$LOG"
-  code=$(cat "$tmp.code" 2>/dev/null || echo 1)
+  command_for "$op" quiet "$@" || { say "unknown change: $op"; exit 1; }
+  out=$(mktemp) || exit 1
+  # each stream comes out as it is, a copy of each kept apart to read at the end (in one
+  # file a line of one would land inside a bar the other is still drawing). Line by line
+  # as they come: a program's output is buffered when it is not on a terminal (stdbuf here
+  # for yay; after pkexec for pacman, whose preload pkexec drops)
+  { "$STDBUF" -oL -eL "${CMD[@]}" </dev/null 2>&1 >&3 3>&- | tee "$out.err" >&2; exit "${PIPESTATUS[0]}"; } 3>&1 |
+    tee "$out"
+  code=${PIPESTATUS[0]}
   # a replacement pacman took without asking (published after the check): said, not hidden
-  rep=$(grep -E '^:: Replace .* with ' "$tmp" | sed -e 's/^:: Replace //' -e 's/ *\[[YyNn]\/[YyNn]\].*$//' -e 's/?$//' | sort -u)
+  rep=$(grep -E '^:: Replace .* with ' "$out" | sed -e 's/^:: Replace //' -e 's/ *\[[YyNn]\/[YyNn]\].*$//' -e 's/?$//' | sort -u)
+  [ -n "$rep" ] && say "pacman replaced without asking (published after the check): $(paste -sd ';' <<<"$rep" | sed 's/;/; /g')"
   case $code in
-    0) what="" ;;
-    126) what="The password was cancelled" ;;
-    127) what="Not allowed: polkit refused, or pkexec could not run it" ;;
+    0) ;;
+    126) say "The password was cancelled" ;;
+    127) say "Not allowed: polkit refused, or pkexec could not run it" ;;
     *)
-      what=$(grep -E '^(error|==> ERROR|-> )|exists in filesystem' "$tmp" | grep -v '^-> \(Found\|Downloading\|Building\|Creating\)' | tail -4)
-      [ -z "$what" ] && what=$(grep -v '^\s*$' "$tmp" | tail -2)
-      # what pacman would have asked but --noconfirm answered no to
-      if grep -qE 'are in conflict|unresolvable package conflicts' "$tmp"; then code=3; fi ;;
+      if cat "$out" "$out.err" | grep -qE 'are in conflict|unresolvable package conflicts'; then
+        # what pacman would have asked, but --noconfirm answered no to
+        code=3
+        why=$(cat "$out" "$out.err" | questions | grep '?$' | sed 's/^/pacman would ask: /')
+      else
+        # pacman's (or yay's) last reasons, most on stderr, then the files it names
+        why=$(cat "$out" "$out.err" | grep -E '^(error|==> ERROR|-> )' | grep -v '^-> \(Found\|Downloading\|Building\|Creating\)' | tail -3
+          grep -m3 'exists in filesystem' "$out")
+      fi
+      [ -z "$why" ] && why=$(cat "$out" "$out.err" | grep -v '^\s*$' | tail -2)
+      while IFS= read -r rep; do [ -n "$rep" ] && say "$rep"; done <<<"$why" ;;
   esac
-  [ -n "$rep" ] && what=$(printf 'pacman replaced without asking (published after the check): %s\n%s' "$(paste -sd ';' <<<"$rep" | sed 's/;/; /g')" "$what" | sed '/^$/d')
-  rm -f "$tmp" "$tmp.code"
-  emit --argjson code "$code" --arg what "$what" '{kind: "end", code: $code, what: $what}'
+  rm -f "$out" "$out.err"
   [ "$code" -gt 0 ] && [ "$code" -ne 126 ] && [ "$code" -ne 3 ] && exit 1
   exit "$code"
 }
 
+# UPKEEP_TX_STATUS (set by `kitty`): the file where term leaves the exit status of the
+# command and its name, since Kitty does not pass them on
 term() {
-  local op=$1 pkgs=$2 code prog
-  mkdir -p "$(dirname "$LOG")"
-  emit --arg op "$op" --arg what "$(title "$op" "$pkgs") in Kitty" '{kind: "start", op: $op, what: $what}'
-  command_for "$op" ask "$pkgs" || { echo "unknown change: $op"; exit 1; }
+  local op=${1:-} code prog
+  shift
+  command_for "$op" ask "$@" || { echo "unknown change: $op"; exit 1; }
   # named by what sudo runs, not sudo
   prog=$(basename "${CMD[0]}"); [ "$prog" = sudo ] && prog=$(basename "${CMD[1]}")
-  printf '\e[1m%s\e[0m\n\n' "$(title "$op" "$pkgs"): ${CMD[*]}"
+  printf '\e[1m%s\e[0m\n\n' "$(title "$op" "$@"): ${CMD[*]}"
   "${CMD[@]}"
   code=$?
+  [ -n "${UPKEEP_TX_STATUS:-}" ] && printf '%s %s\n' "$code" "$prog" >"$UPKEEP_TX_STATUS"
   [ "$code" -ne 0 ] && printf '\n%s exited with status %s\n' "$prog" "$code"
-  emit --argjson code "$code" --arg what "$([ "$code" -ne 0 ] && echo "$prog exited with status $code in Kitty")" \
-    '{kind: "end", code: $code, what: $what}'
   read -r -p "Press Enter to close..." _
   exit "$code"
 }
 
+# Kitty exits with its own status, not its command's, so term leaves that in a file
+kitty_run() {
+  local st code prog
+  st=$(mktemp) || exit 1
+  UPKEEP_TX_STATUS=$st kitty --class upkeep-term --title Upkeep -e "$0" term "$@"
+  code=$?
+  if [ "$code" -ne 0 ]; then
+    rm -f "$st"
+    say "Kitty failed (exit status $code)"
+    exit 1
+  fi
+  read -r code prog <"$st"
+  rm -f "$st"
+  case ${code:-} in
+    0) exit 0 ;;
+    "") say "Kitty was closed before it ended: whether the change took is unknown" ;;
+    *) say "$prog exited with status $code in Kitty" ;;
+  esac
+  exit 1
+}
+
 case ${1:-} in
   updates) updates ;;
-  check) check "${2:-}" "${3:-}" ;;
-  run) run "${2:-}" "${3:-}" ;;
-  term) term "${2:-}" "${3:-}" ;;
-  watch)
-    mkdir -p "$(dirname "$LOG")"; touch "$LOG"
-    exec tail -n0 -F "$LOG" 2>/dev/null ;;
+  check) shift; check "$@" ;;
+  run) shift; run "$@" ;;
+  kitty) shift; kitty_run "$@" ;;
+  term) shift; term "$@" ;;
   *) sed -n '2,/^set -u/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//'; exit 2 ;;
 esac
