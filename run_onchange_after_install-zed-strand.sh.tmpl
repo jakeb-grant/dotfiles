@@ -5,13 +5,12 @@
 # builder does: the Rust crate for wasm32-wasip2, the grammar with
 # wasi-sdk's clang, the manifest given the zed_extension_api version.
 # A running Zed sees the new extension at once. Runs again whenever a file
-# of zed-strand/ changes:
-{{- range list "extension.toml" "Cargo.toml" "src/lib.rs" "languages/strand/config.toml" "languages/strand/highlights.scm" "languages/strand/brackets.scm" "languages/strand/indents.scm" "languages/strand/outline.scm" "languages/strand/overrides.scm" }}
-# {{ . }} {{ include (joinPath "zed-strand" .) | sha256sum }}
-{{- end }}
+# of zed-strand/ changes (the template only in comments, so editors read
+# this file as shell):
+# {{ range list "extension.toml" "Cargo.toml" "src/lib.rs" "languages/strand/config.toml" "languages/strand/highlights.scm" "languages/strand/brackets.scm" "languages/strand/indents.scm" "languages/strand/outline.scm" "languages/strand/overrides.scm" }}{{ . }} {{ include (joinPath "zed-strand" .) | sha256sum | trunc 16 }} {{ end }}
 set -euo pipefail
 
-src={{ joinPath .chezmoi.sourceDir "zed-strand" | quote }}
+src="${CHEZMOI_SOURCE_DIR:?run by chezmoi apply}/zed-strand"
 zed_ext=${XDG_DATA_HOME:-$HOME/.local/share}/zed/extensions
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/zed-strand
 # Zed's own builder (crates/extension/src/extension_builder.rs) uses this
