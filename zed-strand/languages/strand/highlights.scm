@@ -1,5 +1,5 @@
 ; Zed's copy of crates/strand-dev/tree-sitter-strand/queries/highlights.scm
-; (Strand bd96eabf). Two differences: Zed lets a later pattern win where
+; (Strand f3bc74bd). Two differences: Zed lets a later pattern win where
 ; the original puts specific patterns first, so the order is reversed in
 ; blocks (general first); and captures take the names Zed's themes use
 ; (@type for @module, @variable.special for @variable.builtin).

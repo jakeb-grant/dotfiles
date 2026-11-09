@@ -11,7 +11,7 @@ repository = "https://github.com/jakeb-grant/strand"
 # again (see README.md).
 [grammars.strand]
 repository = "https://github.com/jakeb-grant/strand"
-rev = "bd96eabf798499858f5b51bb6b7f73bf6ad532ca"
+rev = "f3bc74bd1da1a71522e3c0833a9b2181d51061b6"
 path = "crates/strand-dev/tree-sitter-strand"
 
 [language_servers.strand-dev]
