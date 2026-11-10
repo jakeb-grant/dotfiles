@@ -5,3 +5,13 @@
 # Ordered after 70-uaccess.rules adds the tag and before 73-seat-late.rules
 # turns it into a session ACL.
 SUBSYSTEM=="video4linux", ATTR{name}=="Intel IPU7 ISYS Capture *", GROUP="ipu7cam", MODE="0660", TAG-="uaccess"
+
+# TEMPORARY: speaker workaround, paired with "blacklist intel_cvs" in
+# /etc/modprobe.d/ipu7-camera-loopback.conf, which explains the pin conflict
+# and when to remove both. Load the camera's intel_cvs only after the built-in
+# sound card registers: by then all four amps have read their shared
+# speaker-ID pin and released it. Matched on the card's id, not any sound card,
+# so a USB headset enumerating first can't load intel_cvs early.
+# If the built-in card never appears, intel_cvs stays unloaded and the camera
+# with it; `sudo modprobe intel_cvs` loads it by hand.
+SUBSYSTEM=="sound", KERNEL=="card*", ACTION=="add", ATTR{id}=="sofsoundwire", RUN+="/usr/bin/modprobe intel_cvs"

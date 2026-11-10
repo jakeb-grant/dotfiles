@@ -7,6 +7,10 @@
 # a v4l2loopback device ("Integrated Camera", /dev/video50) on demand, and a
 # udev rule hides the raw nodes so apps can't pick them.
 #
+# The modprobe and udev files also carry a TEMPORARY speaker workaround: they
+# delay the camera's intel_cvs until the sound card is up, because both share
+# a GPIO. modprobe.conf explains it and says when to remove it.
+#
 # The /etc files are rendered from .chezmoitemplates/ipu7-camera/, so editing
 # any of them changes this script and re-runs it, as do the WirePlumber rules
 # (they need its restart). The check script deliberately doesn't: an edit to a
