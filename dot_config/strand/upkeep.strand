@@ -389,7 +389,7 @@ window Upkeep {
       else { msg = "Nothing to update"; msg_bad = false }
     }
     else if c == "update" {
-      if checked.len > 0 { ask = Ask(op: "update", title: "Update " + count(checked.len) + "?", note: "Only these: a partial upgrade, against the sync database as it is",
+      if checked.len > 0 { ask = Ask(op: "update", title: "Update " + count(checked.len) + "?", note: "Only these: the sync database refreshed, the rest left as they are (a partial upgrade)",
         names: checked.map(i => i.name + "  " + i.ver + " → " + (i.new ?? "")), pkgs: checked.map(i => i.name)) }
       else { msg = "Check the packages to update with Space"; msg_bad = false }
     }

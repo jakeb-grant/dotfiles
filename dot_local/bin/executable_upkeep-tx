@@ -29,7 +29,8 @@
 #   upkeep-tx term OP [PKG…]   OP in this terminal with every question asked (sudo pacman,
 #                              or yay with its diffs and all), then waits for Enter
 #
-# OP: upgrade (everything: -Syu; PKGs the AUR updates, if any), update (PKGs, -S --needed),
+# OP: upgrade (everything: -Syu; PKGs the AUR updates, if any), update (PKGs, -Sy --needed:
+# the sync db refreshed first, as the update check's copy was, the rest left as they are),
 # install (-S), reinstall (-S), rebuild (-S --rebuild), remove (-R), purge (-Rns), clean
 # (paccache -r). Each PKG is one name, an argument of its own.
 set -u
@@ -194,7 +195,7 @@ conflicts() {
 # CHECK_WAIT: how long the update check's copy may take to sync (the window's dialog
 # waits 6 s; a run, as long as it takes)
 check() {
-  local op=${1:-} out f n
+  local op=${1:-} out f n db
   shift
   split_pkgs "$@"
   case $op in
@@ -211,11 +212,21 @@ check() {
       fi
       [ $# -gt 0 ] && echo "aur $*" ;;
     update | install | reinstall | rebuild)
+      # update refreshes the sync db first, so it is checked against the update check's
+      # copy, synced now as the run's will be
+      db=()
+      if [ "$op" = update ] && [ ${#REPO[@]} -gt 0 ]; then
+        if checkupdates_db "${CHECK_WAIT:-6}"; then
+          db=(--dbpath "$SYNCDB" --logfile /dev/null)
+        else
+          echo "ask the update check's copy of the sync database could not be synced ($CU_ERR), so what pacman would ask is unknown"
+        fi
+      fi
       if [ ${#REPO[@]} -gt 0 ]; then
-        out=$(LC_ALL=C pacman -Sp --noconfirm --print-format '%n' -- "${REPO[@]}" </dev/null 2>&1)
+        out=$(LC_ALL=C pacman -Sp "${db[@]}" --noconfirm --print-format '%n' -- "${REPO[@]}" </dev/null 2>&1)
         questions <<<"$out" | sed 's/^/ask /'
         grep -E '^error:' <<<"$out" | head -3 | sed 's/^error: */fail /'
-        conflicts "" "${REPO[@]}"
+        if [ ${#db[@]} -gt 0 ]; then conflicts "$SYNCDB" "${REPO[@]}"; else conflicts "" "${REPO[@]}"; fi
       fi
       [ ${#AUR[@]} -gt 0 ] && echo "aur ${AUR[*]}" ;;
     remove | purge)
@@ -268,7 +279,9 @@ command_for() {
   case $op in
     upgrade) if [ $# -gt 0 ]; then CMD=("${aur[@]}" -Syu); else CMD=("${pac[@]}" -Syu); fi ;;
     update | install | reinstall)
-      [ "$op" = update ] && need=(--needed)
+      # update: -y, or it installs what the sync db last knew, which an update the check
+      # found (on its own fresh copy) is newer than: "is up to date -- skipping"
+      [ "$op" = update ] && need=(-y --needed)
       if [ ${#AUR[@]} -gt 0 ]; then CMD=("${aur[@]}" -S "${need[@]}" -- "$@"); else CMD=("${pac[@]}" -S "${need[@]}" -- "$@"); fi ;;
     rebuild) CMD=("${aur[@]}" -S --rebuild -- "$@") ;;
     remove) CMD=("${pac[@]}" -R -- "$@") ;;
@@ -276,6 +289,20 @@ command_for() {
     clean) if [ "$mode" = quiet ]; then CMD=("$PKEXEC" "$STDBUF" -oL -eL "$PACCACHE" -r); else CMD=("$SUDO" "$PACCACHE" -r); fi ;;
     *) return 1 ;;
   esac
+}
+
+# after an update that ended well: each of the PKGs from a sync repo that has a newer
+# version still, said, so a run that changed nothing is not taken for done. 0: none left
+not_updated() {
+  local left l
+  [ "${1:-}" = update ] || return 0
+  shift
+  split_pkgs "$@"
+  [ ${#REPO[@]} -gt 0 ] || return 0
+  left=$(LC_ALL=C pacman -Qu -- "${REPO[@]}" 2>/dev/null)
+  [ -n "$left" ] || return 0
+  while IFS= read -r l; do say "Not updated: $l"; done <<<"$left"
+  return 1
 }
 
 run() {
@@ -299,7 +326,7 @@ run() {
   rep=$(grep -E '^:: Replace .* with ' "$out" | sed -e 's/^:: Replace //' -e 's/ *\[[YyNn]\/[YyNn]\].*$//' -e 's/?$//' | sort -u)
   [ -n "$rep" ] && say "pacman replaced without asking (published after the check): $(paste -sd ';' <<<"$rep" | sed 's/;/; /g')"
   case $code in
-    0) ;;
+    0) not_updated "$op" "$@" || code=1 ;;
     126) say "The password was cancelled" ;;
     127) say "Not allowed: polkit refused, or pkexec could not run it" ;;
     *)
@@ -351,7 +378,7 @@ kitty_run() {
   read -r code prog <"$st"
   rm -f "$st"
   case ${code:-} in
-    0) exit 0 ;;
+    0) not_updated "$@" && exit 0 ;;
     "") say "Kitty was closed before it ended: whether the change took is unknown" ;;
     *) say "$prog exited with status $code in Kitty" ;;
   esac
