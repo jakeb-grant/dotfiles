@@ -5,13 +5,14 @@
 // to: strand toggle upkeep.open
 //
 // Reading is Strand's own: pacman -Q and -S, the AUR's RPC and the news feed through
-// curl, vercmp. pacman's lists and yay's AUR check go through `sh -c`, only because
-// their status 1 means both "none" and an error. checkupdates, which can take longer
-// than an action that answers may (10 s), runs from ~/.local/bin/upkeep-tx into a file
-// read here. Changes go through upkeep-tx too, as jobs whose output the window follows:
-// pacman through pkexec (the island asks the password), the AUR through yay with
-// pkexec, and to Kitty where pacman would stop to ask something or a PKGBUILD deserves
-// a look.
+// curl, vercmp. `sh -c` only carries what a command has no argument for (the refresh,
+// and whether yay's AUR check is wanted) and loops vercmp over the AUR's packages;
+// `ok 0, 1` tells pacman's and yay's "none" from an error. checkupdates, which can
+// take longer than an action that answers may (10 s), runs from ~/.local/bin/upkeep-tx
+// into a file read here. Changes go through upkeep-tx too, as jobs whose output the
+// window follows: pacman through pkexec (the island asks the password), the AUR
+// through yay with pkexec, and to Kitty where pacman would stop to ask something or a
+// PKGBUILD deserves a look.
 
 permit exec "sh", "pacman", "curl", "upkeep-tx", "xdg-open"
 
