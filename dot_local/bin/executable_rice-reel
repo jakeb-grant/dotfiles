@@ -1,0 +1,546 @@
+#!/usr/bin/env bash
+# rice-reel: a scripted tour of the desktop, recorded, for showing it off.
+#
+# Run it from a terminal alone on an empty workspace. It closes that terminal
+# and plays the tour from there: apps opened on that workspace and the next
+# empty ones, the launcher, a tune of its own playing on the island, a theme
+# picked in the launcher and back, and the lock screen at the end: the reel stops there, and once you unlock, the take tidies
+# up (your password is never on it). It drives the live shell the
+# way your keybinds do (strand set/toggle, keys typed with wtype, theme-switch,
+# Hyprland's dispatchers), records the focused monitor with wf-recorder, takes
+# stills with grim, and finishes a reel.mp4 with ffmpeg.
+#
+# Kept off camera, so the reel shows nothing of yours:
+#   - the workspaces it plays on are empty when it starts; it never visits
+#     yours, and leaves out the launcher pages that would list them (Workspaces)
+#     or your devices (Wi-Fi, Bluetooth, Sound, Drives), your clipboard,
+#     notification history and tray
+#   - its terminals show fastfetch without user@host, a palette swatch, btop
+#     and yazi in the wallpapers folder, never a shell prompt
+#   - do not disturb is on, except for its own two notifications
+#   - the music is its own: two tracks it synthesises with ffmpeg, played by a
+#     VLC with no window; with another player open it leaves the music out
+#     (the island and the Media page would show that player's song)
+#   - the pointer is hidden, and the reel's metadata stripped
+# Still yours to check: the island's workspace chips, and the stills before
+# you post them.
+#
+# Afterwards it closes what it opened and puts back the workspace, theme,
+# volume, mute, zoom and pointer it found, and turns do not disturb off (Strand
+# cannot be asked whether it was on). A notification says where the reel is.
+#
+# Usage: rice-reel [--rehearse] [--no-lock] [--zoom N] [--out DIR] [scene ...]
+#   --check     print what it would use and change nothing
+#   --rehearse  play the tour without recording
+#   --no-lock   end without the lock screen
+#   --zoom N    how close the island shots are (default 2.4)
+#   --theme T   the theme it picks in the launcher and comes back from
+#               (default everforest, else the first whose switch, there and
+#               back, puts up another wallpaper; --check shows it)
+#   --out DIR   where the take goes (default ~/Videos/rice-reel-<time>)
+#   --stop      stop a running take (it still tidies up)
+#   scene ...   play only these, in this order (default: all of them)
+# Scenes: intro terminals launcher apps music spaces notify pages themes lock
+# Its log is in the take's folder (a rehearsal's: $XDG_RUNTIME_DIR/rice-reel.log).
+
+set -euo pipefail
+
+SCENES_ALL=(intro terminals launcher apps music spaces notify pages themes lock)
+THEME=""      # the theme it picks in the launcher: planned from wallpapers.json unless --theme
+PREFER=everforest
+TYPE_DELAY=70                                  # ms between typed letters
+ZOOM=2.4
+RUN=${XDG_RUNTIME_DIR:-/tmp}
+PIDFILE=$RUN/rice-reel.pid
+
+ARGS=("$@")
+REHEARSE=0 CHECK=0 LOCK=1 OUT="" SCENES=()
+while [ $# -gt 0 ]; do
+  case $1 in
+    --rehearse) REHEARSE=1 ;;
+    --check) CHECK=1 ;;
+    --no-lock) LOCK=0 ;;
+    --zoom) ZOOM=${2:?--zoom needs a factor}; shift ;;
+    --theme) THEME=${2:?--theme needs a theme}; shift ;;
+    --out) OUT=${2:?--out needs a directory}; shift ;;
+    --stop)
+      [ -f "$PIDFILE" ] && kill -TERM "$(cat "$PIDFILE")" 2>/dev/null && { echo "stopping"; exit 0; }
+      echo "rice-reel: nothing running" >&2; exit 1 ;;
+    -h|--help) sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*) echo "rice-reel: unknown option $1 (--help)" >&2; exit 2 ;;
+    *) SCENES+=("$1") ;;
+  esac
+  shift
+done
+[ ${#SCENES[@]} -gt 0 ] || SCENES=("${SCENES_ALL[@]}")
+for s in "${SCENES[@]}"; do
+  [[ " ${SCENES_ALL[*]} " == *" $s "* ]] || { echo "rice-reel: no scene '$s' (${SCENES_ALL[*]})" >&2; exit 2; }
+done
+[ $LOCK = 1 ] || SCENES=("${SCENES[@]/lock}")
+
+say() { printf '%s [rice-reel] %s\n' "$(date +%T)" "$*" >&2; }
+die() { printf 'rice-reel: %s\n' "$*" >&2; exit 1; }
+beat() { sleep "${1:-1}"; }
+
+# --- what it finds (read-only) ----------------------------------------------------
+
+need=(hyprctl jq strand wtype grim kitty yazi btop fastfetch theme-switch notify-send wpctl setsid)
+[ $REHEARSE = 1 ] || need+=(wf-recorder ffmpeg ffprobe)
+missing=()
+for c in "${need[@]}"; do command -v "$c" >/dev/null || missing+=("$c"); done
+[ ${#missing[@]} = 0 ] || die "missing: ${missing[*]}"
+[ -n "${WAYLAND_DISPLAY:-}" ] && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] || die "run it inside the Hyprland session"
+strand get launcher.open >/dev/null 2>&1 || die "the shell isn't answering (strand get launcher.open)"
+
+mon_json=$(hyprctl -j monitors | jq -c 'map(select(.focused)) | first')
+MON=$(jq -r .name <<<"$mon_json")
+# the pointer waits at the top edge over the island's middle: off every window
+# and every node, and the point the zoom closes in on
+ANCHOR_X=$(jq -r '.x + .width / .scale / 2 | floor' <<<"$mon_json")
+ANCHOR_Y=$(jq -r '.y' <<<"$mon_json")
+
+clients=$(hyprctl -j clients)
+START_WS=$(hyprctl -j activeworkspace | jq -r .id)
+# the stage: where it starts, and the next three workspaces with no windows
+mapfile -t WS < <(jq -r --argjson s "$START_WS" '
+  [.[] | .workspace.id | select(. != $s)] as $taken
+  | [$s] + ([range($s + 1; $s + 64) | select(. as $i | $taken | index($i) | not)] | .[:3]) | .[]' <<<"$clients")
+here=$(jq --argjson s "$START_WS" '[.[] | select(.workspace.id == $s)] | length' <<<"$clients")
+ACTIVE=$(hyprctl -j activewindow | jq -r '.address // empty')
+
+ORIG_THEME=$(jq -r '._slug' ~/.config/palette/active.json)
+VOL=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print $2}')
+MUTED=0 MUTED_NOTE=""   # the wave shows only while the sound is heard: unmuted for the take
+wpctl get-volume @DEFAULT_AUDIO_SINK@ | grep -q MUTED && { MUTED=1; MUTED_NOTE=" (muted: unmuted for the take)"; }
+# what each monitor shows, as awww says: "<output>\t<file>" lines
+ORIG_WALLS=$(awww query | sed -nE 's/^: ([^:]+): .*image: (.*)$/\1\t\2/p')
+
+# The theme it picks, so that the switch there and the one back each put up
+# another wallpaper. The launcher (launcher.strand, `on change theme_slug`)
+# keeps a wallpaper that suits the new theme and otherwise puts up the one
+# wallpapers.json's defaults name for it, else the first that suits it; this
+# replays that rule. everforest when it qualifies, else the first that does.
+plan_theme() {
+  local pals
+  pals=$(for f in ~/.config/palette/*.json; do
+    [ "$(basename "$f")" = active.json ] || jq -c '{slug: (input_filename | split("/") | last | rtrimstr(".json")), light: (._variant == "light")}' "$f"
+  done | jq -s .)
+  jq -r -n --slurpfile W ~/.config/wallpapers/wallpapers.json --argjson pals "$pals" \
+    --arg orig "$ORIG_THEME" --arg prefer "$PREFER" --arg now "$(cut -f2 <<<"$ORIG_WALLS" | xargs -rn1 basename)" '
+    $W[0] as $W
+    | def suits($ps; $slug): any($ps[]; . as $p | $p == "*" or $p == $slug or (($p | endswith("*")) and ($slug | startswith($p[:-1]))));
+      def default($slug):
+        (first($W.defaults[] | select(any(.palettes[]; . == $slug)))
+         // first($W.defaults[] | select(any(.palettes[]; . != "*" and suits([.]; $slug))))
+         // first($W.defaults[] | select(any(.palettes[]; . == "*"))) // {}) | .file // "";
+      # the files on screen after switching to $slug, or null when nothing changes
+      def after($now; $slug):
+        if any($W.wallpapers[]; suits(.palettes; $slug) and (.file as $f | $now | all(. == $f)))
+           or any($W.sets[]; suits(.palettes; $slug) and (.images - $now | length == 0))
+        then null
+        else default($slug) as $named
+          | [$W.wallpapers[] | select(suits(.palettes; $slug))] as $sw
+          | [$W.sets[] | select(suits(.palettes; $slug))] as $ss
+          | (first($sw[] | select(.file == $named)) // first($ss[] | select(.name == $named)) // $sw[0] // $ss[0]) as $w
+          | if $w == null then null
+            elif $w.file then [$now[] | $w.file]
+            else [range($now | length) as $i | $w.images[$i % ($w.images | length)]] end
+        end;
+      def run($now; $ts):
+        reduce $ts[] as $t ({now: $now, ok: true, walls: []};
+          if .ok then after(.now; $t) as $n
+            | if $n == null then .ok = false else .now = $n | .walls += [$n | join(" ")] end
+          else . end);
+      ($now | split("\n") | map(select(. != ""))) as $now
+      | first(([$prefer] + [$pals[].slug])[] | select(. != $orig) | . as $t
+              | select($pals | any(.slug == $t)) | select(run($now; [$t, $orig]).ok)) // empty'
+}
+[ -n "$THEME" ] || THEME=$(plan_theme)
+# the Themes page lists the themes in theme-switch's order, opening on the one
+# in use: the steps from there to the picked one (and back up)
+theme_at() { theme-switch --list | awk '{print $1}' | grep -nx -- "$1" | cut -d: -f1; }
+STEPS=0
+if [ -n "$THEME" ]; then
+  a=$(theme_at "$ORIG_THEME") b=$(theme_at "$THEME")
+  [ -n "$a" ] && [ -n "$b" ] || die "theme-switch doesn't list $ORIG_THEME and $THEME"
+  STEPS=$((b - a))
+fi
+
+has() { local s; for s in "${SCENES[@]}"; do [ "$s" = "$1" ] && return 0; done; return 1; }
+drop() { local s keep=(); for s in "${SCENES[@]}"; do [ "$s" = "$1" ] || keep+=("$s"); done; SCENES=("${keep[@]}"); }
+# the media players open now: the island and the Media page would show theirs
+players() { busctl --user list --no-legend 2>/dev/null | awk '$1 ~ /^org\.mpris\.MediaPlayer2\./ { print $1 }'; }
+NO_MUSIC=""
+if has music; then
+  if ! command -v cvlc >/dev/null || ! command -v ffmpeg >/dev/null || ! command -v busctl >/dev/null; then
+    NO_MUSIC="it needs cvlc, ffmpeg and busctl"
+  elif [ -n "$(players)" ]; then
+    NO_MUSIC="a player is open ($(players | sed 's/^org\.mpris\.MediaPlayer2\.//' | paste -sd' ')); close it for the music"
+  fi
+fi
+[ -n "$THEME" ] || ! has themes || NO_THEME=1
+# the pointer's options as they are: the take hides it (below) and puts them back
+opt() { hyprctl -j getoption "cursor:$1" | jq -r '.int // .float // (if .bool then "true" else "false" end)'; }
+CURSOR_ORIG="invisible = $(opt invisible), inactive_timeout = $(opt inactive_timeout), no_hardware_cursors = $(opt no_hardware_cursors)"
+GLOBAL_ANIM=$(hyprctl -j animations | jq -c '.[0][] | select(.name == "global") | {speed, bezier}')
+
+if [ $CHECK = 1 ]; then
+  say "monitor $MON; the zoom closes in on $ANCHOR_X,$ANCHOR_Y at ${ZOOM}x"
+  say "stage: workspaces ${WS[*]} ($here window(s) on $START_WS now)"
+  say "theme $ORIG_THEME on $(cut -f2 <<<"$ORIG_WALLS" | xargs -rn1 basename | paste -sd' '); picks ${THEME:-(none changes the wallpaper)} and back; volume $VOL$MUTED_NOTE"
+  [ -z "$NO_MUSIC" ] || say "music left out: $NO_MUSIC"
+  [ -z "${NO_THEME:-}" ] || say "themes left out: no theme puts up another wallpaper there and back"
+  say "scenes: ${SCENES[*]}"
+  getent hosts aur.archlinux.org >/dev/null || say "the AUR doesn't resolve: Upkeep would show an error"
+  exit 0
+fi
+
+# --- hand over: run detached, and close the terminal it was started from ------------
+
+if [ "${RICE_REEL_STAGE:-}" != 1 ]; then
+  [ "$here" -le 1 ] || die "workspace $START_WS has other windows: start it from a terminal alone on an empty workspace"
+  [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null && die "a take is already running (rice-reel --stop)"
+  if [ $REHEARSE = 0 ]; then
+    [ -n "$OUT" ] || OUT=~/Videos/rice-reel-$(date +%Y%m%d-%H%M%S)
+    mkdir -p "$OUT/stills"; LOG=$OUT/rice-reel.log
+  else
+    LOG=$RUN/rice-reel.log
+  fi
+  close=""; [ "$here" = 1 ] && close=$ACTIVE
+  RICE_REEL_STAGE=1 RICE_REEL_CLOSE=$close RICE_REEL_OUT=$OUT \
+    setsid -f "$0" "${ARGS[@]}" </dev/null >"$LOG" 2>&1
+  echo "rice-reel: taking over; this terminal closes. Log: $LOG"
+  exit 0
+fi
+OUT=${RICE_REEL_OUT:-}
+echo $$ >"$PIDFILE"
+
+# --- helpers -------------------------------------------------------------------
+
+hypr() { hyprctl dispatch "$1" >/dev/null; }
+hypr_eval() { hyprctl eval "$1" >/dev/null; }
+go_ws() { hypr "hl.dsp.focus({ workspace = $1 })"; }
+close_window() { if [ -n "$1" ]; then hypr "hl.dsp.window.close({ window = \"address:$1\" })"; fi; }
+anchor() { hypr "hl.dsp.cursor.move({ x = $ANCHOR_X, y = $ANCHOR_Y })"; }
+zoom() { anchor; hypr_eval "hl.config({ cursor = { zoom_factor = $1 } })"; }
+zoom_in() { zoom "${1:-$ZOOM}"; beat 1; }
+zoom_out() { zoom 1; beat 1; }
+press() { local n=${2:-1} gap=${3:-0.5}; for ((i = 0; i < n; i++)); do wtype -k "$1"; beat "$gap"; done; }
+alt() { wtype -M alt "$1" -m alt; }
+typed() { wtype -d "$TYPE_DELAY" "$1"; }
+erase() { press BackSpace "$1" 0.04; }
+
+stop_recording() {
+  if [ -n "$REC" ]; then kill -INT "$REC"; wait "$REC" 2>/dev/null || true; REC=""; fi
+}
+
+launcher_open() { strand set launcher.open true >/dev/null; beat 0.9; }
+launcher_close() { strand set launcher.open false >/dev/null; beat 0.9; }
+
+SHOT=0
+still() {
+  [ $REHEARSE = 1 ] && return 0
+  SHOT=$((SHOT + 1))
+  grim -o "$MON" "$OUT/stills/$(printf %02d "$SHOT")-$1.png" || say "still $1 failed"
+}
+
+PIDS=()
+term() {   # term TITLE DIR COMMAND...: a kitty of its own, its title fixed; class
+            # left as kitty, so the island finds its icon
+  local title=$1 dir=$2; shift 2
+  kitty --title "$title" -d "$dir" "$@" >/dev/null 2>&1 &
+  PIDS+=($!)
+}
+
+TMP=$(mktemp -d)
+cat >"$TMP/fastfetch.jsonc" <<EOF
+{
+  "logo": { "padding": { "top": 1, "right": 3 } },
+  "modules": [
+    "break", "os", "kernel", "wm",
+    { "type": "custom", "key": "Shell", "format": "$(strand --version 2>/dev/null | head -1)" },
+    "terminal", "terminalfont", "theme", "icons", "font", "cursor",
+    "cpu", "gpu", "memory", "break", "colors"
+  ]
+}
+EOF
+cat >"$TMP/hold.sh" <<'EOF'
+printf '\033[?25l'   # no cursor, and the window stays once it is done
+"$@"
+exec sleep infinity
+EOF
+cat >"$TMP/swatches.sh" <<'EOF'
+names="black red green yellow blue magenta cyan white"
+row() {  # row BASE: eight blocks of the colours from BASE, three lines high
+  for line in 1 2 3; do
+    printf '  '
+    for i in 0 1 2 3 4 5 6 7; do printf '\033[%sm        \033[0m ' $(($1 + i)); done
+    printf '\n'
+  done
+}
+printf '\n'
+row 40; printf '\n'; row 100; printf '\n  '
+for n in $names; do printf '%-9s' "$n"; done
+printf '\n'
+EOF
+
+# A tune of its own: a four-bar loop (Am7 Fmaj7 Cmaj7 G6 at 120 bpm) of a
+# plucked arpeggio, a pad, a bass, a soft kick and a hat, made by ffmpeg's
+# aevalsrc, repeated for 2.5 minutes with an echo on the eighths, the cover a
+# square of a wallpaper. tune FILE SEMITONES TITLE COVER
+tune() {
+  local out=$1 k=$2 title=$3 cover=$4 A="" P="" B="" i b g n
+  local arp=(0 3 7 10 12 10 7 3  -4 0 3 7 8 7 3 0  3 7 10 14 15 14 10 7  -2 2 5 7 10 7 5 2)
+  local pad=("0 3 7" "-4 0 7" "3 7 10" "-2 2 5") root=(0 -4 3 -2)
+  hz() { awk -v s="$1" -v k="$k" 'BEGIN { printf "%.3f", 220 * 2 ^ ((s + k) / 12) }'; }
+  for i in "${!arp[@]}"; do A+="+gte(ld(0),$i*0.25)*lt(ld(0),$((i + 1))*0.25)*$(hz "${arp[$i]}")"; done
+  for b in 0 1 2 3; do
+    g="gte(ld(0),$((b * 2)))*lt(ld(0),$((b * 2 + 2)))"
+    for n in ${pad[$b]}; do P+="+$g*sin(2*PI*$(hz $((n - 12)))*t)"; done
+    B+="+$g*$(hz $((root[b] - 24)))"
+  done
+  local x='mod(t,0.25)' y='mod(t,2)' q='mod(t,0.5)' h='mod(t+0.25,0.5)'
+  local e="st(0,mod(t,8));st(1,0$A);st(2,0$B);"
+  e+="0.22*sin(2*PI*ld(1)*$x)*exp(-9*$x)+0.07*sin(4*PI*ld(1)*$x)*exp(-16*$x)"
+  e+="+0.05*(0$P)*sin(PI*$y/2)+0.16*sin(2*PI*ld(2)*$y)*exp(-1.5*$y)"
+  e+="+0.35*sin(2*PI*(48*$q+1.6*(1-exp(-35*$q))))*exp(-10*$q)+0.04*(2*random(5)-1)*exp(-70*$h)"
+  ffmpeg -v error -y -f lavfi -i "aevalsrc=exprs='$e':s=44100:d=8" -ac 2 "$TMP/loop.wav" &&
+  ffmpeg -v error -y -stream_loop 17 -i "$TMP/loop.wav" -i "$cover" -filter_complex \
+    "[0:a]aecho=0.8:0.6:375|750:0.22|0.1,lowpass=f=7000,volume=2.4,afade=t=in:d=1.5[a];[1:v]scale=500:500:force_original_aspect_ratio=increase,crop=500:500[c]" \
+    -map '[a]' -map '[c]' -c:a libmp3lame -q:a 4 -c:v mjpeg -disposition:v attached_pic \
+    -id3v2_version 3 -metadata title="$title" -metadata album="$title" "$out"
+}
+
+VLC=""
+music_start() {   # the two tracks, paused on the first, in a VLC with no window
+  local cur other
+  cur=$(cut -f2 <<<"$ORIG_WALLS" | head -1)
+  other=$(find ~/.config/wallpapers -maxdepth 1 -name '*.png' ! -path "$cur" | sort | head -1)
+  tune "$TMP/1.mp3" 0 "Low Tide" "${cur:-$other}" && tune "$TMP/2.mp3" 5 "Lavender Hours" "${other:-$cur}" ||
+    { say "the music couldn't be made: left out"; drop music; return 0; }
+  # its cover art cached in the take's folder, gone with it. Paused over MPRIS
+  # as soon as it answers, and back to the start: --start-paused would pause
+  # every track it comes to, so the skip would stop the music (the tracks fade
+  # in over 1.5 s, so the moment before the pause is silent)
+  XDG_CACHE_HOME=$TMP/cache cvlc -q --no-video --no-osd --control dbus --loop \
+    "$TMP/1.mp3" "$TMP/2.mp3" >/dev/null 2>&1 &
+  VLC=$!
+  local _
+  for _ in $(seq 100); do vlc_call Pause && break; beat 0.05; done
+  for _ in $(seq 40); do [ "$(vlc_status)" = Paused ] && break; vlc_call Pause; beat 0.05; done
+  vlc_call Seek x -600000000
+  [ "$(vlc_status)" = Paused ] || { say "VLC didn't come up paused on the bus: music left out"; drop music; }
+}
+vlc_call() { busctl --user call -- org.mpris.MediaPlayer2.vlc /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player "$@" 2>/dev/null; }
+vlc_status() { busctl --user get-property org.mpris.MediaPlayer2.vlc /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player PlaybackStatus 2>/dev/null | sed -E 's/^s "(.*)"$/\1/'; }
+
+# --- tidy up, whatever happens ------------------------------------------------------
+
+REC=""
+cleanup() {
+  set +e
+  [ -n "$REC" ] && kill -INT "$REC" 2>/dev/null && wait "$REC" 2>/dev/null; REC=""
+  strand set launcher.open false >/dev/null 2>&1
+  strand set upkeep.open false >/dev/null 2>&1
+  hypr_eval "hl.config({ cursor = { zoom_factor = 1, $CURSOR_ORIG } })"
+  hypr_eval "hl.animation({ leaf = \"zoomFactor\", enabled = true, speed = $(jq -r .speed <<<"$GLOBAL_ANIM"), bezier = \"$(jq -r .bezier <<<"$GLOBAL_ANIM")\" })"
+  # everything on the stage was opened by the take: the stage was empty
+  hyprctl -j clients | jq -r --argjson ws "$(printf '%s\n' "${WS[@]}" | jq -s .)" \
+    '.[] | select(.workspace.id as $w | $ws | index($w)) | .address' |
+    while read -r a; do close_window "$a"; done
+  for p in "${PIDS[@]}"; do kill "$p" 2>/dev/null; done
+  [ -z "$VLC" ] || { kill "$VLC" 2>/dev/null; wait "$VLC" 2>/dev/null; }
+  [ $MUTED = 0 ] || wpctl set-mute @DEFAULT_AUDIO_SINK@ 1
+  strand set notifications.dnd false >/dev/null 2>&1
+  [ "$(jq -r '._slug' ~/.config/palette/active.json)" = "$ORIG_THEME" ] \
+    || { theme-switch "$ORIG_THEME" >/dev/null 2>&1; sleep 2; }
+  # the wallpapers it found, once the launcher has followed the theme
+  [ "$(awww query | sed -nE 's/^: ([^:]+): .*image: (.*)$/\1\t\2/p')" = "$ORIG_WALLS" ] ||
+    while IFS=$'\t' read -r o f; do
+      [ -n "$f" ] && awww img "$f" --outputs "$o" --transition-type center --transition-duration 1 --transition-fps 60
+    done <<<"$ORIG_WALLS"
+  [ -n "$VOL" ] && wpctl set-volume @DEFAULT_AUDIO_SINK@ "$VOL"
+  go_ws "$START_WS"
+  rm -rf "$TMP" "$PIDFILE"
+}
+trap cleanup EXIT
+trap 'say stopped; exit 130' INT TERM
+
+# --- scenes -----------------------------------------------------------------------
+# One zoom pair per island moment, each over something moving: the volume level
+# (it opens zoomed, then pulls back), and the music starting with the chips and
+# the notifications after it in one shot. The launcher and the themes are
+# shown whole.
+
+scene_intro() {   # close on the island, its volume level up and down, then back out
+  local first=+ second=-
+  awk -v v="$VOL" 'BEGIN { exit !(v > 0.75) }' && { first=-; second=+; }
+  beat 0.3
+  for _ in 1 2 3; do strand set audio.sink.volume "${first}5%" >/dev/null; beat 0.35; done
+  beat 0.5; still volume
+  for _ in 1 2 3; do strand set audio.sink.volume "${second}5%" >/dev/null; beat 0.35; done
+  wpctl set-volume @DEFAULT_AUDIO_SINK@ "$VOL"
+  beat 1.2
+  zoom_out; beat 0.8; still desktop
+}
+
+scene_terminals() {
+  term fastfetch ~ sh "$TMP/hold.sh" fastfetch -c "$TMP/fastfetch.jsonc"
+  beat 1.4
+  term palette ~ sh "$TMP/hold.sh" sh "$TMP/swatches.sh"
+  beat 2.6; still terminals; beat 0.5
+}
+
+scene_launcher() {   # a sum, which the launcher works out as you type
+  launcher_open
+  typed "=2^16 / 8 + 12%"; beat 2; still launcher-sum; beat 0.3
+  erase 15
+  launcher_close
+}
+
+SHOWN=()   # the workspaces the apps went on
+scene_apps() {   # one app on each of the next workspaces
+  SHOWN=("${WS[1]}" "${WS[2]}")
+  go_ws "${WS[1]}"; beat 0.8
+  launcher_open
+  typed "btop"; beat 0.8; press Return 1 0.1
+  beat 2.5; still btop
+  go_ws "${WS[2]}"; beat 0.8
+  term yazi ~/.config/wallpapers yazi
+  beat 1.8; press j 3 0.8; still yazi; beat 0.4
+  if getent hosts aur.archlinux.org >/dev/null; then
+    go_ws "${WS[3]}"; beat 0.8; SHOWN+=("${WS[3]}")
+    strand set upkeep.open true >/dev/null
+    beat 2.8; still upkeep
+    press Tab 2 1.5
+  else
+    say "the AUR doesn't resolve: Upkeep left out"
+  fi
+}
+
+scene_music() {   # play, as the media key does: the track on the island, then its wave;
+                  # a skip to the next shows that one. Stays close for spaces
+  zoom "$ZOOM"; beat 0.8
+  strand toggle island.play_key >/dev/null
+  beat 3.2; still song
+  strand toggle island.next_key >/dev/null
+  beat 4.2; still wave   # the track's name for 1.8 s, then its wave
+}
+
+scene_spaces() {   # back through them, close on the island's chips; stays close for notify
+  zoom "$ZOOM"; beat 0.7   # already close after music; this is for spaces alone
+  for i in 2 1 0; do go_ws "${WS[$i]}"; beat 1; done
+  still chips
+}
+
+scene_notify() {   # two of its own, do not disturb off just for them
+  zoom "$ZOOM"; beat 0.3   # already close after spaces; this is for notify alone
+  strand set notifications.dnd false >/dev/null
+  notify-send -a Calendar -i x-office-calendar "Stand-up in 10 minutes" "Room 2, the link is in the invite"
+  beat 1.2; still notification; beat 1.4
+  notify-send -a Upkeep -i system-software-update "12 updates ready" "linux, mesa and 10 more"
+  beat 2.8
+  strand toggle notify.clear_key >/dev/null   # folds it now, not after its 5 s
+  beat 0.8
+  strand set notifications.dnd true >/dev/null
+  zoom_out
+}
+
+scene_pages() {   # the launcher's wallpapers, and the player with its cover
+  go_ws "${WS[0]}"
+  launcher_open
+  alt l; beat 1.4; press Down 3 1.0; still wallpapers
+  if [ -n "$VLC" ]; then alt m; beat 2.6; still media; beat 0.3; fi
+  launcher_close
+}
+
+pick_theme() {   # pick_theme STEPS: on the Themes page, from the one in use, each
+                 # theme passed over tinting the shell, and Return puts it on
+  local n=$1 key=Down
+  [ "$n" -ge 0 ] || { n=$((-n)); key=Up; }
+  launcher_open
+  alt t; beat 1.2
+  press "$key" "$n" 1.1; beat 0.4
+  press Return 1 0.1
+  beat 3.2   # the theme, then the wallpaper following it
+}
+
+scene_themes() {   # one theme picked in the launcher, its apps shown in it, and back
+  go_ws "${WS[0]}"
+  pick_theme "$STEPS"; still "theme-$THEME"
+  launcher_close
+  local w; for w in "${SHOWN[@]}"; do go_ws "$w"; beat 1.3; done
+  go_ws "${WS[0]}"; beat 1
+  pick_theme $((-STEPS)); still "theme-$ORIG_THEME"
+  launcher_close
+}
+
+scene_lock() {   # the reel ends on the lock screen, the song on it; the take tidies up once you unlock
+  beat 0.6
+  loginctl lock-session; beat 2.5; still lock
+  stop_recording
+  say "locked: unlock to finish"
+  for _ in $(seq 1200); do [ "$(strand get lock.locked 2>/dev/null)" = false ] && break; beat 0.5; done
+  beat 1
+}
+
+# --- the take -----------------------------------------------------------------------
+
+[ -z "$NO_MUSIC" ] || { say "music left out: $NO_MUSIC"; drop music; }
+[ -z "${NO_THEME:-}" ] || { say "themes left out: no theme puts up another wallpaper there and back"; drop themes; }
+say "stage ${WS[*]}; scenes ${SCENES[*]}; theme $THEME"
+if has music; then
+  music_start
+  [ $MUTED = 0 ] || wpctl set-mute @DEFAULT_AUDIO_SINK@ 0
+fi
+beat 0.6
+close_window "${RICE_REEL_CLOSE:-}"
+getent hosts aur.archlinux.org archlinux.org >/dev/null || true   # DNS warmed for Upkeep
+
+strand set launcher.open false >/dev/null
+strand set notifications.dnd true >/dev/null
+hypr_eval 'hl.animation({ leaf = "zoomFactor", enabled = true, speed = 7, bezier = "easeOutQuint" })'
+# hidden however it is drawn: invisible hides only a cursor Hyprland draws
+# itself, so no hardware cursor plane; and gone 0.1 s after any warp
+hypr_eval 'hl.config({ cursor = { no_hardware_cursors = 1, invisible = true, inactive_timeout = 0.1 } })'
+anchor
+go_ws "${WS[0]}"
+[ "${SCENES[0]}" = intro ] && zoom "$ZOOM"
+beat 1.6
+
+if [ $REHEARSE = 0 ]; then
+  wf-recorder -y -o "$MON" -c libx264 -p preset=ultrafast -p crf=16 \
+    -f "$OUT/raw.mkv" >"$OUT/wf-recorder.log" 2>&1 &
+  REC=$!
+  beat 1
+  kill -0 "$REC" 2>/dev/null || die "wf-recorder didn't start: $OUT/wf-recorder.log"
+fi
+
+for s in "${SCENES[@]}"; do
+  [ -n "$s" ] || continue
+  say "$s"
+  "scene_$s"
+done
+
+if [ $REHEARSE = 1 ]; then
+  trap - EXIT; cleanup
+  notify-send -a rice-reel "Rehearsal done" "Its log: $RUN/rice-reel.log"
+  exit 0
+fi
+
+stop_recording
+trap - EXIT; cleanup; set -e
+
+# --- the reel -------------------------------------------------------------------------
+
+say "finishing the reel"
+dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/raw.mkv")
+len=$(awk -v d="$dur" 'BEGIN { printf "%.2f", d - 0.6 }')
+out_at=$(awk -v l="$len" 'BEGIN { printf "%.2f", l - 0.8 }')
+ffmpeg -hide_banner -loglevel error -y -ss 0.4 -i "$OUT/raw.mkv" -t "$len" \
+  -vf "fps=60,fade=t=in:st=0:d=0.5,fade=t=out:st=$out_at:d=0.8,format=yuv420p" \
+  -c:v libx264 -preset slow -crf 20 -movflags +faststart \
+  -map_metadata -1 -map_chapters -1 -an "$OUT/reel.mp4"
+
+say "reel $OUT/reel.mp4 ($(du -h "$OUT/reel.mp4" | cut -f1), ${len}s); stills $OUT/stills"
+notify-send -a rice-reel -i video-x-generic "Reel ready" "$OUT/reel.mp4 (${len}s)"
