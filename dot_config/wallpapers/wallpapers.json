@@ -1,5 +1,6 @@
 {
   "defaults": [
+    { "palettes": ["gruvbox"], "file": "Urban" },
     { "palettes": ["*"], "file": "lavender3.png" }
   ],
   "wallpapers": [
@@ -96,15 +97,21 @@
     },
     {
       "file": "urban1.png",
-      "palettes": []
+      "palettes": [
+        "gruvbox"
+      ]
     },
     {
       "file": "urban2.png",
-      "palettes": []
+      "palettes": [
+        "gruvbox"
+      ]
     },
     {
       "file": "urban3.png",
-      "palettes": []
+      "palettes": [
+        "gruvbox"
+      ]
     }
   ],
   "sets": [
@@ -189,7 +196,9 @@
         "urban2.png",
         "urban3.png"
       ],
-      "palettes": []
+      "palettes": [
+        "gruvbox"
+      ]
     }
   ]
 }

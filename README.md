@@ -146,6 +146,7 @@ active.json               palette.lua.tmpl                hyprland.lua
 | Everforest | dark |
 | Everforest Light | light |
 | Nord | dark |
+| Gruvbox | dark |
 
 ### Template Syntax
 
