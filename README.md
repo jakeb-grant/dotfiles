@@ -30,18 +30,18 @@ chezmoi overwrites the files it manages. To see what would change first, run `ch
 
 ### Dependencies
 
-These dotfiles are built for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), a custom Arch ISO, but its package lists predate Strand and Kitty. Until they catch up, the configs and scripts also need:
+These dotfiles are built for [arch-quickstart](https://github.com/jakeb-grant/arch-quickstart), a custom Arch ISO, which installs everything below: the packages from its package lists, and Strand and a Rust toolchain as user installs. On another Arch system, the configs and scripts need:
 
 - **Strand**, the shell: `curl -fsSL https://strand.jacobgrant.dev/install.sh | sh -s -- --edge`. Edge, because these configs track Strand's main branch (`monitors.strand` needs `d9d726f4` or later).
 - **Apps**: `kitty`, `yazi`, `zed`, `btop`, and `1password` (AUR), whose SSH agent `private_1Password/` configures
 - **Desktop**: `awww` (wallpapers), `bolt` (Thunderbolt; with `jq` and `glib2`'s `gdbus` for `bolt-devices`), `hypridle`, `hyprlock`, `phinger-cursors` (AUR), `adw-gtk-theme` (the GTK3 base that `theme-switch` sets and `gtk-3.0/gtk.css` recolours), `qt5ct`
 - **Shell features**: `wf-recorder` (screen recording), `libqalculate` (the launcher's sums), `grim`, `slurp` and `wl-clipboard` (screenshots), `hyprpicker`
-- **Scripts**: `uv` (`theme-switch` and `wallpaper-upscale` run as `uv run --script`), `jq` and ImageMagick (`wallpaper-split`), `acl` (`setfacl`, for the Chromium policy script); `fzf` and `fnm` are used by `.bashrc` when present
+- **Scripts**: `uv` (`theme-switch` and `wallpaper-upscale` run as `uv run --script`), `jq` and ImageMagick (`wallpaper-split`), `acl` (`setfacl`, for the Chromium policy script), `rustup` with a default toolchain (`rustup default stable`; the Zed extension build); `fzf` and `fnm` are used by `.bashrc` when present
 - **Login**: `greetd`, `greetd-tuigreet` and a `greeter` user; the greetd setup script writes `/etc/greetd/config.toml` pointing at them and at `start-hyprland`, which ships with hyprland
 
 Install notes:
 
-- The `run_once` setup scripts (greetd, Chromium policies) and the `run_onchange` scripts for the Thunderbolt resume service, the IPU7 camera relay (on machines with that camera; it also needs `v4l2-relayd` from the AUR) and GPU symlinks (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt.
+- The `run_once` setup scripts (greetd, Chromium policies) and the `run_onchange` scripts for the Thunderbolt resume service, the IPU7 camera relay (on machines with that camera; it also needs `v4l2-relayd` from the AUR) and GPU symlinks (on `prime` machines) need interactive sudo — a fully unattended `chezmoi init --apply` will stop and prompt. arch-quickstart's installer gives them passwordless sudo for the length of its apply, and sets `ARCH_QUICKSTART_INSTALL=1` so a script can tell it runs in the installer's chroot.
 - The greetd script heredocs its config straight into `/etc`, so later out-of-band edits there are invisible to `chezmoi diff` — accepted trade-off for a personal repo; the script is the source of truth.
 - chezmoi only manages the `.obsidian` theme files inside the `~/knowledge` Obsidian vault, so an install that applies before the vault is cloned (arch-quickstart does, in the chroot) leaves a bare `~/knowledge/.obsidian`, and `git clone` then refuses the non-empty directory. Clone into it instead: `git -C ~/knowledge init && git -C ~/knowledge remote add origin https://github.com/jakeb-grant/knowledge.git && git -C ~/knowledge fetch && git -C ~/knowledge checkout -f main`, then `chezmoi apply` to put the theme back.
 
