@@ -314,10 +314,17 @@ component Body(armed: bool) {
   // it sits over the island, apart from its layout, so nothing moves for it,
   // filling the room between the workspaces and the symbols as they are laid out
   // (gliding and stretching as they change), and shows while that room holds it
-  let chips_end = chipbox.box.x + chipbox.box.width
-  let wave_len = statbox.box.x - chips_end - 2 * wave_gap
-  let wave_room = wave_len >= wave_min
+  // (chips past left_w are cut off and fade: they end there)
+  let chips_end = chipbox.box.x + min(chipbox.box.width, left_w)
   let waving = (wave_wanted || wave_hold) && !vm.busy
+  // When the workspaces leave too little room, the date fades and the symbols
+  // slide over its place (paint only, so the layout and these measures stay put)
+  let date_w = date_text.box.width + 10
+  let room_dated = statbox.box.x - chips_end - 2 * wave_gap
+  let date_out = waving && room_dated < wave_min && room_dated + date_w >= wave_min
+  let slide = date_out ? date_w : 0
+  let wave_len = room_dated + slide
+  let wave_room = wave_len >= wave_min
 
   on change ticks after level_hold { if moment != song { moment = calm } }
   on change ticks after song_hold { if moment == song { moment = calm } }
@@ -349,8 +356,9 @@ component Body(armed: bool) {
       spacer {}
       row { width: right_w; height: island_h; justify: end; align: center; shrink: 0
         row { id: statbox; height: island_h; align: center; shrink: 0
-          Status
-          text clock.format(date_format) { color: faint; margin: 0, 0, 0, 10; shrink: 0; font: sans 12px 500 }
+          row { align: center; shrink: 0; x: slide ~ glide; Status }
+          text clock.format(date_format) { id: date_text; color: faint; margin: 0, 0, 0, 10; shrink: 0; font: sans 12px 500
+            opacity: (date_out ? 0 : 1) ~ soft }
           text clock.format(clock_format) { color: $fg.alpha(0.92); margin: 0, 0, 0, 7; shrink: 0; roll: true; font: mono 13px 600 }
         }
       }
@@ -568,7 +576,7 @@ component Status {
 // out of the island's flow (its size follows the boxes, so it may move none of
 // them), from just past the workspaces to just short of the symbols
 component PlayWave(room: bool, at: float, len: float) {
-  row { place: absolute; x: at; y: 0; width: len; height: island_h; justify: center; align: center; hit: none
+  row { place: absolute; x: at; y: 0; width: len ~ glide; height: island_h; justify: center; align: center; hit: none
     opacity: (room ? 1 : 0) ~ soft
     enter { opacity: 0; scale: 0.85 }
     exit { opacity: 0; scale: 0.85 }
